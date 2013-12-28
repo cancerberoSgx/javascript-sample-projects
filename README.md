@@ -8,3 +8,5 @@ Why
 
 So users needing to build their first javascript based projects can just download these projects as a basis where everithing just works and then adapt it to their needs. 
 
+See inside each projct's subfolder for detailed information and usage of each. 
+
