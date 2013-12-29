@@ -1,0 +1,11 @@
+Guardfile
+
+guard 'livereload' do
+
+  guard 'livereload' do
+    #watch(%r{.+\.(css|html|js)$})
+    #watch all css and js files in this dir
+    watch(%r{.+\.(css|js)$})
+  end
+
+end
