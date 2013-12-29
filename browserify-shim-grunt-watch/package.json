@@ -1,10 +1,16 @@
 {
-	"name": "browserify-shim"
+	"name": "browserify-shim-grunt-watch"
 ,	"version": "0.1.0"
-,	"description": "exampl of using browserify with shim alone"
+,	"description": "exampl of using browserify with shim, grunt and watch"
+
 ,	"devDependencies": {
-		"browserify-shim": "~3.0.0"
+		"browserify-shim": "~3.0.0",
+		"grunt": "*",
+		"grunt-browserify":"*",
+		"grunt-contrib-watch": "*",
+		"express":"*"
 	}
+
 ,	"browserify": {
 		"transform": ["browserify-shim"]
 	}
@@ -22,7 +28,7 @@
 		}
 	,	"backbone": {
 			"exports": "Backbone"
-		,	"depends": ["underscore"]
+		,	"depends": ["underscore", "jquery"]
 		}
 	}
 }

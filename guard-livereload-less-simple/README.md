@@ -12,9 +12,10 @@ Install the neccesary tools:
  -  gem install guard
  -  gem install guard-livereload
  -  gem install guard-less
+ -  npm install # for our little nodejs based web server
  - install livereload extension for your favourite browser : download links: http://feedback.livereload.com/knowledgebase/articles/86242-how-do-i-install-and-use-the-browser-extensions-   basic site: http://livereload.com/
 
-Howto use?
+How to use?
 -------------
  - open a terminal and write "guard"
  - open anothoer terminal and write “node server.js”
