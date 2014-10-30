@@ -1,6 +1,8 @@
 javascript example project using the following technologies: 
 
-gulp - browserify - watch - uglify - sass 
+gulp - browserify - watch - uglify - sass - connect - livereload
+
+the browserify files are sepasrated into two: libs y src so the browserify of app code is faster
 
 #Use
     sudo npm install -g gulp #only one time
