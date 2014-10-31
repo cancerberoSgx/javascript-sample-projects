@@ -1,0 +1,32 @@
+<html>
+<head>
+	<script src="libs/angular/angular.min.js"></script>
+	<script src="src.js"></script>
+	<link rel="stylesheet" type="text/css" href="main.css">
+</head>
+
+<body>
+
+
+<div ng-app="myApp" ng-controller="personController">
+
+First Name: <input type="text" ng-model="firstName"><br>
+Last Name: <input type="text" ng-model="lastName"><br>
+<br>
+Full Name: {{firstName + " " + lastName}}
+
+<br/>
+Repeat:
+<ul>
+  <li ng-repeat="x	in names" class="look-this">
+    {{ x.name + ', ' + x.country }}
+  </li>
+</ul>
+
+</div>
+
+
+
+</body>
+
+</html>
