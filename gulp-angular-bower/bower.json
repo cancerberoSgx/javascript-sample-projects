@@ -1,0 +1,12 @@
+{
+"name": "ulp-angular-bower",
+"description": "ulp-angular-bower example",
+"version": "0.0.0",
+"license": "MIT",
+"private": true,
+"dependencies": {
+  "angular": "~1.3.0",
+  "angular-mocks": "~1.3.0",
+  "angular-route": "~1.3.0"
+}
+}
