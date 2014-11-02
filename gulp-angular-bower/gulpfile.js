@@ -11,6 +11,7 @@ var connect = require('gulp-connect');
 var JS_FILES = './src/**/*.js'; 
 var HTML_FILES = './src/**/*.html'; 
 var SCSS_FILES = './src/**/*.scss'; 
+var DATA_FILES = './data/*.json'; 
 
 gulp.task('lint', function() {
     return gulp.src(JS_FILES)
@@ -27,7 +28,7 @@ gulp.task('sass', function() {
 });
 
 gulp.task('src', function() {
-  return gulp.src(JS_FILES)
+  return gulp.src(['./src/source-header.js'].concat(JS_FILES))
     .pipe(concat('all.js'))
     .pipe(gulp.dest('dist'))
     .pipe(connect.reload());
@@ -35,6 +36,10 @@ gulp.task('src', function() {
 
 gulp.task('html', function() {
   return gulp.src(HTML_FILES)
+    .pipe(connect.reload());
+});
+gulp.task('data', function() {
+  return gulp.src(DATA_FILES)
     .pipe(connect.reload());
 });
 
@@ -46,6 +51,7 @@ gulp.task('watch', function() {
     gulp.watch(JS_FILES, ['lint', 'src']);
     gulp.watch(HTML_FILES, ['html']);
     gulp.watch(SCSS_FILES, ['sass']);
+    gulp.watch(DATA_FILES, ['data']);
 });
 
 gulp.task('connect', function() {
