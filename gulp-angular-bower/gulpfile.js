@@ -34,7 +34,8 @@ gulp.task('src', function() {
 });
 
 gulp.task('html', function() {
-  return gulp.pipe(connect.reload());
+  return gulp.src(HTML_FILES)
+    .pipe(connect.reload());
 });
 
 
