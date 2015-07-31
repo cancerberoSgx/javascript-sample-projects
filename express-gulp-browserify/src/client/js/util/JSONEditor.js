@@ -1,0 +1,1 @@
+module.exports = window.JSONEditor; //provided in a library
