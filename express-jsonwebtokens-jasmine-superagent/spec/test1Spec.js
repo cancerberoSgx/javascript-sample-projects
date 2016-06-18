@@ -25,6 +25,47 @@ describe('', function()
 			cb();
 		});
 	}); 
+	it('happypath1', function(cb)
+	{
+		new Promise(function(resolve, reject)
+		{
+			//first obtain the token
+			request
+			.post('http://localhost:3000/api/authenticate')
+			.send({name: 'sg', password: 'test123'})
+			.end(function(err, res)
+			{
+				err ? reject(err) : resolve(res.body.token);
+			})
+		})
+		.then(function(token)
+		{
+			//now make the api call passing the token
+			return new Promise(function(resolve, reject)
+			{
+				request
+				.get('http://localhost:3000/api/utility1')
+				.set('x-access-token', token)
+				.end(function(err, res)
+				{
+					err ? reject(err) : resolve(res.body.result);
+				});
+			});
+		})
+		.then(function(result)
+		{
+			//we have the api call result :)
+			// console.log('operation result is: ', result);
+			expect(result).toBe(123123)
+			cb()
+		})
+		.catch(function(err)
+		{
+			console.log('ERROR', err.toString())
+			cb()
+		});
+
+	});
 
 	var goodToken;
 	it('/api/authenticate w good credentials', function(cb)
