@@ -32,6 +32,12 @@ function registerIndex(app)
 			message: 'Just testing'
 		});
 	});
+
+	//TODO. remove - just a test of html templates
+	router.get('/test1', function(req, res, next) 
+	{
+		templates.render('index.html', {message: 'hello world'}, res); 
+	});
 	app.use('/', router);
 }
 
