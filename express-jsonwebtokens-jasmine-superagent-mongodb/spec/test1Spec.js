@@ -25,7 +25,9 @@ describe('', function()
 			cb();
 		});
 	}); 
-	
+
+	var goodToken;
+
 	it('happypath1', function(cb)
 	{
 		new Promise(function(resolve, reject)
@@ -33,7 +35,7 @@ describe('', function()
 			//first obtain the token
 			request
 			.post('http://localhost:3000/api/authenticate')
-			.send({name: 'sg', password: 'test123'})
+			.send({name: 'sgurin', password: 'test123'})
 			.end(function(err, res)
 			{
 				err ? reject(err) : resolve(res.body.token);
@@ -68,18 +70,30 @@ describe('', function()
 
 	});
 
-	var goodToken;
+
 	it('/api/authenticate w good credentials', function(cb)
 	{
 		request
 		.post('http://localhost:3000/api/authenticate')
-		.send({name: 'sg', password: 'test123'})
+		.send({name: 'sgurin', password: 'test123'})
 		.end(function(err, res)
 		{
 			expect(!!err).toBe(false);
 			expect(res.body.success).toBe(true); 
 			expect(res.body.token.length>0).toBe(true); 
 			goodToken = res.body.token;
+			cb();
+		});
+	}); 
+
+	it('/api/authenticate w bad credentials', function(cb)
+	{
+		request
+		.post('http://localhost:3000/api/authenticate')
+		.send({name: 'sgurin', password: 'wrongnumber'})
+		.end(function(err, res)
+		{
+			expect(res.body.success).toBe(false); 
 			cb();
 		});
 	}); 
@@ -104,6 +118,19 @@ describe('', function()
 		{
 			expect(res.body.success).toBe(true); 
 			expect(res.body.result).toBeDefined()
+			cb();
+		});
+	}); 
+
+	it('/api/utility1 w bad token', function(cb)
+	{
+		request
+		.get('http://localhost:3000/api/utility1')
+		.set('x-access-token', 'inventedtoken')
+		.end(function(err, res)
+		{
+			expect(!!err).toBe(false)
+			expect(res.body.success).toBe(false);
 			cb();
 		});
 	}); 
