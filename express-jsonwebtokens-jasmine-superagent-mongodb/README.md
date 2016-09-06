@@ -18,17 +18,20 @@ No client / UI application - just api.
 
 	node bin/www
 
-##running tests 
-
-(automatically will start a server - make sure isn't one running)
-
-	node node_modules/jasmine/bin/jasmine.js
-
-notice that test1Spec.js requires that mongodb is executed. Command example:
+##running mongodb server
 
 	mkdir /tmp/dbtest1
 	mongod --dbpath /tmp/dbtest1
 
+##running tests 
+
+(automatically will start a server - make sure isn't one running)
+
+	npm test
+
+ * mongodb server must be running. 
+ * Make sure the server at (http://localhost:3000) is killed first (killall node)
+ * Try to execute the tests twice since in the first time a new user is created. 
 
 ##Calling the API
 
