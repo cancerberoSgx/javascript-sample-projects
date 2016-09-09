@@ -4,8 +4,13 @@ Notes from a beginner in the form of a shell script:
 	cd dockertest
 	docker build -t vm1 .
 
-	#Run vm1 http server. 1) we mount current dir into guest /hostShared folder, then execute the guest/script1.sh that will end up running http-server program the test mounting current dir in the client and execute ls on the mounted dir
+	#how to run a bash (mount current dir into guest /hostShared folder)
+	docker run -it -v `pwd`:/hostShared vm1 bash
+
+	#Run vm1 node http server executing a mounted script
 	docker run -v `pwd`:/hostShared vm1 sh /hostShared/guest/script1.sh
 
-	#attach a termianl so I can debug uniz command interactively
-	sudo docker attach vm1
+	#see vm1 container id
+	docker ps | vm1
+
+	docker kill 1cbbcf7779f5
