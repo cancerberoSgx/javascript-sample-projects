@@ -7,6 +7,9 @@ Notes from a beginner in the form of a shell script:
 	#how to run a bash (mount current dir into guest /hostShared folder)
 	docker run -it -v `pwd`:/hostShared vm1 bash
 
+	same as above but forwarding guest port 777 to host port 7777
+	docker run -it -v `pwd`:/hostShared -p 7777:7777 vm1 bash 
+	
 	#Run vm1 node http server executing a mounted script
 	docker run -v `pwd`:/hostShared vm1 sh /hostShared/guest/script1.sh
 
