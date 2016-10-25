@@ -1,11 +1,13 @@
 var request = require('superagent');
 var utils = require('./testUtils')
+var shell = require('shelljs')
 describe('', function()
 {
 	var server; 
 
 	it('server startup', function(cb)
 	{
+		shell.exec('killall node'); //watch out!
 		utils.serverStartup('http://localhost:3000', expect, function(error, server_)
 		{
 			server = server_;
