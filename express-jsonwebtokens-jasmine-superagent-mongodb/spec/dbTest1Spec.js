@@ -7,7 +7,6 @@ describe('', function()
 	{
 		dbutils.connect(function(err, db)
 		{
-			// console.log(arguments)
 			expect(!!err).toBe(false);
 			expect(!!db).toBe(true);
 			!!db && db.close();

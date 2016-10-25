@@ -1,13 +1,11 @@
 var request = require('superagent');
 var utils = require('./testUtils')
-var shell = require('shelljs')
 describe('', function()
 {
 	var server; 
 
 	it('server startup', function(cb)
 	{
-		shell.exec('killall node'); //watch out!
 		utils.serverStartup('http://localhost:3000', expect, function(error, server_)
 		{
 			server = server_;
@@ -60,7 +58,6 @@ describe('', function()
 		.then(function(result)
 		{
 			//we have the api call result :)
-			// console.log('operation result is: ', result);
 			expect(result).toBe(123123)
 			cb()
 		})
@@ -71,60 +68,6 @@ describe('', function()
 		});
 
 	});
-
-// var co = require('co')
-// it('happy path using co', function(cb)
-// {
-// 	co(function*() 
-// 	{
-// 		var token = yield new Promise(function(resolve, reject)
-// 		{
-// 			request
-// 				.post('http://localhost:3000/api/authenticate')
-// 				.send({name: 'sgurin', password: 'test123'})
-// 				.end(function(err, res)
-// 				{
-// 					err ? reject(err) : resolve(res.body.token);
-// 				})
-// 		});
-
-// 		console.log('token obtained', token);
-
-// 		var result = yield new Promise(function(resolve, reject)
-// 		{
-// 			request
-// 			.get('http://localhost:3000/api/utility1')
-// 			.set('x-access-token', token)
-// 			.end(function(err, res)
-// 			{
-// 				err ? reject(err) : resolve(res.body.result);
-// 			});
-// 		});
-
-// 		// var result = yield request
-// 		// 	.get('http://localhost:3000/api/utility1')
-// 		// 	.set('x-access-token', token)
-// 		// 	.end(function(err, res)
-// 		// 	{
-// 		// 		// err ? reject(err) : resolve(res.body.result);
-// 		// 	});
-
-// 		console.log('result obtained', result);
-
-// 		expect(result).toBe(123123)
-
-// 		cb();
-// 	})
-// 	.catch(function(err) 
-// 	{
-// 		expect(err).toBe(undefined); 
-// 		console.log(err.stack);
-// 	});
-
-
-
-// })
-	
 
 
 	it('/api/authenticate w good credentials', function(cb)
@@ -191,6 +134,71 @@ describe('', function()
 		});
 	}); 
 
+
+
+
+// it('som', function()
+// {
+// 	console.log('seba')
+// 	expect(true).toBe(true)
+// })
+
+
+var co = require('co')
+it('happy path using co', function(cb)
+{
+	co(function*() 
+	{
+		var token = yield new Promise(function(resolve, reject)
+		{
+			request
+				.post('http://localhost:3000/api/authenticate')
+				.send({name: 'sgurin', password: 'test123'})
+				.end(function(err, res)
+				{
+					err ? reject(err) : resolve(res.body.token);
+				})
+		});
+
+		console.log('token obtained', token);
+
+		var result = yield new Promise(function(resolve, reject)
+		{
+			request
+			.get('http://localhost:3000/api/utility1')
+			.set('x-access-token', token)
+			.end(function(err, res)
+			{
+				err ? reject(err) : resolve(res.body.result);
+			});
+		});
+
+		// var result = yield request
+		// 	.get('http://localhost:3000/api/utility1')
+		// 	.set('x-access-token', token)
+		// 	.end(function(err, res)
+		// 	{
+		// 		// err ? reject(err) : resolve(res.body.result);
+		// 	});
+
+		// console.log('result obtained', result);
+
+		expect(result).toBe(123123)
+
+		cb();
+	})
+	.catch(function(err) 
+	{
+		expect(err).toBe(undefined); 
+		console.log(err.stack);
+	});
+
+})
+	
+
+
+
+
 	it('server stop', function(cb)
 	{
 		utils.serverStop('http://localhost:3000', expect, server, function(error)
@@ -200,3 +208,6 @@ describe('', function()
 		});
 	});
 })
+
+
+
