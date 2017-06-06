@@ -5,7 +5,7 @@
  * brfs, 
  * node
 
-the idea is to be able to write code using ts, being able to require pure js libraries, and be able to use browesrify and brfs utility like to go to the browser. 
+the idea is to be able to write code using ts, being able to require pure js libraries, and be able to use browserify and brfs utility like to go to the browser. Also have some unit test with jasmine that run in node
 
 ##run it in node
 
