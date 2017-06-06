@@ -6,7 +6,9 @@ var Point = (function () {
         this.y = y;
         this.x = x;
     }
-    Point.prototype.dist = function () { return Math.sqrt(this.x * this.x + this.y * this.y); };
+    Point.prototype.dist = function () {
+        return Math.sqrt(this.x * this.x + this.y * this.y);
+    };
     return Point;
 }());
 Point.origin = new Point(0, 0);

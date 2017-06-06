@@ -1,12 +1,14 @@
 
 export class Point {
-  x: number;
+	x: number
 
-  constructor(x: number, public y: number = 0) {
-    this.x = x;
-  }
+	constructor(x: number, public y: number = 0) {
+		this.x = x
+	}
 
-  dist() { return Math.sqrt(this.x * this.x + this.y * this.y); }
+	dist() { 
+		return Math.sqrt(this.x * this.x + this.y * this.y) 
+	}
 
-  static origin = new Point(0, 0);
+	static origin = new Point(0, 0)
 }

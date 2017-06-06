@@ -1,3 +1,7 @@
+declare var describe: any
+declare var it: any
+declare var expect: any
+
 import {Point} from "../src/basic/Point"
 
 describe('1', ()=>
