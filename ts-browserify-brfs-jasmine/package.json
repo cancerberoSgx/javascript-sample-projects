@@ -1,0 +1,23 @@
+{
+  "name": "schema-editor",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "node node_modules/jasmine/bin/jasmine.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "json-schema-parser": "^0.1.0",
+    "underscore": "^1.8.3"
+  },
+  "devDependencies": {
+    "browserify": "^14.4.0",
+    "jasmine": "^2.6.0",
+    "tsify": "^3.0.1",
+    "typescript": "^2.3.4",
+    "brfs": "^1.4.3"
+  }
+}
