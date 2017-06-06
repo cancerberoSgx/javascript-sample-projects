@@ -13,3 +13,4 @@ var Point = (function () {
 }());
 Point.origin = new Point(0, 0);
 exports.Point = Point;
+//# sourceMappingURL=Point.js.map

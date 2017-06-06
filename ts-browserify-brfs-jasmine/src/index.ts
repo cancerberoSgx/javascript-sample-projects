@@ -4,6 +4,7 @@
 import {Point} from "./basic/Point"
 let p = new Point(1,2)
 console.log('point', p)
+// p.err()
 
 // however sometimes we need to deal with libraries
 // we can require node_modules or files with brfs - for ts compiler not to fail we need to declare require()

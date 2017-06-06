@@ -10,5 +10,13 @@ export class Point {
 		return Math.sqrt(this.x * this.x + this.y * this.y) 
 	}
 
+	err1(): any{
+		return undefined
+	}
+
+	err() {
+		return this.err1().toString()
+	}
+
 	static origin = new Point(0, 0)
 }

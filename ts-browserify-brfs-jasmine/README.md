@@ -23,15 +23,15 @@ the idea is to be able to write code using ts, being able to require pure js lib
 
 (same as before but this time open it in html browser)
 
-	browserify -o dist/bundle.js -p tsify -t brfs src/index.ts
+	browserify -o dist/bundle.js -p tsify -t brfs --debug src/index.ts
 	firefox dist/index.html
 
 
 ## browserify bundle in node 
 
-(same as before but run it in the browser)
+(same as before but run it in node)
 
-	browserify -o dist/bundle.js -p tsify -t brfs src/index.ts
+	browserify -o dist/bundle.js -p tsify -t brfs --debug src/index.ts
 	node dist/bundle.js
 
 ##development framework
