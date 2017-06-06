@@ -16,7 +16,7 @@ the idea is to be able to write code using ts, being able to require pure js lib
 
 (specs written with jasmine)
 
-	tsc spec/*
+	tsc spec/*.ts
 	npm test
 
 ## browser 

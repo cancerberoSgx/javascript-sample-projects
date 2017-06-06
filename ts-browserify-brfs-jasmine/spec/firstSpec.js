@@ -5,6 +5,6 @@ describe('1', function () {
     it('2', function () {
         var p = new Point_1.Point(1, 2);
         console.log('point', p);
-        expect(1).toBe(2);
+        expect(1).toBe(1);
     });
 });
