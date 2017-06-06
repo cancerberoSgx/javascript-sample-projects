@@ -38,6 +38,6 @@ the idea is to be able to write code using ts, being able to require pure js lib
 
 (first command will watch for file changes in .ts and recompile bundle.js automatically) 
 
-	watchify -o dist/bundle.js -p tsify -t brfs src/index.ts
+	watchify -o dist/bundle.js -p tsify -t brfs --debug src/index.ts
 	firefox dist/index.html
 
