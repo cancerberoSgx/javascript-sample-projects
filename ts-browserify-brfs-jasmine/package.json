@@ -10,14 +10,16 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@types/node": "^7.0.28",
     "json-schema-parser": "^0.1.0",
     "underscore": "^1.8.3"
   },
   "devDependencies": {
+    "@types/jasmine": "^2.5.51",
+    "brfs": "^1.4.3",
     "browserify": "^14.4.0",
     "jasmine": "^2.6.0",
     "tsify": "^3.0.1",
-    "typescript": "^2.3.4",
-    "brfs": "^1.4.3"
+    "typescript": "^2.3.4"
   }
 }

@@ -9,8 +9,13 @@ var Point = (function () {
     Point.prototype.dist = function () {
         return Math.sqrt(this.x * this.x + this.y * this.y);
     };
+    Point.prototype.err1 = function () {
+        return undefined;
+    };
+    Point.prototype.err = function () {
+        return this.err1().toString();
+    };
     return Point;
 }());
 Point.origin = new Point(0, 0);
 exports.Point = Point;
-//# sourceMappingURL=Point.js.map

@@ -1,15 +1,12 @@
 "use strict";
-/// <reference path="node-globals.ts" />
 exports.__esModule = true;
-// we can start structuring our project using typescript ! :)
 var Point_1 = require("./basic/Point");
 var p = new Point_1.Point(1, 2);
 console.log('point', p);
-// however sometimes we need to deal with libraries
-// we can require node_modules or files with brfs - for ts compiler not to fail we need to declare require()
+// we can use require() ! the following template is compiled with brfs/browserify
 console.log(require('./templates/t1')());
+//require() a third party non-typescript library
 var json = require("../test-files/schema1.json");
 var parser = require("json-schema-parser");
 var schema = parser.parse(json);
 console.log('JSON.stringify(schema).length', JSON.stringify(schema).length);
-//# sourceMappingURL=index.js.map

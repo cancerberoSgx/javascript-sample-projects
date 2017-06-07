@@ -1,4 +1,3 @@
-/// <reference path="jasmine-globals.ts" />
 
 import {Point} from "../src/basic/Point"
 

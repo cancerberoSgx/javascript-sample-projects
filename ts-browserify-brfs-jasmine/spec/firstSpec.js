@@ -1,5 +1,4 @@
 "use strict";
-/// <reference path="jasmine-globals.ts" />
 exports.__esModule = true;
 var Point_1 = require("../src/basic/Point");
 describe('1', function () {
