@@ -1,0 +1,18 @@
+{
+  "name": "synaptic-test",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "node node_modules/jasmine/bin/jasmine.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "synaptic": "^1.0.12"
+  },
+  "devDependencies": {
+    "jasmine": "^2.7.0"
+  }
+}
