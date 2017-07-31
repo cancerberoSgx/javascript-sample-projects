@@ -8,37 +8,44 @@ var Neuron = synaptic.Neuron,
 var convert = require('../baseConverter')
 
 
-function LearnerSum1(config)
+function LearnerSum1(config, dontInit)
 {
 	this.config = config
-	this.config.binOperandSize =convert.dec2bin(config.to*3).length + 1
-	console.log('binOperandSize', this.config.binOperandSize)
 
-	// create the layers
-	var inputLayer = new Layer(this.config.binOperandSize*2)
+	this.config.rate = this.config.rate || .2
 
-	// var hiddenLayer = new Layer(this.config.binOperandSize*2) // TODO : should be dynamic rel of binOperandSize
-	this.config.hiddenNeuronCount = this.config.hiddenNeuronCount || this.config.binOperandSize*this.config.binOperandSize
-	var hiddenLayer = new Layer(this.config.hiddenNeuronCount)
+	this.config.binOperandSize = this.config.binOperandSize || convert.dec2bin(this.operationImpl(this.config.to,this.config.to)).length + 1
 
-	var outputLayer = new Layer(this.config.binOperandSize)
+	if(!config._dontInit){
+		// create the layers
+		var inputLayer = new Layer(this.config.binOperandSize*2)
 
-	// connect the layers
-	inputLayer.project(hiddenLayer)
-	hiddenLayer.project(outputLayer)
+		// var hiddenLayer = new Layer(this.config.binOperandSize*2) // TODO : should be dynamic rel of binOperandSize
+		this.config.hiddenNeuronCount = this.config.hiddenNeuronCount || this.config.binOperandSize*this.config.binOperandSize
+		var hiddenLayer = new Layer(this.config.hiddenNeuronCount)
 
-	// set the layers
-	this.set({
-		input: inputLayer,
-		hidden: [hiddenLayer],
-		output: outputLayer
-	})
+		var outputLayer = new Layer(this.config.binOperandSize)
+
+		// connect the layers
+		inputLayer.project(hiddenLayer)
+		hiddenLayer.project(outputLayer)
+
+		// set the layers
+		this.set({
+			input: inputLayer,
+			hidden: [hiddenLayer],
+			output: outputLayer
+		})
+	}
 }
 
 // extend the prototype chain
 LearnerSum1.prototype = new Network()
 LearnerSum1.prototype.constructor = LearnerSum1
 
+LearnerSum1.prototype.operationImpl = function(a, b){
+	return a+b
+}
 LearnerSum1.prototype.buildInput = function (i, j){
 	var binOperand1 = convert.dec2bin(i, this.config.binOperandSize)
 	var binOperand2 = convert.dec2bin(j, this.config.binOperandSize)
@@ -52,45 +59,22 @@ LearnerSum1.prototype.buildOutput = function (i, j){
 LearnerSum1.prototype.experiment = function (i, j){
 	var resultBin = this.activate(this.buildInput(i, j))
 	var output = this.buildOutput(i, j)
-	this.propagate(this.sum1learningRate, output)
+	this.propagate(this.config.rate, output)
 
 	resultBin = resultBin.map((n)=>Math.round(n))
 	var result = convert.bin2dec(resultBin)
 	return result
 }
 
-LearnerSum1.prototype.train = function (){  //TODO:use a Trainer
-	this.sum1learningRate = this.sum1learningRate || .3
+LearnerSum1.prototype.train = function (){ 
 	var trainingSet = this.buildTraningSet(this.config)
 
 	var trainer = new Trainer(this)
 
-
-
-	var defaultTrainConfig = {
-		log: 1000,
-		error: this.config.error
-	}
-
-	var allTrainConfig = {
-		iterations: this.config.iterations,
-		rate: this.sum1learningRate,
-	}
-	Object.keys(defaultTrainConfig).map((k)=>{
-		allTrainConfig[k] = allTrainConfig[k] || defaultTrainConfig[k]
-	})
-	var trainConfig = this.config.iterations ? allTrainConfig : defaultTrainConfig
+	var trainConfig = this.config
 	trainer.train(trainingSet, trainConfig);
-
-	// manual train the network - commented - trainer behaves much better / faster
-	// for (var i = 0; i < 130000; i++) {
-	// 	trainingSet.map((s)=>{
-	// 		learner.activate(s.input)
-	// 		learner.propagate(learner.sum1learningRate, s.output)
-	// 	})
-	// }
-
 }
+
 LearnerSum1.prototype.buildTraningSet = function (config){
 	var trainingSet = []
 	for (var i = config.from; i <= config.to; i++) {
