@@ -23,5 +23,5 @@ var config = {
 	extraExperiments: [{a:TO+3, b: TO+1}, {a:TO+2,b:FROM+1}, {a:FROM+4,b:TO+1}, {a:TO+4,b:TO+3}],
 	binOperandSize: binOperandSize
 }
-config.file = buildNetworkFileName(config)
+// config.file = buildNetworkFileName(config)
 doExperiment(config)
