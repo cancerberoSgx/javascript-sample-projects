@@ -10,18 +10,16 @@ var hiddenNeuronCount = binOperandSize*(binOperandSize/3)
 var config = {
 	name: 'sum1',
 	Class: require('../learner/LearnerSum1'),
-	// biggestNumber: 20,
 	from: FROM, 
 	to: TO, 
-	error: .009,
-	log: 100,
+	error: .01,
+	log: 50,
 	experimentFrom: FROM+1,
 	experimentTo: TO-1,
-	// iterations: 11900,
+	trainingMaxCountPerIteration: 100,
 	hiddenNeuronCount: hiddenNeuronCount,
-	// rate: 0.5,
-	extraExperiments: [{a:TO+3, b: TO+1}, {a:TO+2,b:FROM+1}, {a:FROM+4,b:TO+1}, {a:TO+4,b:TO+3}],
+	extraExperiments: [{a:TO+3, b:TO+1}, {a:TO+2,b:FROM+1}, {a:FROM+4,b:TO+1}, {a:TO+4,b:TO+3}],
 	binOperandSize: binOperandSize
 }
-// config.file = buildNetworkFileName(config)
+config.file = buildNetworkFileName(config)
 doExperiment(config)

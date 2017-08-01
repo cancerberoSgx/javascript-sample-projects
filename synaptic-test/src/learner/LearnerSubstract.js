@@ -5,7 +5,6 @@ function LearnerSum1()
 }
 
 LearnerSum1.prototype = new AbstractNaturalNumberOperationLearner()
-// LearnerSum1.prototype = AbstractNaturalNumberOperationLearner.prototype
 LearnerSum1.prototype.operationImpl = function(a, b){
 	return a+b
 }
