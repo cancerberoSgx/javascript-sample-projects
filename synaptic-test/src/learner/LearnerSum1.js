@@ -1,11 +1,10 @@
-var AbstractNaturalNumberOperationLearner = require('./AbstractNaturalNumberOperationLearner')
+var AbstractNaturalNumberOperationLearner2 = require('./AbstractNaturalNumberOperationLearner2')
 function LearnerSum1()
 {
-	AbstractNaturalNumberOperationLearner.apply(this, arguments)
+	AbstractNaturalNumberOperationLearner2.apply(this, arguments)
 }
 
-LearnerSum1.prototype = new AbstractNaturalNumberOperationLearner()
-// LearnerSum1.prototype = AbstractNaturalNumberOperationLearner.prototype
+LearnerSum1.prototype = new AbstractNaturalNumberOperationLearner2()
 LearnerSum1.prototype.operationImpl = function(a, b){
 	return a+b
 }

@@ -1,13 +1,13 @@
 var Network = require('synaptic').Network
-var AbstractNaturalNumberOperationLearner = require('./learner/AbstractNaturalNumberOperationLearner')
+var AbstractNaturalNumberOperationLearner = require('./learner/AbstractNaturalNumberOperationLearner2')
 
 	// public end user api to execute an experiment: 
 function doExperiment(config){
 
 	var learner = loadFromFile(config)
-	if(!learner){ 
-		learner = new config.Class(config)
-	}
+	// if(!learner){ 
+	// 	learner = new config.Class(config)
+	// }
 	
 	console.log('Doing experiment:\n',config)
 	console.log('Training ('+config.iterations+')...')
@@ -36,26 +36,16 @@ function doExperiment(config){
 	})
 
 	if(config.file){
-		shell.ShellString( JSON.stringify(learner.toJSON())).to(config.file)
+		shell.ShellString( JSON.stringify(learner.network.toJSON())).to(config.file)
 	}
 }
 
 function loadFromFile(config){
-	var learner
+	var network
+	var learner = new config.Class(config)
 	if(config.file && shell.test('-f', config.file)){
-		
 		var data = JSON.parse(shell.cat(config.file))
-		var learner = Network.fromJSON(data);
-		config._dontInit = true
-		config.Class.apply(learner, [config])
-		// TODO :( this is very , very ugly code to morph generic network returned by Network.fromJSON into our sub class
-		Object.keys(AbstractNaturalNumberOperationLearner.prototype).map((key)=>{
-			learner[key]=config.Class.prototype[key]
-		})
-		Object.keys(config.Class.prototype).map((key)=>{
-			learner[key]=config.Class.prototype[key]
-		})
-		return learner
+		learner.network = Network.fromJSON(data);
 	}
 	return learner
 }
