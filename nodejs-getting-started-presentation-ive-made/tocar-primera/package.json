@@ -1,0 +1,17 @@
+{
+  "name": "tocar-primera",
+  "version": "1.0.0",
+  "description": "",
+  "main": "test.js",
+  "bin": "test.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "my-spotify-api": "file:../my-spotify-api",
+    "node-mp3-player": "^1.0.3",
+    "player": "^0.6.1"
+  }
+}
