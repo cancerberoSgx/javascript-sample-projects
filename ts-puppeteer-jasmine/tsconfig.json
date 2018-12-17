@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "outDir": "./dist/",
+    "lib": ["es6", "dom"],
+    "noImplicitAny": false,
+    "sourceMap": true,
+    "strict": false,
+    "module": "commonjs",
+    "declaration": true,
+    "target": "es2018",
+    "jsx": "react",
+    "moduleResolution": "node",
+    "skipLibCheck": true
+  },
+  "include": [
+    "src", "spec",
+    "node_modules/jasmine-expect/jasmine-matchers.d.ts"
+  ],
+  "exclude": [
+    "docs", "node_modules", "dist", "docs-dev"
+  ]
+}
