@@ -2,15 +2,16 @@ import { CodeWorkerRequest, CodeWorkerResponse } from '../store/types'
 // import { evaluate } from './evaluate'
 import { extractCodeDecorations } from './extractCodeDecorations'
 import { doJSXAst } from './jsxAstCompilation'
-import { getGlobal } from '../util/util';
-// import { install } from 'jsx-alone-dom-dom'
-// import { getGlobal } from 'jsx-alone-core';
+// import { getGlobal } from '../util/util';
+import { evaluate } from './evaluate';
+import { install } from 'jsx-alone-dom-dom'
+import { getGlobal, installJSXAloneAsGlobal } from 'jsx-alone-core';
 
 export let lastRequest: CodeWorkerRequest | undefined
 
 if (typeof self !== 'undefined' && typeof self.onmessage === 'object') {
 
-  // install()
+  install()
 
   getGlobal().addEventListener('message', ({ data }: { data: CodeWorkerRequest }) => {
 
@@ -27,7 +28,7 @@ if (typeof self !== 'undefined' && typeof self.onmessage === 'object') {
         jsxSyntaxHighLight: {
           classifications: extractCodeDecorations(data, sourceFile, project)
         },
-        // evaluate: evaluate(data.code),
+        evaluate: evaluate(data.code),
         jsxAst
       },
       totalTime: Date.now() - t0

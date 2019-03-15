@@ -7,6 +7,7 @@ import { TsSimpleAstExplorer } from './explorer/tsAst/tsAstExplorer'
 import { Component } from './util/component'
 import { JsxColorsMain } from './explorer/jsxColors/jsxColorsMain';
 import { Theme, State } from '../store/types';
+import { ElementExplorer } from './explorer/elements/elementExplorer';
 
 registerStyle((theme: Theme) => `
 .editorExplorerBodyOverlay{
@@ -69,9 +70,9 @@ export class EditorExplorerBody extends Component<{state: State}> {
         <div className={`editor editorExplorerBodyMember ${this.props.state.options.selectedExplorer === 'editor' ? 'is-active' : ''}`}>
           <Editor {...this.props} />
         </div>
-        {/* <div className={`editorExplorerBodyMember elements ${this.props.state.options.selectedExplorer === 'elements' ? 'is-active' : ''}`}>
+        <div className={`editorExplorerBodyMember elements ${this.props.state.options.selectedExplorer === 'elements' ? 'is-active' : ''}`}>
           <ElementExplorer editor={this.props.state.editor} compiled={this.props.state.compiled} onSelectCode={onSelectCode} />
-        </div> */}
+        </div>
         <div className={`editorExplorerBodyMember jsAst ${this.props.state.options.selectedExplorer === 'jsAst' ? 'is-active' : ''}`}>
           <TsSimpleAstExplorer editor={this.props.state.editor} compiled={this.props.state.compiled} onSelectCode={onSelectCode} />
         </div>
@@ -89,9 +90,9 @@ export class EditorExplorerBody extends Component<{state: State}> {
 
         <div className={`editorExplorerBodyOverlay`}>Working...</div>
         <div className="tile is-vertical is-4">
-          {/* <article className={`editorExplorerBodyMember elements ${this.props.state.options.selectedExplorer === 'elements' ? 'is-active' : ''}`}>
+          <article className={`editorExplorerBodyMember elements ${this.props.state.options.selectedExplorer === 'elements' ? 'is-active' : ''}`}>
             <ElementExplorer editor={this.props.state.editor} compiled={this.props.state.compiled} onSelectCode={onSelectCode} />
-          </article> */}
+          </article>
           <article className={`editorExplorerBodyMember jsAst ${this.props.state.options.selectedExplorer === 'jsAst' ? 'is-active' : ''}`}>
             <TsSimpleAstExplorer editor={this.props.state.editor} compiled={this.props.state.compiled} onSelectCode={onSelectCode} />
           </article>

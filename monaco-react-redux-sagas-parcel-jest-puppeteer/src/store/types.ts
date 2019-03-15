@@ -1,5 +1,6 @@
 import { Classification } from '../codeWorker/extractCodeDecorations'
 import { JsxColorsState } from "../components/explorer/jsxColors/jsxColorsTypes";
+import { JsonImplOutputEl } from 'jsx-alone-core';
 
 export interface State {
   readonly layout: Layout
@@ -52,11 +53,11 @@ export interface CodeWorkerResponse {
   jsxSyntaxHighLight: {
     classifications: Classification[];
   }
-  // evaluate: {
-  //   result?: JsonImplOutputEl;
-  //   error?: CodeWorkerError;
-  //   evaluated: string;
-  // }
+  evaluate: {
+    result?: JsonImplOutputEl;
+    error?: CodeWorkerError;
+    evaluated: string;
+  }
   jsxAst: CodeWorkerResponseJsxAst
   error?: CodeWorkerError
   totalTime: number

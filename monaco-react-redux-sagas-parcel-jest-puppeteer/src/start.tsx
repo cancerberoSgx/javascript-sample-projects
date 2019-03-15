@@ -15,6 +15,7 @@ import { jsxColorsReducer, jsxColorsSagas } from './store/jsxColors';
 import * as ReactDom from 'react-dom'
 import * as React from 'react'
 import { App } from './components/app';
+import { Provider } from 'react-redux';
 
 export function start() {
 
@@ -45,44 +46,8 @@ export function start() {
 
   initMonacoWorkers()
 
-
-  
-  // const main = new Main({ state: store.getState() })
-
-  // JSXAlone.render(main.asJSXElement(), { parent: document.body })
-
-  // JSXAlone.lastEventManager!.onAppendToDom()
-
-  // ReactDom.render(<Main state={store.getState()}/>, document.body)
-  // ReactDom.render(main.render(), document.body)
-  
-  const div = document.createElement('div')
+    const div = document.createElement('div')
   document.body.appendChild(div)
-  ReactDom.render(<App state={store.getState()} store={store} />, div)
-
-
-  // store.subscribe(() => {
-  //   const state = store.getState()
-  //   if (stateChanged(state)) {
-  //     setTimeout(() => {
-  //       main.onStateUpdate(state)
-  //     }, 0)
-  //   }
-  //   else {
-  //     console.log('THE SAME')
-  //   }
-  // })
-
-  // let lastState: State
-
-  // function stateChanged(state: State) {
-  //   if (lastState && lastState === state) {
-  //     return false
-  //   }
-  //   else {
-  //     lastState = state
-  //     return true
-  //   }
-  // }
+  ReactDom.render(<Provider store={store}><App state={store.getState()} /></Provider>, div)
 
 }

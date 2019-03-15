@@ -101,6 +101,6 @@ export function stylePropertyNameToCssSyntax(s: string): string {
  return s
 }
 
-export function getGlobal(): any {
-  return (typeof self !== 'undefined' && typeof self.onmessage === 'object') ? self : (typeof document !== 'undefined' && typeof window !== 'undefined') ? window : global
-}
+// export function getGlobal(): any {
+//   return (typeof self !== 'undefined' && typeof self.onmessage === 'object') ? self : (typeof document !== 'undefined' && typeof window !== 'undefined') ? window : global
+// }

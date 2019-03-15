@@ -9,6 +9,9 @@ import { dispatch } from '../../../store/store'
 import { COMPILED_ACTION } from '../../../store/compiled'
 
 interface P extends ExplorerProps {
+  // showDetailsOf?: string
+}
+interface S {
   showDetailsOf?: string
 }
 
@@ -19,7 +22,7 @@ ${css('.tsAstExplorerContent li ul', `padding-left: .7em`, `padding-left 1.2em`)
 }
 `)
 
-export class TsSimpleAstExplorer extends Component<P> {
+export class TsSimpleAstExplorer extends Component<P, S> {
   render() {
     const compiled = this.props.compiled.response
     if (compiled) {
@@ -51,11 +54,12 @@ export class TsSimpleAstExplorer extends Component<P> {
         </div>}
 
         <NodeComponent mode={mode || 'forEachChild'}
-        node={ast} showDetailsOf={this.props.showDetailsOf}
+        node={ast} showDetailsOf={this.state.showDetailsOf}
           onShowDetailsOf={(p, n) => {
             this.props.onSelectCode && this.props.onSelectCode(n)
+            this.setState({showDetailsOf: p as string})
             // this.updateProps({ showDetailsOf: p as string })
-            throw 'this.updateProps not impl'
+            // throw 'this.updateProps not impl'
           }} />
 
       </div>

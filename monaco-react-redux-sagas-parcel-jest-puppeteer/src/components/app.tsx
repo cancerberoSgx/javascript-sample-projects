@@ -11,24 +11,18 @@ import { Styles } from '../style/styles';
 
 interface P {
   state: State,
-  store: Store
 }
 
-export class App extends React.Component<P, {}> {
+class App_ extends React.Component<P, {}> {
+
+
   render() {
 
-// setTimeout(() => {
-//   debugger
-//   dispatch({type: THEME_ACTIONS.CHANGE_THEME, theme: allThemes[0]})
-// }, 1000);
-
-    return <Provider store={this.props.store}>
-      <section className="section">
+      return <section className="section">
        <Styles theme={this.props.state.layout.theme} />
         <Header state={this.props.state} />
         <EditorExplorerBody state={this.props.state}  />
       </section>
-    </Provider>
   }
 }
 
@@ -36,6 +30,6 @@ const mapStateToProps = (state: State) => ({
   state: state
 })
 
-export default connect<{state:State}>(
+export const App = connect<{state:State}>(
   mapStateToProps
-)(App)
+)(App_) as any as typeof App_

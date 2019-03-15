@@ -9,8 +9,8 @@
     // "jsxFactory": "JSXAlone.createElement",
     // "allowJs": true,
     // "declaration": true,
-    // "esModuleInterop": true,
-    // "skipLibCheck": true
+    "esModuleInterop": true,
+    "skipLibCheck": true,
 
 
     "module": "commonjs",

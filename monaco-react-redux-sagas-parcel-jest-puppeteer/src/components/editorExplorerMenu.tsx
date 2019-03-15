@@ -22,9 +22,9 @@ export class EditorExplorerMenu extends Component<{state: State}> {
         <li className={`jsxColors ${this.props.state.options.selectedExplorer === 'jsxColors' ? 'is-active' : ''}`}>
           <a onClick={e => this.selectTab('jsxColors')}>jsxColors</a>
         </li>
-        <li className={`implementations ${this.props.state.options.selectedExplorer === 'implementations' ? 'is-active' : ''}`}>
+        {/* <li className={`implementations ${this.props.state.options.selectedExplorer === 'implementations' ? 'is-active' : ''}`}>
           <a onClick={e => this.selectTab('implementations')}>implementations</a>
-        </li>
+        </li> */}
       </ul>
     </div>
   }

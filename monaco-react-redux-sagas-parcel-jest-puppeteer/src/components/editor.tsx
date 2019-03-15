@@ -21,19 +21,27 @@ registerStyle(`
 
 export class Editor extends Component<P> {
 
-  neverUpdate = true
   lastTheme: string = 'vs'
 
-  constructor(p: P) {
-    super(p)
+  constructor(p: P, s:any) {
+    super(p, s)
     this.dispatchModelChanged = this.dispatchModelChanged.bind(this)
   }
-  render() {
-    return <div id="editorContainer" className="editorContainer" />
+
+  componentDidMount() {
+    installEditor(this.props.state.editor.code, this.getMonacoTheme(), query('#editorContainer'))
+    const editor = getMonacoInstance()
+    editor!.getModel()!.onDidChangeContent(throttle(this.dispatchModelChanged, 3000, { trailing: true }))
+    this.dispatchModelChanged(false)
+    if (this.props.state.layout.theme.name !== this.lastTheme) {
+      monaco.editor.setTheme(this.getMonacoTheme())
+    }
   }
 
-  // afte
-  
+  render() {
+
+    return <div id="editorContainer" className="editorContainer" />
+  }
 
   private dispatchModelChanged(respectAutoApplyOption = true) {
     if (this.props.state.options.autoApply || !respectAutoApplyOption) {

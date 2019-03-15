@@ -15,17 +15,12 @@ interface P extends JsxColorsState {
 }
 export class JsxColorSkins extends Component<P> {
 
-  neverUpdate = true // Ugly solution for jsx-alone-dom bug!
-
   render() {
     if (!this.props.selected) {
       return <div className="JsxColorsSkins content">
         {!this.props.selected && <div>
-
           <h2>Select One</h2>
-
           <ul>{jsxColorSkins.map((s, i) => <li key={i}>
-
             <h4>{s.name}</h4>
             {s.description && <p>{s.description}</p>}
             <button onClick={e =>
