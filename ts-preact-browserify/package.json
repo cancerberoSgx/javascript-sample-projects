@@ -1,0 +1,28 @@
+{
+    "name": "ts-devtools-sample-ts-project-mine",
+    "version": "1.0.0",
+    "private": true,
+    "description": "SuiteCommerce Development Tools to develop new themes or extensions",
+    "main": "dist/src/index.js",
+    "types": "dist/src/index.d.ts",
+    "typings": "dist/src/index.d.ts",
+    "scripts": {
+        "build": "rm -rf bundle* dist && npx tsc && npx browserify dist/src/main.js -o dist/bundle.js && npx uglifyjs dist/bundle.js -o dist/bundle.min.js && npx browserify  ",
+        "build-preact-umd": "npx browserify -s preact node_modules/preact/dist/preact.js -o dist/preact-umd.js && npx uglifyjs dist/preact-umd.js -u dist/preact-umd.min.js",
+        "build-watch": "tsc -w",
+        "clean": "rm -rf dist && rm -rf MyExtension/JavaScript*"
+    },
+    "keywords": [],
+    "author": "sg",
+    "license": "ISC",
+    "dependencies": {
+        "preact": "^8.4.2",
+        "sc-tsc": "file:../../ts-devtools",
+        "sc-types-frontend": "file:../../sc-types-frontend"
+    },
+    "devDependencies": {
+        "browserify": "^16.2.3",
+        "typescript": "^3.2.2",
+        "uglify-js": "^3.4.9"
+    }
+}

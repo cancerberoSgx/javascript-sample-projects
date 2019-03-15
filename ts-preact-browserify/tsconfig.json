@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "target": "es5",
+    "module": "amd",
+    "moduleResolution":"node",
+    "lib": [
+      "es2018", "dom","es2018.promise"
+    ],
+    "outDir": "./dist",
+    "rootDir": ".",
+    "strict": true,
+    "strictNullChecks": false,
+    "noEmitHelpers": true,
+    "importHelpers": true,
+    "esModuleInterop": true,
+    // "sourceMap": true,
+    "skipDefaultLibCheck": true,
+    "skipLibCheck": true,
+    "jsx": "react",
+    "jsxFactory": "h",
+    "allowJs": true,
+    
+    
+    // "declaration": true,
+  },
+  "include":["src"],
+  "exclude": ["node_modules", "dist"]
+}

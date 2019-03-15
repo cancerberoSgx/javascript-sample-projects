@@ -1,0 +1,33 @@
+{  
+  "compilerOptions": {
+    "target": "es5",
+    // "composite": false,
+    "outDir": "./dist",
+    "rootDir": ".",
+    "lib": ["es2015", "dom"],
+    "jsx": "react",
+    // "jsxFactory": "JSXAlone.createElement",
+    // "allowJs": true,
+    // "declaration": true,
+    // "esModuleInterop": true,
+    // "skipLibCheck": true
+
+
+    "module": "commonjs",
+    "moduleResolution": "node",
+    // "jsx": "react",
+    // "jsxFactory": "JSXAlone.createElement",
+    "declaration": true,
+    "composite": true,
+    "sourceMap": true,
+    "strict": true,  
+    "noStrictGenericChecks": true,
+    "strictFunctionTypes": false,
+    "allowUnreachableCode": false,
+    "allowUnusedLabels": false,
+    "allowSyntheticDefaultImports": false,
+  },
+  "include": [
+    "src"
+  ]
+}
