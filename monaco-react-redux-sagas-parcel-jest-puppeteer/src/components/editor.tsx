@@ -28,18 +28,20 @@ export class Editor extends Component<P> {
     this.dispatchModelChanged = this.dispatchModelChanged.bind(this)
   }
 
-  componentDidMount() {
-    installEditor(this.props.state.editor.code, this.getMonacoTheme(), query('#editorContainer'))
-    const editor = getMonacoInstance()
-    editor!.getModel()!.onDidChangeContent(throttle(this.dispatchModelChanged, 3000, { trailing: true }))
-    this.dispatchModelChanged(false)
+  componentDidUpdate() {
     if (this.props.state.layout.theme.name !== this.lastTheme) {
       monaco.editor.setTheme(this.getMonacoTheme())
     }
   }
 
-  render() {
+  componentDidMount() {
+    installEditor(this.props.state.editor.code, this.getMonacoTheme(), query('#editorContainer'))
+    const editor = getMonacoInstance()
+    editor!.getModel()!.onDidChangeContent(throttle(this.dispatchModelChanged, 3000, { trailing: true }))
+    this.dispatchModelChanged(false)
+  }
 
+  render() {
     return <div id="editorContainer" className="editorContainer" />
   }
 

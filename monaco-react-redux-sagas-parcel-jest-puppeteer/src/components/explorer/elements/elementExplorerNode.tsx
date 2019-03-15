@@ -7,16 +7,16 @@ import { JsonImplOutputEl, jsonImplOutputElAsHtml, isJsonImplOutputEl, JsonImplO
 interface P {
   node: JsonImplOutput
   onShowHtml: (s: string) => void
+}
+interface S {
   collapsed?: boolean
 }
-
 export class Node extends Component<P> {
 
   protected removeChildrenOnUpdate = true
 
   render() {
     const { node } = this.props
-
     if (isJsonImplOutputText(node)) {
       return <article className="media text-output">
         <div className="media-content">
@@ -31,16 +31,19 @@ export class Node extends Component<P> {
     }
 
     else if (isJsonImplOutputEl(node)) {
-      return <article className={`media element-output ${this.props.collapsed ? 'collapsed' : ''}`}>
+      return <article className={`media element-output ${this.state.collapsed ? 'collapsed' : ''}`}>
 
         <div className="media-content">
 
           <span className="nodeTag">{`<${node.tag}>`}</span>
 
-          <button className="button overlay is-small expand-collapse" onClick={e => {
-            throw 'not impl'
-            // this.updateProps({ collapsed: !this.props.collapsed })
-          }}></button>
+          <button className="button overlay is-small expand-collapse" onClick={e => 
+          this.setState({collapsed: !this.state.collapsed})
+          // {
+            // throw 'not impl'
+            // this.updateProps({ collapsed: !this.state.collapsed })
+          // }
+        }></button>
 
           <button className="button overlay is-small" title="HTML code" onClick={e => this.props.onShowHtml(jsonImplOutputElAsHtml(node))}>{`<>`}</button>
 

@@ -12,7 +12,7 @@ interface P extends ExplorerProps {
   // showDetailsOf?: string
 }
 interface S {
-  showDetailsOf?: string
+  // showDetailsOf?: string
 }
 
 registerStyle(`
@@ -54,10 +54,12 @@ export class TsSimpleAstExplorer extends Component<P, S> {
         </div>}
 
         <NodeComponent mode={mode || 'forEachChild'}
-        node={ast} showDetailsOf={this.state.showDetailsOf}
+        node={ast} 
+        //showDetailsOf={
+          //this.state.showDetailsOf}
           onShowDetailsOf={(p, n) => {
             this.props.onSelectCode && this.props.onSelectCode(n)
-            this.setState({showDetailsOf: p as string})
+            // this.setState({showDetailsOf: p as string})
             // this.updateProps({ showDetailsOf: p as string })
             // throw 'this.updateProps not impl'
           }} />

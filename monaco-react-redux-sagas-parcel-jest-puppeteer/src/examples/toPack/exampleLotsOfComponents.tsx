@@ -1,10 +1,7 @@
+/*DONT CHANGE THIS FIRST LINE*/import * as React from 'react'; declare var PERSON_COUNT: number; declare var CONTACT_COUNT: number; declare var ADDRESS_COUNT: number; declare class ElementClass<P=any> extends React.Component<P,any>{}; 
 
-/*DONT CHANGE THIS FIRST LINE*/ import * as React from 'react'; declare var PERSON_COUNT: number; declare var CONTACT_COUNT: number; declare var ADDRESS_COUNT: number; function exampleLotsOfComponents() {
+function exampleLotsOfComponents() {
 
-  // Auxiliary Style component
-
-  class ElementClass<P extends any = any, S extends any = any> extends React.Component<P, S>{
-  }
   interface StyleProps {
     classes: { [name: string]: ClassRule },
     renderConfig?: { indent?: number }

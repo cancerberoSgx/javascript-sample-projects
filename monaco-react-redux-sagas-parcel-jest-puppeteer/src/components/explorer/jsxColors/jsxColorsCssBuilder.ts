@@ -1,6 +1,7 @@
-import { JsxSyntaxSkin, SyntaxSkinProperty } from './jsxColorsTypes';
+import { JsxSyntaxSkin } from './jsxColorsTypes';
 import { ClassName, JsxColorsClass, jsxColorsClasses } from './classesData';
-import { keys, styleObjectToCss } from '../../../util/util';
+import { keys } from '../../../util/util';
+import { styleObjectToCss } from 'jsx-alone-core';
 
 export function buildCssForSkin(skin: JsxSyntaxSkin) {
 
@@ -8,7 +9,7 @@ export function buildCssForSkin(skin: JsxSyntaxSkin) {
 
   const styles = orderedClasses.map(c => `
 ${buildSelectorFor(c)} {
-  ${styleObjectToCss(skin[c.name]!, '\n  ')}
+  ${styleObjectToCss(skin[c.name] as any, '\n  ')}
 }
 `.trim()).join('\n')
 

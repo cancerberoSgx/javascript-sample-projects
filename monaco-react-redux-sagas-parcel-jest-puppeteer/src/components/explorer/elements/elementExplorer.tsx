@@ -1,7 +1,6 @@
 import { jsonImplOutputElAsHtml } from 'jsx-alone-core'
 import * as React from 'react'
 import { registerStyle } from '../../../style/styles'
-import { height } from '../../../util/media'
 import { escapeHtml, queryAll } from '../../../util/util'
 import { Component } from '../../util/component'
 import { Error } from '../../util/error'
@@ -29,7 +28,8 @@ export class ElementExplorer extends Component<P> {
       const { error, result, evaluated } = compiled.evaluate
       return <div className="ElementExplorer">
 
-        <button className="button" title="See HTML code" onClick={e => showInModal(<ElementNodeHtmlCodeModal html={jsonImplOutputElAsHtml(result!)} />, 'HTML')}>See Output HTML</button>
+        <button className="button" title="See HTML code" 
+        onClick={e => showInModal(<ElementNodeHtmlCodeModal html={jsonImplOutputElAsHtml(result!)} />, 'HTML')}>See Output HTML</button>
 
         {!error && result && <Node node={result} onShowHtml={html => showInModal(<ElementNodeHtmlCodeModal html={html} />, 'HTML')}></Node>}
 

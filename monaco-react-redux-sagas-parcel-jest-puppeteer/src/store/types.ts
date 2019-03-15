@@ -14,7 +14,12 @@ export interface Options {
   readonly autoApply: boolean
   readonly selectedExplorer: ExplorerName
   readonly working: boolean
+  // readonly modal?: Modal 
 }
+// export interface Modal {
+//   title?: string
+
+// }
 export type ExplorerName = 'editor' | 'elements' | 'jsAst' | 'implementations'|'jsxColors'
 
 export interface Layout {
