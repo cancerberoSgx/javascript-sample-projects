@@ -11,6 +11,7 @@
     "build": "npx tsc",
     "copy": "rm -rf docs/index.appcache && cp ./src/index.appcache docs  && cp ./src/favicon.ico docs",
     "build-dev": "export NODE_ENV=development ; parcel build src/index.html -d docs  --no-minify --no-content-hash  --no-source-maps && rm -rf docs/index.appcache",
+    "serve": "rm -rf docs && npm run docs && gzip docs/*.* && npx http-server docs --gzip",
     "start": "export NODE_ENV=development ; sh src-changed.sh",
     "docs": "npx tsc && export NODE_ENV=production && npm run pack-all && rm -rf docs && sh build-workers.sh && parcel build src/index.html -d docs --no-content-hash --detailed-report --public-url './' && npm run copy",
     "clean": "rm -rf build/ dist/ .cache",
