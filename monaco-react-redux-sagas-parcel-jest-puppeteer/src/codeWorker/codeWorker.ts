@@ -1,8 +1,6 @@
-import { CodeWorkerRequest, CodeWorkerResponse } from '../store/types'
-// import { evaluate } from './evaluate'
+import { CodeWorkerRequest, CodeWorkerResponse, CodeWorkerResponseJsxAst } from '../store/types'
 import { extractCodeDecorations } from './extractCodeDecorations'
 import { doJSXAst } from './jsxAstCompilation'
-// import { getGlobal } from '../util/util';
 import { evaluate } from './evaluate';
 import { install } from 'jsx-alone-dom-dom'
 import { getGlobal, installJSXAloneAsGlobal } from 'jsx-alone-core';
@@ -15,26 +13,34 @@ if (typeof self !== 'undefined' && typeof self.onmessage === 'object') {
 
   getGlobal().addEventListener('message', ({ data }: { data: CodeWorkerRequest }) => {
 
-    if (!lastRequest) {
-      lastRequest = { ...data, code: '' }
-    }
-
     const t0 = Date.now()
 
-    const {jsxAst, sourceFile, project} = doJSXAst(data) // do it first so extractCodeDecorations can reuse generated sourceFile
+    const fakeJsxAstResult =  {jsxAst: {diagnostics: [], ast: {type:'', text:'', kind:'', start:0, children: [], endColumn: 0, startColumn: 0, startLineNumber: 0, end: 0, endLineNumber: 0}  }as CodeWorkerResponseJsxAst, sourceFile: undefined, project: undefined} 
+
+// debugger
+    const {jsxAst, sourceFile, project} = data.disableJsxAst ? fakeJsxAstResult: doJSXAst(data) // do it first so extractCodeDecorations can reuse generated sourceFile
+
+
+    // if (!lastRequest) {
+    //   lastRequest = { ...data, code: '' }
+    // }
+
+
     const m: CodeWorkerResponse = {
       ...{
         version: data.version,
-        jsxSyntaxHighLight: {
+        jsxSyntaxHighLight:data.disableJsxSyntaxHighLight? {classifications: []} : {
           classifications: extractCodeDecorations(data, sourceFile, project)
         },
-        evaluate: evaluate(data.code),
+        evaluate: data.disableEvaluate ? {error: {name: 'disabled by configuration', message: 'evaluate is disabled by configuration disableEvaluate===true'}, evaluated: ''} : evaluate(data.code),
         jsxAst
       },
       totalTime: Date.now() - t0
     }
     lastRequest = data
 
+    console.log('codeworker response', m);
+    
     // @ts-ignore
     getGlobal().postMessage(m)
   })

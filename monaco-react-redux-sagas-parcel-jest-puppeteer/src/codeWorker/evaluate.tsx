@@ -18,7 +18,7 @@ export interface EvaluateResult<T = JsonImplOutputEl> {
 let results: EvaluateResult
 
 export function evaluate<T = JsonImplOutputEl>(jsx: string, impl: 'json' | 'dom' | 'string' = 'json', times?: EvaluateTimes): EvaluateResult<T> {
-  if (lastRequest && jsx === lastRequest.code) {
+  if (lastRequest && jsx === lastRequest.code && !lastRequest.disableEvaluate) {
     return results as any
   }
   const jsxFixed = jsx.substring(jsx.indexOf('function'), jsx.length)

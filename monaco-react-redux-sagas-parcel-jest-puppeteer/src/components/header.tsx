@@ -11,6 +11,7 @@ import { EditorExplorerMenu } from './editorExplorerMenu'
 import { Component } from './util/component'
 import { showInModal } from './util/showInModal'
 import { THEME_ACTIONS } from '../store/theme';
+import { COMPILED_ACTION } from '../store/compiled';
 
 interface P {
   state: State
@@ -64,8 +65,76 @@ export class Header extends Component<P> {
                   
                   Auto apply
             
-            </label>
+                </label>
             </a>
+            <a className="navbar-item">
+                <label className="content" title="update timeout in seconds">
+                  <input type="number" value={this.props.state.options.updateTimeout} onChange={e =>{
+                   if( e.currentTarget.valueAsNumber<5 ) {
+                    alert('Must be greater than 5 (in seconds)')
+                    return
+                   }
+                   dispatch({ type: OPTIONS_ACTIONS.CHANGE_OTHER_OPTIONS, payload: { updateTimeout: e.currentTarget.valueAsNumber } })
+
+                  }}/>
+                  
+                  Update Timeout
+            
+                </label>
+            </a>
+
+
+
+            <hr className="dropdown-divider"></hr>
+
+            <a className="navbar-item">
+                <label className="content">
+                  <input checked={this.props.state.compiled.explorer && this.props.state.compiled.explorer.disableElementsExplorer} type="checkbox" onChange={e =>
+                    dispatch({ type: COMPILED_ACTION.CHANGE_EXPLORER_OPTIONS, payload: { disableElementsExplorer: e.currentTarget.checked } })
+                  }
+                  />
+                  
+                  Disable Elements explorer
+            
+                </label>
+            </a>
+
+            <a className="navbar-item">
+                <label className="content">
+                  <input checked={this.props.state.compiled.explorer && this.props.state.compiled.explorer.disableEditorBind} type="checkbox" onChange={e =>
+                    dispatch({ type: COMPILED_ACTION.CHANGE_EXPLORER_OPTIONS, payload: { disableEditorBind: e.currentTarget.checked } })
+                  }
+                  />
+                  
+                 Disable AST follow editor cursor
+            
+                </label>
+            </a> 
+
+            <a className="navbar-item">
+                <label className="content">
+                  <input checked={this.props.state.compiled.explorer && this.props.state.compiled.explorer.disableJSXSyntaxHighlight} type="checkbox" onChange={e =>
+                    dispatch({ type: COMPILED_ACTION.CHANGE_EXPLORER_OPTIONS, payload: { disableJSXSyntaxHighlight: e.currentTarget.checked } })
+                  }
+                  />
+                  
+                 Disable JSX Syntax Highlight
+            
+                </label>
+            </a>
+
+            <a className="navbar-item">
+                <label className="content">
+                  <input checked={this.props.state.compiled.explorer && this.props.state.compiled.explorer.disableJsAstExplorer} type="checkbox" onChange={e =>
+                    dispatch({ type: COMPILED_ACTION.CHANGE_EXPLORER_OPTIONS, payload: { disableJsAstExplorer: e.currentTarget.checked } })
+                  }
+                  />
+                  
+                 Disable AST Explorer
+            
+                </label>
+            </a>
+
               <hr className="dropdown-divider"></hr>
               <a className="navbar-item" onClick={e => showInModal(<WhatsThis />, 'What\'s this?')}>What's this</a>
             </div>

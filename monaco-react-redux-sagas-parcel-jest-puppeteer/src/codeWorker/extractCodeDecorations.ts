@@ -5,6 +5,7 @@ import { lastRequest } from './codeWorker'
 import { CodeWorkerRequest } from '../store/types'
 import { buildBaseKind, buildBaseKindOfNode, ParentShipKind, buildParentShipKind } from './typeStructure';
 import { tryTo } from '../util/util';
+import { createProject } from './ts-simple-ast';
 
 type Modifier = string//'readonly'
 
@@ -23,14 +24,18 @@ export interface Classification {
 
 let classifications: Classification[] = []
 
-export function extractCodeDecorations(data: CodeWorkerRequest, sourceFile: SourceFile, project: Project) {
-  if (lastRequest && data.code === lastRequest.code) {
+export function extractCodeDecorations(data: CodeWorkerRequest, sourceFile?: SourceFile, project?: Project) {
+  if (lastRequest && data.code === lastRequest.code && !lastRequest.disableJsxSyntaxHighLight) {
     return classifications
   }
   classifications = []
 
-  if (!sourceFile) {
-    throw `extractCodeDecorations now needs a tsa sourceFile`
+  if (!sourceFile||!project) {
+    project = createProject([{
+      fileName: 't1.tsx',
+      content: data.code
+    }])
+    sourceFile = project.getSourceFiles().find(s => s.getFilePath().endsWith('t1.tsx'))!
   }
   addChildNodes(sourceFile, classifications, sourceFile, project)
   return classifications

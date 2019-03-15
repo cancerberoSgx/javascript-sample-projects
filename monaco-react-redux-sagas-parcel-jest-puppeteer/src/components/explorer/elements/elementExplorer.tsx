@@ -27,6 +27,14 @@ registerStyle(`
 export class ElementExplorer extends Component<P, S> {
 
   render() {
+   
+    if(this.props.options && this.props.options.disableElementsExplorer){
+      return <div className="content">
+       <h3>Disabled</h3>
+        <p>By configuration, disableElementsExplorer option is turned on so I'm disabled. </p>
+      </div>
+    }
+
     const compiled = this.props.compiled.response
     if (compiled) {
       const { error, result, evaluated } = compiled.evaluate

@@ -12,6 +12,7 @@ export interface State {
 
 export interface Options {
   readonly logs: string[]
+  readonly updateTimeout?: number
   readonly autoApply: boolean
   readonly selectedExplorer: ExplorerName
   readonly working: boolean
@@ -55,12 +56,15 @@ export interface Compiled {
 export interface CompiledExplorerOptions {
   showDetailsOf?: CodeWorkerResponseJsxAsNode
   disableEditorBind?: boolean
+  disableElementsExplorer?: boolean
+  disableJSXSyntaxHighlight?: boolean
+  disableJsAstExplorer?: boolean
 }
 
 export interface CodeWorkerResponse {
   version: number
   jsxSyntaxHighLight: {
-    classifications: Classification[];
+    classifications: Classification[]
   }
   evaluate: {
     result?: JsonImplOutputEl;
@@ -83,6 +87,9 @@ export interface CodeWorkerRequest {
   code: string
   title: string
   version: number
+  disableEvaluate?: boolean,
+  disableJsxAst?: boolean,
+  disableJsxSyntaxHighLight?: boolean
   jsxAst: CodeWorkerRequestJsxAst
 }
 export interface CodeWorkerRequestJsxAst {

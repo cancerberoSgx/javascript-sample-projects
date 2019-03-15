@@ -1,5 +1,6 @@
 import { ClassName } from './classesData';
 import { CSSProperties } from 'react';
+import { Options, CompiledExplorerOptions } from '../../../store/types';
 
 export type JsxColorsTools = 'skins' | 'editor';
 

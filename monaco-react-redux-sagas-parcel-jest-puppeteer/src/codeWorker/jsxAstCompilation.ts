@@ -13,7 +13,9 @@ interface JsxAstResult {
 export let jsxAstLastResult: JsxAstResult
 
 export function doJSXAst(data: CodeWorkerRequest): JsxAstResult {
-  if (lastRequest && data.code === lastRequest.code && JSON.stringify(data.jsxAst || {}) === JSON.stringify(lastRequest.jsxAst || {})) {
+  if (lastRequest && !lastRequest.disableJsxAst &&
+    data.code === lastRequest.code &&
+    JSON.stringify(data.jsxAst || {}) === JSON.stringify(lastRequest.jsxAst || {})) {
     return jsxAstLastResult
   }
   const project = createProject([{
@@ -51,7 +53,7 @@ function buildJsxAstNode(n: tsNode, config: CodeWorkerRequestJsxAst): CodeWorker
   let text = n.getText().trim()
   const children = config.mode === 'forEachChild' ? getChildrenForEachChild(n) : n.getChildren()
   text = text.substring(0, Math.max(config.nodeTextLength || 20, text.length))
-  const type =tryTo(()=> n.getType().getApparentType().getText() || n.getType().getText())||'TODO'
+  const type = tryTo(() => n.getType().getApparentType().getText() || n.getType().getText()) || 'TODO'
   const node: CodeWorkerResponseJsxAsNode = {
     kind: n.getKindName(),
     type,

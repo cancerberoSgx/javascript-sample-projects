@@ -17,8 +17,6 @@ export enum THEME_ACTIONS {
 export const changeTheme: Reducer<Layout, ChangeThemeAction> = (state = initialState, action) => {
   switch (action.type) {
     case THEME_ACTIONS.CHANGE_THEME:
-  debugger
-
       return { ...state, theme: action.theme }
     default:
       return state
@@ -33,8 +31,6 @@ export interface ChangeThemeAction extends Action<THEME_ACTIONS.CHANGE_THEME> {
 function* watchThemeChange() {
   yield takeEvery(THEME_ACTIONS.CHANGE_THEME,
     function* (action: ChangeThemeAction) {
-  debugger
-
       const skin = action.theme.type === 'dark' ? jsxColorSkins.find(s => s.name === 'Default Dark') : jsxColorSkins.find(s => s.name === 'Default Light')
       const { styles } = buildCssForSkin(skin!)
       yield registerStyle(styles)

@@ -58,7 +58,7 @@
     "fs-to-json": "^0.1.7",
     "jest": "^24.1.0",
     "jest-puppeteer": "^3.5.0",
-    "p-queue": "^3.0.0",
+    "p-queue": "^3.2.0",
     "parcel": "^1.11.0",
     "terser": "^3.16.1",
     "ts-jest": "^24.0.0",

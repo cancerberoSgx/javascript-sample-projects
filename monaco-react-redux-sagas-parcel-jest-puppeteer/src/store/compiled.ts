@@ -1,11 +1,12 @@
-import { all as merge } from 'deepmerge'
-import { Action, Reducer } from 'redux'
-import { all, call, put, select, takeEvery } from 'redux-saga/effects'
-import { requestCodeCompile } from '../codeWorker/codeWorkerManager'
-import { dispatchSyntaxHighlight } from '../monaco/jsxSyntaxHighlight'
-import { OPTIONS_ACTIONS } from './options'
-import { CodeWorkerError, CodeWorkerRequest, CodeWorkerResponse, Compiled, EditorCursorPosition, State, CodeWorkerResponseJsxAsNode, CompiledExplorerOptions } from './types'
-import { EDITOR_ACTION, EditorChangedCursorPositionAction } from './editor';
+import { all as merge } from 'deepmerge';
+import { Action, Reducer, Store } from 'redux';
+import { all, takeEvery } from 'redux-saga/effects';
+import { dispatchSyntaxHighlight } from '../monaco/jsxSyntaxHighlight';
+import { EditorChangedCursorPositionAction, EDITOR_ACTION } from './editor';
+import { ChangeOtherOptionsAction, OPTIONS_ACTIONS } from './options';
+import { dispatch, getState } from './store';
+import { CodeWorkerError, CodeWorkerRequest, CodeWorkerResponse, CodeWorkerResponseJsxAsNode, Compiled, CompiledExplorerOptions, EditorCursorPosition, State } from './types';
+import { compileCode } from '../util/codeWorkerManager';
 
 const initialState: Compiled = {
   request: {
@@ -63,39 +64,73 @@ export interface ChangeExplorerOptionsAction extends Action<COMPILED_ACTION.CHAN
 function* watchFetchCompiled() {
   yield takeEvery(COMPILED_ACTION.FETCH_COMPILED,
     function* (action: FetchCompiledAction) {
-      yield put({ type: OPTIONS_ACTIONS.SET_WORKING, payload: { working: true } })
-      const state: State = yield select()
-      const m: CodeWorkerRequest = {
-        ...state.compiled.request,
-        code: state.editor.code,
-        version: state.editor.version
+      dispatch({ type: OPTIONS_ACTIONS.SET_WORKING, payload: { working: true } })
+      getState().then(state=>{
+        const m: CodeWorkerRequest = {
+          ...state.compiled.request,
+          code: state.editor.code,
+          version: state.editor.version,
+          disableEvaluate: state.compiled.explorer && state.compiled.explorer.disableElementsExplorer || state.options.selectedExplorer !== 'elements',
+          disableJsxAst: state.compiled.explorer && state.compiled.explorer.disableJsAstExplorer || state.options.selectedExplorer !== 'jsAst',
+          disableJsxSyntaxHighLight: state.compiled.explorer && state.compiled.explorer.disableJSXSyntaxHighlight,
+        };
+        compileCode(m);
+      })
+      yield 1
+    })
+}
+
+let updateTimeoutTimer: any
+function* watchUpdateTimeout() {
+  yield takeEvery(OPTIONS_ACTIONS.CHANGE_OTHER_OPTIONS,
+    function* (action: ChangeOtherOptionsAction) {
+      if (updateTimeoutTimer) {
+        clearInterval(updateTimeoutTimer)
       }
-      requestCodeCompile(m)
+      if (action.payload.updateTimeout) {
+        dispatch({ type: OPTIONS_ACTIONS.CHANGE_AUTO_APPLY, payload: { autoApply: false } })
+        updateTimeoutTimer = setInterval(() => {
+          dispatch({ type: OPTIONS_ACTIONS.SET_WORKING, payload: { working: true } })
+          getState().then(state=>{
+            const m: CodeWorkerRequest = {
+              ...state.compiled.request,
+              code: state.editor.code,
+              version: state.editor.version,
+              disableEvaluate: state.compiled.explorer && state.compiled.explorer.disableElementsExplorer || state.options.selectedExplorer !== 'elements',
+              disableJsxAst: state.compiled.explorer && state.compiled.explorer.disableJsAstExplorer || state.options.selectedExplorer !== 'jsAst',
+              disableJsxSyntaxHighLight: state.compiled.explorer && state.compiled.explorer.disableJSXSyntaxHighlight,
+            };
+            compileCode(m)
+          })
+        }, action.payload.updateTimeout*1000)
+        yield 1
+      }
     })
 }
 
 function* watchRenderCompile() {
   yield takeEvery(COMPILED_ACTION.RENDER_COMPILED,
     function* (action: RenderCompiledAction) {
-      yield call(() => dispatchSyntaxHighlight(action.payload.response))
-      yield put({ type: OPTIONS_ACTIONS.SET_WORKING, payload: { working: false } })
+      dispatchSyntaxHighlight(action.payload.response)
+      yield dispatch({ type: OPTIONS_ACTIONS.SET_WORKING, payload: { working: false } })
     })
 }
 
 function* watchEditorCursorPosition() {
   yield takeEvery(EDITOR_ACTION.EDITOR_CHANGED_CURSOR_POSITION,
     function* (action: EditorChangedCursorPositionAction) {
-      const state: State = yield select()
-      if (state.compiled.explorer && state.compiled.explorer.disableEditorBind) {
-        return
-      }
-      const ast = state.compiled.response && state.compiled.response.jsxAst
-      if (ast) {
-        const showDetailsOf = findDescendantIncludingPosition(ast.ast, action.payload)
-        if (showDetailsOf) {
-          yield put({ type: COMPILED_ACTION.CHANGE_EXPLORER_OPTIONS, payload: { showDetailsOf } })
+      yield getState().then(state=>{
+        // if (state.compiled.explorer && state.compiled.explorer.disableEditorBind||state.options.selectedExplorer!=='jsAst') {
+        //   return
+        // }
+        const ast = state.compiled.response && state.compiled.response.jsxAst
+        if (ast) {
+          const showDetailsOf = findDescendantIncludingPosition(ast.ast, action.payload)
+          if (showDetailsOf) {
+            dispatch({ type: COMPILED_ACTION.CHANGE_EXPLORER_OPTIONS, payload: { showDetailsOf } })
+          }
         }
-      }
+      })
     })
 }
 
@@ -127,7 +162,7 @@ function findDescendant(n: CodeWorkerResponseJsxAsNode, fn: (node: CodeWorkerRes
 function* watchErrorCompiled() {
   yield takeEvery(COMPILED_ACTION.ERROR_COMPILED,
     function* (action: ErrorCompiledAction) {
-      yield put({ type: OPTIONS_ACTIONS.SET_WORKING, payload: { working: false } })
+      yield dispatch({ type: OPTIONS_ACTIONS.SET_WORKING, payload: { working: false } })
     }
   )
 }
@@ -136,6 +171,6 @@ export type compiledActions = FetchCompiledAction | RenderCompiledAction | Error
 
 export function* compiledSagas() {
   yield all([
-    watchFetchCompiled(), watchRenderCompile(), watchErrorCompiled(), watchEditorCursorPosition()
+    watchFetchCompiled(), watchRenderCompile(), watchErrorCompiled(), watchEditorCursorPosition(), watchUpdateTimeout()
   ])
 }

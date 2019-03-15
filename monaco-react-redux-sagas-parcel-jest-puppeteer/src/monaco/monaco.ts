@@ -31,11 +31,15 @@ export function getMonacoInstance() {
   return editor
 }
 
-export function installEditor(code: string, theme: string, containerEl: HTMLElement) {
+export async function installEditor(code: string, theme: string, containerEl: HTMLElement) {
   if (editor) {
-    return
+    return editor
   }
 
+  // await getState() // make sure the store is ready
+
+  // await delay(100)
+  
   monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
     target: monaco.languages.typescript.ScriptTarget.ES2016,
     allowNonTsExtensions: true,
@@ -62,5 +66,7 @@ export function installEditor(code: string, theme: string, containerEl: HTMLElem
 
   monaco.editor.createModel(jsx_alone_core_d_ts, 'typescript', monaco.Uri.parse('file:///index.d.ts'))
 
-  jsxSyntaxHighlightInstall(editor!)
+  jsxSyntaxHighlightInstall()
+
+  return editor
 }

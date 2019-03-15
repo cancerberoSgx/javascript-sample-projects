@@ -4,7 +4,8 @@ import { buildCssForSkin } from '../components/explorer/jsxColors/jsxColorsCssBu
 import { JsxColorsSkinStyles, JsxColorsState, JsxColorsTools, JsxSyntaxSkin } from "../components/explorer/jsxColors/jsxColorsTypes";
 import { jsxColorSkins } from '../components/explorer/jsxColors/skinsData';
 import { registerStyle } from '../style/styles';
-import { dispatch } from './store';
+import { dispatch, getState } from './store';
+import { COMPILED_ACTION } from './compiled';
 
 const initialState: JsxColorsState = {
   predefined: jsxColorSkins,
@@ -56,11 +57,14 @@ interface ApplySkinStylesAction extends Action<JSX_COLORS_ACTIONS.APPLY_SKIN_STY
 export type JSXColorsActions = ChangeToolAction | SelectSkinAction | EditorChangePropValueAction | ApplySkinStylesAction
 
 function* watchForSkinSelected() {
-  // when skin is selected we change the tool to editor and make sure selected skin is applied (by dispatching EDITOR_SKIN_CHANGED)
+  // when skin is selected we change the tool to editor and make sure selected skin is applied (by dispatching EDITOR_SKIN_CHANGED). also we trigger a compilation 
   yield takeEvery(JSX_COLORS_ACTIONS.SELECT_SKIN,
     function* skinSelected(action: SelectSkinAction) {
       yield dispatch({ type: JSX_COLORS_ACTIONS.CHANGE_TOOL, payload: { tool: 'editor' } })
       yield dispatch({ type: JSX_COLORS_ACTIONS.EDITOR_SKIN_CHANGED, payload: { changed: action.payload.selected } })
+      getState().then(state=>{
+        dispatch({ type: COMPILED_ACTION.FETCH_COMPILED, payload: {request: state.compiled.request}})
+      })
     }
   )
 }

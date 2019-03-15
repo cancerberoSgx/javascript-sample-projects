@@ -24,6 +24,12 @@ ${css('.tsAstExplorerContent li ul', `padding-left: .7em`, `padding-left 1.2em`)
 
 export class TsSimpleAstExplorer extends Component<P, S> {
   render() {
+    if (this.props.options && this.props.options.disableJsAstExplorer) {
+      return <div className="content">
+        <h3>Disabled </h3>
+        <p>By configuration disableJsAstExplorer options are turned on so I'm disabled. </p>
+      </div>
+    }
     const compiled = this.props.compiled.response
     const explorer = this.props.compiled.explorer
     const disableEditorBind = explorer && explorer.disableEditorBind

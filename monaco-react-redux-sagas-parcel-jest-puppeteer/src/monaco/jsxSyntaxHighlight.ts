@@ -30,7 +30,7 @@ export function dispatchSyntaxHighlight(data: CodeWorkerResponse) {
   lastJsxDecorations = editor.deltaDecorations(lastJsxDecorations, decorations)
 }
 
-export function jsxSyntaxHighlightInstall(editor: monaco.editor.IStandaloneCodeEditor) {
+export function jsxSyntaxHighlightInstall() {
   const { styles } = buildCssForSkin(jsxColorSkins.find(t => t.name === 'Default Light') || jsxColorSkins[0])
   registerStyle(styles)
 
