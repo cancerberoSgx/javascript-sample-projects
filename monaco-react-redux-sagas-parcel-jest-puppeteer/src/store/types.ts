@@ -16,7 +16,7 @@ export interface Options {
   readonly selectedExplorer: ExplorerName
   readonly working: boolean
 }
-export type ExplorerName = 'editor' | 'elements' | 'jsAst' | 'implementations'|'jsxColors'
+export type ExplorerName = 'editor' | 'elements' | 'jsAst' |  'jsxColors'
 
 export interface Layout {
   readonly theme: Theme
@@ -54,6 +54,7 @@ export interface Compiled {
 }
 export interface CompiledExplorerOptions {
   showDetailsOf?: CodeWorkerResponseJsxAsNode
+  disableEditorBind?: boolean
 }
 
 export interface CodeWorkerResponse {

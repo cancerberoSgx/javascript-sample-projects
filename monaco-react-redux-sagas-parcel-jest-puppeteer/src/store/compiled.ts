@@ -22,19 +22,19 @@ export enum COMPILED_ACTION {
   RENDER_COMPILED = 'COMPILED_RENDER_COMPILED',
   FETCH_COMPILED = 'COMPILED_FETCH_COMPILED',
   ERROR_COMPILED = 'COMPILED_ERROR_COMPILED',
-  SHOW_DETAILS_OF='COMPILED_SHOW_DETAILS_OF'
+  CHANGE_EXPLORER_OPTIONS = 'COMPILED_CHANGE_EXPLORER_OPTIONS'
 }
 
-export const compiled: Reducer<Compiled, FetchCompiledAction | RenderCompiledAction | ErrorCompiledAction|ShowDetailsOfAction> = (state = initialState, action) => {
+export const compiled: Reducer<Compiled, FetchCompiledAction | RenderCompiledAction | ErrorCompiledAction | ChangeExplorerOptionsAction> = (state = initialState, action) => {
   switch (action.type) {
     case COMPILED_ACTION.FETCH_COMPILED:
-      return {        ...state, request: merge([state.request || {}, action.payload.request]) as CodeWorkerRequest}
+      return { ...state, request: merge([state.request || {}, action.payload.request]) as CodeWorkerRequest }
     case COMPILED_ACTION.RENDER_COMPILED:
       return { ...state, ...action.payload }
     case COMPILED_ACTION.ERROR_COMPILED:
       return { ...state, ...action.payload }
-      case COMPILED_ACTION.SHOW_DETAILS_OF:
-        return { ...state, explorer: {...state.explorer, ...action.payload}}
+    case COMPILED_ACTION.CHANGE_EXPLORER_OPTIONS:
+      return { ...state, explorer: { ...state.explorer, ...action.payload } }
     default:
       return state
   }
@@ -55,8 +55,8 @@ export interface ErrorCompiledAction extends Action<COMPILED_ACTION.ERROR_COMPIL
   payload: { error: CodeWorkerError }
 }
 
-export interface ShowDetailsOfAction extends Action<COMPILED_ACTION.SHOW_DETAILS_OF> {
-  type: COMPILED_ACTION.SHOW_DETAILS_OF
+export interface ChangeExplorerOptionsAction extends Action<COMPILED_ACTION.CHANGE_EXPLORER_OPTIONS> {
+  type: COMPILED_ACTION.CHANGE_EXPLORER_OPTIONS
   payload: CompiledExplorerOptions
 }
 
@@ -64,7 +64,7 @@ function* watchFetchCompiled() {
   yield takeEvery(COMPILED_ACTION.FETCH_COMPILED,
     function* (action: FetchCompiledAction) {
       yield put({ type: OPTIONS_ACTIONS.SET_WORKING, payload: { working: true } })
-      const state:State = yield select()
+      const state: State = yield select()
       const m: CodeWorkerRequest = {
         ...state.compiled.request,
         code: state.editor.code,
@@ -85,40 +85,43 @@ function* watchRenderCompile() {
 function* watchEditorCursorPosition() {
   yield takeEvery(EDITOR_ACTION.EDITOR_CHANGED_CURSOR_POSITION,
     function* (action: EditorChangedCursorPositionAction) {
-      const state :State= yield select()
-      const ast=state.compiled.response&&state.compiled.response.jsxAst
-      if(ast){
+      const state: State = yield select()
+      if (state.compiled.explorer && state.compiled.explorer.disableEditorBind) {
+        return
+      }
+      const ast = state.compiled.response && state.compiled.response.jsxAst
+      if (ast) {
         const showDetailsOf = findDescendantIncludingPosition(ast.ast, action.payload)
-        if(showDetailsOf) {
-      yield put({ type: COMPILED_ACTION.SHOW_DETAILS_OF, payload:  {showDetailsOf}})
+        if (showDetailsOf) {
+          yield put({ type: COMPILED_ACTION.CHANGE_EXPLORER_OPTIONS, payload: { showDetailsOf } })
         }
       }
     })
 }
 
-function findDescendantIncludingPosition(n:CodeWorkerResponseJsxAsNode, p: EditorCursorPosition): CodeWorkerResponseJsxAsNode|undefined {
-  const d = findDescendant(n, d=>nodeIncludesPosition(d, p))
-  if(d){
-    let c: CodeWorkerResponseJsxAsNode|undefined
-     d.children.some(child=>{
-       const found = findDescendantIncludingPosition(child, p)
-       if(found){
-         c=found
-         return true
-       }
-       else {
-         return false
-       }
+function findDescendantIncludingPosition(n: CodeWorkerResponseJsxAsNode, p: EditorCursorPosition): CodeWorkerResponseJsxAsNode | undefined {
+  const d = findDescendant(n, d => nodeIncludesPosition(d, p))
+  if (d) {
+    let c: CodeWorkerResponseJsxAsNode | undefined
+    d.children.some(child => {
+      const found = findDescendantIncludingPosition(child, p)
+      if (found) {
+        c = found
+        return true
+      }
+      else {
+        return false
+      }
     })
     return c || d
   }
 }
 
-function nodeIncludesPosition(n:CodeWorkerResponseJsxAsNode, p: EditorCursorPosition) {
-  return n.startColumn<=p.column&&n.endColumn>=p.column  && n.startLineNumber<=p.lineNumber&&n.endLineNumber>=p.lineNumber
+function nodeIncludesPosition(n: CodeWorkerResponseJsxAsNode, p: EditorCursorPosition) {
+  return n.startColumn <= p.column && n.endColumn >= p.column && n.startLineNumber <= p.lineNumber && n.endLineNumber >= p.lineNumber
 }
-function findDescendant(n: CodeWorkerResponseJsxAsNode, fn: (node: CodeWorkerResponseJsxAsNode)=>boolean, dontIncludeSelf=true):CodeWorkerResponseJsxAsNode|undefined{
-  return (!dontIncludeSelf&&fn(n)) ? n : n.children.find(c=>!!findDescendant(c, fn, false))
+function findDescendant(n: CodeWorkerResponseJsxAsNode, fn: (node: CodeWorkerResponseJsxAsNode) => boolean, dontIncludeSelf = true): CodeWorkerResponseJsxAsNode | undefined {
+  return (!dontIncludeSelf && fn(n)) ? n : n.children.find(c => !!findDescendant(c, fn, false))
 }
 
 function* watchErrorCompiled() {
@@ -129,7 +132,7 @@ function* watchErrorCompiled() {
   )
 }
 
-export type compiledActions =   FetchCompiledAction | RenderCompiledAction | ErrorCompiledAction | ShowDetailsOfAction
+export type compiledActions = FetchCompiledAction | RenderCompiledAction | ErrorCompiledAction | ChangeExplorerOptionsAction
 
 export function* compiledSagas() {
   yield all([

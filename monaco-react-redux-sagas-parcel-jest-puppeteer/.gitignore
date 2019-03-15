@@ -6,3 +6,4 @@ build
 tmp
 bkps
 docs
+docs/*.gz

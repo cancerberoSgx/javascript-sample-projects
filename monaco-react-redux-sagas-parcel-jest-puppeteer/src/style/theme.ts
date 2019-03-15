@@ -20,8 +20,8 @@ export const lightTheme: Theme = {
   }
 }
 
-export const mintyTheme: Theme = {
-  name: 'minty',
+export const noStyles: Theme = {
+  name: 'noStyles',
   type: 'light',
   colors: {
     bg: '#d4d4d4',
@@ -30,4 +30,4 @@ export const mintyTheme: Theme = {
   }
 }
 
-export const allThemes: Theme[] = [darkTheme, lightTheme, mintyTheme]
+export const allThemes: Theme[] = [darkTheme, lightTheme, noStyles]

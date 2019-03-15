@@ -16,21 +16,21 @@ export function showInModal(body: JSX.Element | string, title = 'modal') {
   emitter.emit({ body, title, active: true })
 }
 
+
 interface S {
   active?: boolean
   title?: string
   body?: string | JSX.Element
 }
+
 interface P {
   listenTo: typeof emitter
 }
-
 class Modal extends Component<P, S> {
   constructor(p: P, s: S) {
     super(p, s)
     p.listenTo.add(e => this.setState({ ...e }))
   }
-
   render() {
     let bodyEl: JSX.Element | undefined
     if (typeof this.state.body === 'string') {
@@ -44,7 +44,7 @@ class Modal extends Component<P, S> {
       ></div>
       <div className="modal-card">
         <header className="modal-card-head">
-          <div className="modal-card-title">{this.state.active}</div>
+          <div className="modal-card-title">{this.state.title}</div>
           <button className="delete" aria-label="close" onClick={e => this.setState({ active: false })}
           ></button>
         </header>

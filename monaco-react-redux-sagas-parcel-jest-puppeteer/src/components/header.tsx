@@ -20,7 +20,7 @@ export class Header extends Component<P> {
 
   render() {
     const theme = this.props.state.layout.theme
-    const nextThemeName = theme.name === 'dark' ? 'minty' : theme.name === 'minty' ? 'light' : 'dark'
+    const nextThemeName = theme.name === 'dark' ? 'noStyles' : theme.name === 'noStyles' ? 'light' : 'dark'
     const nextTheme = allThemes.find(t => t.name === nextThemeName)!
 
     return <nav className="navbar is-fixed-top is-primary" role="navigation" aria-label="main navigation">
@@ -117,13 +117,18 @@ export class Header extends Component<P> {
             
             <div className="navbar-dropdown">
             <a className="navbar-item" onClick={e => 
-              dispatch({ type: OPTIONS_ACTIONS.SELECT_EXPLORER, payload: { selectedExplorer: 'implementations'  } })
-              
-              }>Implementations</a>
+              dispatch({ type: OPTIONS_ACTIONS.SELECT_EXPLORER, payload: { selectedExplorer: 'elements'  } })
+              }>Elements</a>
+            <a className="navbar-item" onClick={e => 
+              dispatch({ type: OPTIONS_ACTIONS.SELECT_EXPLORER, payload: { selectedExplorer: 'jsAst'  } })
+              }>AST</a>
+             <a className="navbar-item" onClick={e => 
+              dispatch({ type: OPTIONS_ACTIONS.SELECT_EXPLORER, payload: { selectedExplorer: 'jsxColors'  } })
+              }>Colors</a>
             </div>
           </div>
 
-</div>
+        </div>
 
       </div>
 

@@ -7,27 +7,32 @@ import { CodeWorkerResponseJsxAsNode } from '../../../store/types'
 interface P {
   node: CodeWorkerResponseJsxAsNode
   mode: 'getChildren' | 'forEachChild'
-  onShowDetailsOf: ( n: CodeWorkerResponseJsxAsNode) => void
+  onShowDetailsOf: (n: CodeWorkerResponseJsxAsNode) => void
   showDetailsOf?: CodeWorkerResponseJsxAsNode
+  disableEditorBind?: boolean
+  collapseAllMode?: 'collapse' | 'expand'
+  showDetailsOfEverything?: boolean
 }
 
-interface S {  
+interface S {
   showDetailsOf?: CodeWorkerResponseJsxAsNode
-  collapsed?: boolean
+  // collapsed?: boolean
+  collapsed?: 'collapse' | 'expand'
+
 }
 
 export class NodeComponent extends Component<P, S> {
 
-  private el:React.RefObject<HTMLDivElement>
+  private el: React.RefObject<HTMLDivElement>
 
-  constructor(p:P,s:S){
-    super(p,s)
-    this.el=React.createRef()
+  constructor(p: P, s: S) {
+    super(p, s)
+    this.el = React.createRef()
   }
 
-  componentDidUpdate(){
-    if(this.state.showDetailsOf||this.props.showDetailsOf===this.props.node){
-      if(this.el.current){
+  componentDidUpdate() {
+    if (!this.props.disableEditorBind && (this.state.showDetailsOf || this.props.showDetailsOf === this.props.node)) {
+      if (this.el.current) {
         this.el.current.scrollIntoView()
       }
     }
@@ -35,37 +40,39 @@ export class NodeComponent extends Component<P, S> {
 
   render() {
     const { node, mode, onShowDetailsOf } = this.props
-    const showDetailsOf = this.state.showDetailsOf||this.props.showDetailsOf
-    return <div className="tsAstExplorerNode" >
+    const showDetailsOf = this.state.showDetailsOf || this.props.showDetailsOf
+    const collapsed = typeof this.state.collapsed === 'undefined' ?
+      this.props.collapseAllMode === 'collapse' : this.state.collapsed === 'collapse'
 
-      <span className="nodeName"
-      >{node.kind}</span>
+    return <div className={`tsAstExplorerNode ${showDetailsOf === node ? 'selected' : ''}`} >
 
-      <button className="button is-small" onClick={e => {
+      <button className="button overlay is-small expand-collapse"
+        onClick={e =>
+          this.setState({ collapsed: collapsed ? 'expand' : 'collapse' })
+        }>{collapsed ? '+' : '-'}</button>
+
+      <span className="nodeName">{node.kind}</span>
+
+      <button className="button is-small overlay" onClick={e => {
         this.setState({ showDetailsOf: node })
-        
         onShowDetailsOf(node)
       }}>!</button>
 
-      <button className="button is-small" onClick={e => {
-        this.setState({ collapsed: !this.state.collapsed })
-      }}>{this.state.collapsed ? '+' : '-'}</button>
-
-      {!this.state.collapsed && showDetailsOf === node && <div className="nodeInfo content" ref={this.el}>
+      {!collapsed && (showDetailsOf === node || this.props.showDetailsOfEverything) && <div className="nodeInfo content" ref={this.el}>
         <strong>Text</strong>: <code>{shorter(node.text)}</code><br />
         <strong>Type</strong>: <code>{node.type}</code><br />
         <strong>Range</strong> (start-end): {node.start}-{node.end}<br />
         <strong>Range</strong> (line-column): {node.startLineNumber}x{node.startColumn}-{node.endLineNumber}x{node.endColumn}<br />
       </div>}
 
-      {!this.state.collapsed && <ul>
+      {!collapsed && <ul>
         {node.children.map((c, i) => <li>
-          <NodeComponent node={c}  
-          showDetailsOf={showDetailsOf}
+          <NodeComponent {...this.props} node={c}
+            showDetailsOf={showDetailsOf}
+            showDetailsOfEverything={this.props.showDetailsOfEverything}
             onShowDetailsOf={onShowDetailsOf} mode={mode} />
         </li>)}
       </ul>}
-
     </div>
   }
 }
@@ -74,7 +81,7 @@ registerStyle(`
 .tsAstExplorerNode .nodeName {
   font-weight: bolder;
 }
-.tsAstExplorerNode .nodeInfo{
+.tsAstExplorerNode.selected{
   border: 3px solid pink;
 }
 `)

@@ -7,10 +7,14 @@ import { Error } from '../../util/error'
 import { showInModal } from '../../util/showInModal'
 import { ExplorerProps } from '../explorers'
 import { Node } from './elementExplorerNode'
+import { isMobile } from '../../../util/media';
 
 interface P extends ExplorerProps {
 }
-
+interface S {
+  showDetailsOfEverything?: boolean
+  collapseAllMode?: 'collapse' | 'expand' | undefined
+}
 registerStyle(`
 .html-code-container {
   display: none;
@@ -20,20 +24,36 @@ registerStyle(`
 }
 `)
 
-export class ElementExplorer extends Component<P> {
+export class ElementExplorer extends Component<P, S> {
 
   render() {
     const compiled = this.props.compiled.response
     if (compiled) {
       const { error, result, evaluated } = compiled.evaluate
-      return <div className="ElementExplorer">
+      return <div className="ElementExplorer content">
 
-        <button className="button" title="See HTML code" 
-        onClick={e => showInModal(<ElementNodeHtmlCodeModal html={jsonImplOutputElAsHtml(result!)} />, 'HTML')}>See Output HTML</button>
+        {!isMobile() && <h3>Elements explorer</h3>}
 
-        {!error && result && <Node node={result} onShowHtml={html => showInModal(<ElementNodeHtmlCodeModal html={html} />, 'HTML')}></Node>}
+        <p>This is a representation the output HTML when the code renders. Use the buttons to see details or the actual HTML output of each node.</p>
 
-        {error && <Error evaluated={evaluated} error={error} />}
+        <button className="button" title="See HTML code"
+          onClick={e => showInModal(<ElementNodeHtmlCodeModal html={jsonImplOutputElAsHtml(result!)} />, 'HTML')}>
+          HTML output of everything</button>
+
+        <button className="button" title="Details of everything"
+          onClick={e => this.setState({ 
+            showDetailsOfEverything: !this.state.showDetailsOfEverything, 
+            collapseAllMode:  !this.state.showDetailsOfEverything ===true ? 'expand' : this.state.collapseAllMode
+            })}>
+          {this.state.showDetailsOfEverything ? 'Hide' : 'Show'} details of everything</button>
+
+        <button className="button" title="Collapse all"
+          onClick={e => this.setState({ collapseAllMode: this.state.collapseAllMode !== 'collapse' ? 'collapse' : 'expand' })}>
+          {this.state.collapseAllMode !== 'collapse' ? 'Collapse' : 'Expand'} everything</button>
+
+        {!error && !!result && <Node node={result} {...this.state} onShowHtml={html => showInModal(<ElementNodeHtmlCodeModal html={html} />, 'HTML')}></Node>}
+
+        {!!error && <Error evaluated={evaluated} error={error} />}
       </div>
     }
     else {
