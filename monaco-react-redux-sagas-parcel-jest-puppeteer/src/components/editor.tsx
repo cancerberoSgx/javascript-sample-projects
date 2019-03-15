@@ -21,11 +21,12 @@ registerStyle(`
 
 export class Editor extends Component<P> {
 
-  lastTheme: string = 'vs'
+  private lastTheme: string = 'vs'
 
   constructor(p: P, s:any) {
     super(p, s)
-    this.dispatchModelChanged = this.dispatchModelChanged.bind(this)
+    this.modelChanged = this.modelChanged.bind(this)
+    this.cursorChangedPosition = this.cursorChangedPosition.bind(this)
   }
 
   componentDidUpdate() {
@@ -37,15 +38,16 @@ export class Editor extends Component<P> {
   componentDidMount() {
     installEditor(this.props.state.editor.code, this.getMonacoTheme(), query('#editorContainer'))
     const editor = getMonacoInstance()
-    editor!.getModel()!.onDidChangeContent(throttle(this.dispatchModelChanged, 3000, { trailing: true }))
-    this.dispatchModelChanged(false)
+    editor!.getModel()!.onDidChangeContent(throttle(this.modelChanged, 3000, { trailing: true }))
+    editor!.onDidChangeCursorPosition(throttle(this.cursorChangedPosition, 3000, { trailing: true }))
+    this.modelChanged(false)
   }
 
   render() {
     return <div id="editorContainer" className="editorContainer" />
   }
 
-  private dispatchModelChanged(respectAutoApplyOption = true) {
+  private modelChanged(respectAutoApplyOption = true) {
     if (this.props.state.options.autoApply || !respectAutoApplyOption) {
       const editor = getMonacoInstance()
       dispatch({
@@ -56,6 +58,10 @@ export class Editor extends Component<P> {
         }
       })
     }
+  }
+
+  private cursorChangedPosition(e: monaco.editor.ICursorPositionChangedEvent) {
+    dispatch({type: EDITOR_ACTION.EDITOR_CHANGED_CURSOR_POSITION, payload: {column: e.position.column, lineNumber: e.position.lineNumber}})
   }
 
   private getMonacoTheme(name = this.props.state.layout.theme.name): string {

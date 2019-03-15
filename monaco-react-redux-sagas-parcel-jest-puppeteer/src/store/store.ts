@@ -1,6 +1,6 @@
 import { AnyAction, Store } from 'redux'
-import { ErrorCompiledAction, FetchCompiledAction, RenderCompiledAction } from './compiled'
-import { EditorModelChangedAction, RequestCodeChangeAction } from './editor'
+import { ErrorCompiledAction, FetchCompiledAction, RenderCompiledAction, compiledActions } from './compiled'
+import { EditorModelChangedAction, RequestCodeChangeAction, editorActions } from './editor'
 import { ChangeAutoApply, PushLogAction, SelectExplorer, SetWorking } from './options'
 import { ChangeThemeAction } from './theme'
 import { State } from './types'
@@ -49,7 +49,7 @@ export function dispatch(action: AllActions) {
 
 export type AllActions =
 
-  RequestCodeChangeAction | EditorModelChangedAction |
+editorActions|
 
   PushLogAction |
 
@@ -57,6 +57,6 @@ export type AllActions =
 
   ChangeThemeAction |
 
-  FetchCompiledAction | RenderCompiledAction | ErrorCompiledAction |
+compiledActions|
 
   JSXColorsActions

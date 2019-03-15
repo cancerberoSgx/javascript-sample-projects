@@ -4,7 +4,8 @@ import { all, call, put, select, takeEvery } from 'redux-saga/effects'
 import { requestCodeCompile } from '../codeWorker/codeWorkerManager'
 import { dispatchSyntaxHighlight } from '../monaco/jsxSyntaxHighlight'
 import { OPTIONS_ACTIONS } from './options'
-import { CodeWorkerError, CodeWorkerRequest, CodeWorkerResponse, Compiled } from './types'
+import { CodeWorkerError, CodeWorkerRequest, CodeWorkerResponse, Compiled, EditorCursorPosition, State, CodeWorkerResponseJsxAsNode, CompiledExplorerOptions } from './types'
+import { EDITOR_ACTION, EditorChangedCursorPositionAction } from './editor';
 
 const initialState: Compiled = {
   request: {
@@ -18,23 +19,22 @@ const initialState: Compiled = {
 }
 
 export enum COMPILED_ACTION {
-  RENDER_COMPILED = 'RENDER_COMPILED',
-  FETCH_COMPILED = 'FETCH_COMPILED',
-  ERROR_COMPILED = 'ERROR_COMPILED'
+  RENDER_COMPILED = 'COMPILED_RENDER_COMPILED',
+  FETCH_COMPILED = 'COMPILED_FETCH_COMPILED',
+  ERROR_COMPILED = 'COMPILED_ERROR_COMPILED',
+  SHOW_DETAILS_OF='COMPILED_SHOW_DETAILS_OF'
 }
 
-export const compiled: Reducer<Compiled, FetchCompiledAction | RenderCompiledAction | ErrorCompiledAction> = (state = initialState, action) => {
+export const compiled: Reducer<Compiled, FetchCompiledAction | RenderCompiledAction | ErrorCompiledAction|ShowDetailsOfAction> = (state = initialState, action) => {
   switch (action.type) {
     case COMPILED_ACTION.FETCH_COMPILED:
-      const s = {
-        ...state,
-        request: merge([state.request || {}, action.payload.request]) as CodeWorkerRequest
-      }
-      return s
+      return {        ...state, request: merge([state.request || {}, action.payload.request]) as CodeWorkerRequest}
     case COMPILED_ACTION.RENDER_COMPILED:
       return { ...state, ...action.payload }
     case COMPILED_ACTION.ERROR_COMPILED:
       return { ...state, ...action.payload }
+      case COMPILED_ACTION.SHOW_DETAILS_OF:
+        return { ...state, explorer: {...state.explorer, ...action.payload}}
     default:
       return state
   }
@@ -55,11 +55,16 @@ export interface ErrorCompiledAction extends Action<COMPILED_ACTION.ERROR_COMPIL
   payload: { error: CodeWorkerError }
 }
 
+export interface ShowDetailsOfAction extends Action<COMPILED_ACTION.SHOW_DETAILS_OF> {
+  type: COMPILED_ACTION.SHOW_DETAILS_OF
+  payload: CompiledExplorerOptions
+}
+
 function* watchFetchCompiled() {
   yield takeEvery(COMPILED_ACTION.FETCH_COMPILED,
-    function* fetchCompiled(action: FetchCompiledAction) {
+    function* (action: FetchCompiledAction) {
       yield put({ type: OPTIONS_ACTIONS.SET_WORKING, payload: { working: true } })
-      const state = yield select()
+      const state:State = yield select()
       const m: CodeWorkerRequest = {
         ...state.compiled.request,
         code: state.editor.code,
@@ -71,22 +76,63 @@ function* watchFetchCompiled() {
 
 function* watchRenderCompile() {
   yield takeEvery(COMPILED_ACTION.RENDER_COMPILED,
-    function* renderCompile(action: RenderCompiledAction) {
+    function* (action: RenderCompiledAction) {
       yield call(() => dispatchSyntaxHighlight(action.payload.response))
       yield put({ type: OPTIONS_ACTIONS.SET_WORKING, payload: { working: false } })
     })
 }
 
+function* watchEditorCursorPosition() {
+  yield takeEvery(EDITOR_ACTION.EDITOR_CHANGED_CURSOR_POSITION,
+    function* (action: EditorChangedCursorPositionAction) {
+      const state :State= yield select()
+      const ast=state.compiled.response&&state.compiled.response.jsxAst
+      if(ast){
+        const showDetailsOf = findDescendantIncludingPosition(ast.ast, action.payload)
+        if(showDetailsOf) {
+      yield put({ type: COMPILED_ACTION.SHOW_DETAILS_OF, payload:  {showDetailsOf}})
+        }
+      }
+    })
+}
+
+function findDescendantIncludingPosition(n:CodeWorkerResponseJsxAsNode, p: EditorCursorPosition): CodeWorkerResponseJsxAsNode|undefined {
+  const d = findDescendant(n, d=>nodeIncludesPosition(d, p))
+  if(d){
+    let c: CodeWorkerResponseJsxAsNode|undefined
+     d.children.some(child=>{
+       const found = findDescendantIncludingPosition(child, p)
+       if(found){
+         c=found
+         return true
+       }
+       else {
+         return false
+       }
+    })
+    return c || d
+  }
+}
+
+function nodeIncludesPosition(n:CodeWorkerResponseJsxAsNode, p: EditorCursorPosition) {
+  return n.startColumn<=p.column&&n.endColumn>=p.column  && n.startLineNumber<=p.lineNumber&&n.endLineNumber>=p.lineNumber
+}
+function findDescendant(n: CodeWorkerResponseJsxAsNode, fn: (node: CodeWorkerResponseJsxAsNode)=>boolean, dontIncludeSelf=true):CodeWorkerResponseJsxAsNode|undefined{
+  return (!dontIncludeSelf&&fn(n)) ? n : n.children.find(c=>!!findDescendant(c, fn, false))
+}
+
 function* watchErrorCompiled() {
   yield takeEvery(COMPILED_ACTION.ERROR_COMPILED,
-    function* errorCompiled(action: ErrorCompiledAction) {
+    function* (action: ErrorCompiledAction) {
       yield put({ type: OPTIONS_ACTIONS.SET_WORKING, payload: { working: false } })
     }
   )
 }
 
+export type compiledActions =   FetchCompiledAction | RenderCompiledAction | ErrorCompiledAction | ShowDetailsOfAction
+
 export function* compiledSagas() {
   yield all([
-    watchFetchCompiled(), watchRenderCompile(), watchErrorCompiled()
+    watchFetchCompiled(), watchRenderCompile(), watchErrorCompiled(), watchEditorCursorPosition()
   ])
 }

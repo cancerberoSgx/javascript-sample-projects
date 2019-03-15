@@ -9,17 +9,13 @@ export interface State {
   readonly options: Options
   readonly jsxColors: JsxColorsState
 }
+
 export interface Options {
   readonly logs: string[]
   readonly autoApply: boolean
   readonly selectedExplorer: ExplorerName
   readonly working: boolean
-  // readonly modal?: Modal 
 }
-// export interface Modal {
-//   title?: string
-
-// }
 export type ExplorerName = 'editor' | 'elements' | 'jsAst' | 'implementations'|'jsxColors'
 
 export interface Layout {
@@ -29,8 +25,12 @@ export interface Layout {
 export interface Editor {
   readonly code: string
   readonly version: number
+  readonly cursorPosition?: EditorCursorPosition
 }
-
+export interface EditorCursorPosition{
+  lineNumber: number
+  column: number
+}
 export type ThemeType = 'light'|'dark'
 export interface Theme {
   readonly name: string,
@@ -50,8 +50,11 @@ export type Unit = 'em'|'px'
 export interface Compiled {
   response?: CodeWorkerResponse
   request: CodeWorkerRequest
+  explorer?: CompiledExplorerOptions
 }
-
+export interface CompiledExplorerOptions {
+  showDetailsOf?: CodeWorkerResponseJsxAsNode
+}
 
 export interface CodeWorkerResponse {
   version: number

@@ -39,10 +39,6 @@ export class Node extends Component<P> {
 
           <button className="button overlay is-small expand-collapse" onClick={e => 
           this.setState({collapsed: !this.state.collapsed})
-          // {
-            // throw 'not impl'
-            // this.updateProps({ collapsed: !this.state.collapsed })
-          // }
         }></button>
 
           <button className="button overlay is-small" title="HTML code" onClick={e => this.props.onShowHtml(jsonImplOutputElAsHtml(node))}>{`<>`}</button>
