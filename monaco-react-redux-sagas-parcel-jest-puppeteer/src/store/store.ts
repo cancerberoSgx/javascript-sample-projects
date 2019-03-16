@@ -1,8 +1,8 @@
 import { printMs } from 'jsx-alone-core';
 import { AnyAction, Store } from 'redux';
-import { compiledActions } from './compiled';
+import { compiledActions, COMPILED_ACTION } from './compiled';
 import { editorActions, EDITOR_ACTION } from './editor';
-import { JSXColorsActions } from './jsxColors';
+import { JSXColorsActions, JSX_COLORS_ACTIONS } from './jsxColors';
 import { optionsActions, OPTIONS_ACTIONS } from './options';
 import { ChangeThemeAction } from './theme';
 import { State } from './types';
@@ -52,7 +52,14 @@ function shouldBeDispatched(action: AllActions, state: State) {
   // else if(action.type === OPTIONS_ACTIONS.SET_WORKING){
   //   return action.payload.working !== state.options.working
   // }
-  else if (action.type ===EDITOR_ACTION.EDITOR_MODEL_CHANGED) {
+  // else if (action.type ===EDITOR_ACTION.EDITOR_MODEL_CHANGED) {
+  //   return state.options.autoApply
+  // }
+  // else if (action.type ===COMPILED_ACTION.FETCH_COMPILED) {
+  //   // never compile
+  //   return state.options.autoApply
+  // }
+  else if (action.type=== JSX_COLORS_ACTIONS.APPLY_SKIN_STYLES) {
     return state.options.autoApply
   }
   // else if(action.type===COMPILED_ACTION.CHANGE_EXPLORER_OPTIONS) {

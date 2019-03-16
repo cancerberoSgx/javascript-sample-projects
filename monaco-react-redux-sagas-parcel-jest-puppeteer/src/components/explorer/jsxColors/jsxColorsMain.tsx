@@ -3,22 +3,28 @@ import { Component } from '../../util/component';
 import * as React from 'react'
 import { JsxColorsState, JsxColorsTools } from "./jsxColorsTypes";
 import { showInModal } from '../../util/showInModal';
-import { SelectCode } from '../explorers';
 import { Help } from './jsxColorsHelp';
 import { JSX_COLORS_ACTIONS } from '../../../store/jsxColors';
 import { JsxColorSkins } from './JsxColorSkins';
 import { dispatch } from '../../../store/store';
 import { JsxColorsEditor } from './JsxColorsSkinEditor';
-import { CompiledExplorerOptions } from '../../../store/types';
+import { CompiledExplorerOptions, State } from '../../../store/types';
+import { connect } from 'react-redux';
+import { Dispatch } from 'redux';
+import { OPTIONS_ACTIONS } from '../../../store/options';
 
 registerStyle(`
 `);
 
 interface P extends JsxColorsState {
   options?: CompiledExplorerOptions
-  onSelectCode?(sel: SelectCode): void
+  // onSelectCode?(sel: SelectCode): void
+  // onSelectCode: typeof onSelectCode
 }
-export class JsxColorsMain extends Component<P> {
+interface S {
+
+}
+class JsxColorsMain_ extends Component<P, S> {
   render() {
     if (this.props.options &&this.props.options.disableJSXSyntaxHighlight) {
       return <div className="content">
@@ -45,7 +51,6 @@ export class JsxColorsMain extends Component<P> {
         </ul>
       </div>
 
-
       <div className={`editorExplorerBody`}>
         <div className={`editorExplorerBodyOverlay`}>Working...</div>
         <div className={`editor editorExplorerBodyMember ${!this.props.selected ? 'is-active' : ''}`}>
@@ -63,5 +68,37 @@ export class JsxColorsMain extends Component<P> {
 
 }
 
+export const JsxColorsMain = connect (
+  (state: State) => ({
+    predefined: state.jsxColors.predefined,
+    compilerOption: state.compiled.explorer,
+    selectedSkinCurrentStyles: state.jsxColors.selectedSkinCurrentStyles,
+    selected: state.jsxColors.selected,
+  })
+)(JsxColorsMain_) 
 
 
+// const mapStateToProps = ({ listRecordTypes }: ApplicationState) => ({
+//   pageSize: listRecordTypes.pageSize,
+//   type: listRecordTypes.type,
+//   results: listRecordTypes.results,
+//   loading: listRecordTypes.loading,
+//   recordTypes: listRecordTypes.recordTypes,
+//   error: listRecordTypes.error,
+//   resultColumns: listRecordTypes.resultColumns
+// })
+
+
+// const mapDispatchToProps = (dispatch: Dispatch) => ({
+//   fetchRecord: (c: FetchRecordOptions) => dispatch(fetchRecord(c))
+// })export const showRecord = (results: ShowRecordOptions) => { return action(RecordViewActionTypes.SHOW, results) }
+
+// export const onSelectCode = (sel: SelectCode)=> {return {type: OPTIONS_ACTIONS.PUSH_LOG,payload: {}}}
+//   onSelectCode: (sel: SelectCode)=> dispatch(onSelectCode(sel))
+// // });
+
+
+// predefined: JsxSyntaxSkin[];
+// selected?: JsxSyntaxSkin;
+// selectedSkinCurrentStyles?: JsxColorsSkinStyles
+// options?: CompiledExplorerOptions

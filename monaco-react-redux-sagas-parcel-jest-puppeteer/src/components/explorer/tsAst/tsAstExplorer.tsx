@@ -2,13 +2,19 @@ import * as React from 'react'
 import { registerStyle } from '../../../style/styles'
 import { css, height } from '../../../util/media'
 import { Component } from '../../util/component'
-import { ExplorerProps } from '../explorers'
 import { NodeComponent } from './tsAstNode'
 import { DiagnosticComponent } from './tsAstDiagnostic'
 import { dispatch } from '../../../store/store'
 import { COMPILED_ACTION } from '../../../store/compiled'
+import { State, CompiledExplorerOptions, Compiled } from '../../../store/types';
+import { connect } from 'react-redux';
+import { getMonacoInstance } from '../../../monaco/monaco';
+import * as monaco from 'monaco-editor'
 
-interface P extends ExplorerProps {
+interface P   {
+  onSelectCode?(sel: SelectCode): void
+  // options?: CompiledExplorerOptions
+  compiled: Compiled
 }
 interface S {
   showDetailsOfEverything?: boolean
@@ -22,9 +28,9 @@ ${css('.tsAstExplorerContent li ul', `padding-left: .7em`, `padding-left 1.2em`)
 }
 `)
 
-export class TsSimpleAstExplorer extends Component<P, S> {
+class TsSimpleAstExplorer_ extends Component<P, S> {
   render() {
-    if (this.props.options && this.props.options.disableJsAstExplorer) {
+    if (this.props.compiled.explorer && this.props.compiled.explorer.disableJsAstExplorer) {
       return <div className="content">
         <h3>Disabled </h3>
         <p>By configuration disableJsAstExplorer options are turned on so I'm disabled. </p>
@@ -99,3 +105,25 @@ export class TsSimpleAstExplorer extends Component<P, S> {
     }
   }
 }
+
+export interface SelectCode {
+  startColumn: number
+  startLineNumber: number
+  endColumn: number
+  endLineNumber: number
+}
+
+export function onSelectCode(sel: SelectCode): void {
+  getMonacoInstance()!.setSelection(sel)
+  getMonacoInstance()!.revealLineInCenterIfOutsideViewport(sel.startLineNumber, monaco.editor.ScrollType.Smooth)
+  getMonacoInstance()!.focus()
+}
+
+
+
+export const TsSimpleAstExplorer = connect (
+  (state: State) => ({
+    compiled: state.compiled
+  })
+)(TsSimpleAstExplorer_) 
+

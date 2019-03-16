@@ -120,9 +120,6 @@ function* watchEditorCursorPosition() {
   yield takeEvery(EDITOR_ACTION.EDITOR_CHANGED_CURSOR_POSITION,
     function* (action: EditorChangedCursorPositionAction) {
       yield getState().then(state=>{
-        // if (state.compiled.explorer && state.compiled.explorer.disableEditorBind||state.options.selectedExplorer!=='jsAst') {
-        //   return
-        // }
         const ast = state.compiled.response && state.compiled.response.jsxAst
         if (ast) {
           const showDetailsOf = findDescendantIncludingPosition(ast.ast, action.payload)

@@ -5,11 +5,20 @@ import { escapeHtml, queryAll } from '../../../util/util'
 import { Component } from '../../util/component'
 import { Error } from '../../util/error'
 import { showInModal } from '../../util/showInModal'
-import { ExplorerProps } from '../explorers'
 import { Node } from './elementExplorerNode'
 import { isMobile } from '../../../util/media';
+import { Compiled, State } from '../../../store/types';
+import { connect } from 'react-redux';
 
-interface P extends ExplorerProps {
+// interface P extends ExplorerProps {
+//   onSelectCode?(sel: SelectCode): void
+//   options?: CompiledExplorerOptions
+//   compiled: Compiled
+// }
+interface P   {
+  // onSelectCode?(sel: SelectCode): void
+  // options?: CompiledExplorerOptions
+  compiled: Compiled
 }
 interface S {
   showDetailsOfEverything?: boolean
@@ -24,11 +33,11 @@ registerStyle(`
 }
 `)
 
-export class ElementExplorer extends Component<P, S> {
+class ElementExplorer_ extends Component<P, S> {
 
   render() {
    
-    if(this.props.options && this.props.options.disableElementsExplorer){
+    if (this.props.compiled.explorer && this.props.compiled.explorer.disableElementsExplorer){
       return <div className="content">
        <h3>Disabled</h3>
         <p>By configuration, disableElementsExplorer option is turned on so I'm disabled. </p>
@@ -97,3 +106,10 @@ function ElementNodeHtmlCodeModal(props: { html: string }) {
     </div>
   </div>
 }
+
+export const ElementExplorer = connect (
+  (state: State) => ({
+    compiled: state.compiled
+  })
+)(ElementExplorer_) 
+

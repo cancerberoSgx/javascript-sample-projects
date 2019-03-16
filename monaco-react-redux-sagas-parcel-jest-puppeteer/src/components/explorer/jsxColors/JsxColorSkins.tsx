@@ -3,7 +3,6 @@ import { JSX_COLORS_ACTIONS } from '../../../store/jsxColors';
 import { dispatch } from '../../../store/store';
 import { registerStyle } from '../../../style/styles';
 import { Component } from '../../util/component';
-import { SelectCode } from '../explorers';
 import { JsxColorsState } from './jsxColorsTypes';
 import { jsxColorSkins } from './skinsData';
 
@@ -11,7 +10,6 @@ registerStyle(`
 `);
 
 interface P extends JsxColorsState {
-  onSelectCode?(sel: SelectCode): void
 }
 export class JsxColorSkins extends Component<P> {
 

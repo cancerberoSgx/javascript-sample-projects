@@ -1,13 +1,13 @@
 import * as React from 'react'
 import { registerStyle } from '../style/styles'
 import { isMobile, css, height } from '../util/media'
-import { Editor } from './editor'
-import { onSelectCode } from './explorer/explorers'
 import { TsSimpleAstExplorer } from './explorer/tsAst/tsAstExplorer'
 import { Component } from './util/component'
 import { JsxColorsMain } from './explorer/jsxColors/jsxColorsMain';
-import { Theme, State } from '../store/types';
+import { Theme, State, ExplorerName } from '../store/types';
 import { ElementExplorer } from './explorer/elements/elementExplorer';
+import { connect } from 'react-redux';
+import { Editor } from './editor';
 
 registerStyle((theme: Theme) => `
 .editorExplorerBodyOverlay{
@@ -48,17 +48,20 @@ ${css(`.editorExplorerBodyMember`, ``, `overflow: scroll;`)}
   width: 100%;
 }
 
-${css(`.editorExplorerBody `, 
-`height: ${height()-100}px;`, 
-`height: ${height()-160}px;`)}
+${css(`.editorExplorerBody `,
+  `height: ${height() - 100}px;`,
+  `height: ${height() - 160}px;`)}
 
 .editorExplorerBodyMember.is-active {
   display: flex;
 }
 
 `)
+interface P{ 
+  selectedExplorer: ExplorerName 
+}
 
-export class EditorExplorerBody extends Component<{state: State}> {
+class EditorExplorerBody_ extends Component<P> {
 
   render() {
 
@@ -66,21 +69,18 @@ export class EditorExplorerBody extends Component<{state: State}> {
 
       <div className={`editorExplorerBody`}>
         <div className={`editorExplorerBodyOverlay`}>Working...</div>
-        <div className={`editor editorExplorerBodyMember ${this.props.state.options.selectedExplorer === 'editor' ? 'is-active' : ''}`}>
-        {this.props.state.options.selectedExplorer === 'editor' &&  <Editor {...this.props} />}
+        <div className={`editor editorExplorerBodyMember ${this.props.selectedExplorer === 'editor' ? 'is-active' : ''}`}>
+          {this.props.selectedExplorer === 'editor' && <Editor />}
         </div>
-        <div className={`editorExplorerBodyMember elements ${this.props.state.options.selectedExplorer === 'elements' ? 'is-active' : ''}`}>
-        {this.props.state.options.selectedExplorer === 'elements' &&<ElementExplorer options={this.props.state.compiled.explorer}  editor={this.props.state.editor} compiled={this.props.state.compiled} onSelectCode={onSelectCode} />}
+        <div className={`editorExplorerBodyMember elements ${this.props.selectedExplorer === 'elements' ? 'is-active' : ''}`}>
+          {this.props.selectedExplorer === 'elements' && <ElementExplorer />}
         </div>
-        <div className={`editorExplorerBodyMember jsAst ${this.props.state.options.selectedExplorer === 'jsAst' ? 'is-active' : ''}`}>
-          {this.props.state.options.selectedExplorer === 'jsAst' && <TsSimpleAstExplorer options={this.props.state.compiled.explorer} editor={this.props.state.editor} compiled={this.props.state.compiled} onSelectCode={onSelectCode} />}
+        <div className={`editorExplorerBodyMember jsAst ${this.props.selectedExplorer === 'jsAst' ? 'is-active' : ''}`}>
+          {this.props.selectedExplorer === 'jsAst' && <TsSimpleAstExplorer />}
         </div>
-        <div className={`editorExplorerBodyMember jsxColors ${this.props.state.options.selectedExplorer === 'jsxColors' ? 'is-active' : ''}`}>
-          {this.props.state.options.selectedExplorer === 'jsxColors' && <JsxColorsMain options={this.props.state.compiled.explorer}  onSelectCode={onSelectCode} {...this.props.state.jsxColors} />}
+        <div className={`editorExplorerBodyMember jsxColors ${this.props.selectedExplorer === 'jsxColors' ? 'is-active' : ''}`}>
+          {this.props.selectedExplorer === 'jsxColors' && <JsxColorsMain />}
         </div>
-        {/* <div className={`editorExplorerBodyMember implementations ${this.props.state.options.selectedExplorer === 'implementations' ? 'is-active' : ''}`}>
-          <ImplExplorer editor={this.props.state.editor} compiled={this.props.state.compiled} onSelectCode={onSelectCode} />
-        </div> */}
       </div>
 
       :
@@ -89,18 +89,15 @@ export class EditorExplorerBody extends Component<{state: State}> {
 
         <div className={`editorExplorerBodyOverlay`}>Working...</div>
         <div className="tile is-vertical is-4">
-          <article className={`editorExplorerBodyMember elements ${this.props.state.options.selectedExplorer === 'elements' ? 'is-active' : ''}`}>
-          {this.props.state.options.selectedExplorer === 'elements' && <ElementExplorer options={this.props.state.compiled.explorer} editor={this.props.state.editor} compiled={this.props.state.compiled} onSelectCode={onSelectCode} />}
+          <article className={`editorExplorerBodyMember elements ${this.props.selectedExplorer === 'elements' ? 'is-active' : ''}`}>
+            {this.props.selectedExplorer === 'elements' && <ElementExplorer />}
           </article>
-          <article className={`editorExplorerBodyMember jsAst ${this.props.state.options.selectedExplorer === 'jsAst' ? 'is-active' : ''}`}>
-            {this.props.state.options.selectedExplorer === 'jsAst' && <TsSimpleAstExplorer options={this.props.state.compiled.explorer} editor={this.props.state.editor} compiled={this.props.state.compiled} onSelectCode={onSelectCode} />}
+          <article className={`editorExplorerBodyMember jsAst ${this.props.selectedExplorer === 'jsAst' ? 'is-active' : ''}`}>
+            {this.props.selectedExplorer === 'jsAst' && <TsSimpleAstExplorer />}
           </article>
-          <article className={`editorExplorerBodyMember jsxColors ${this.props.state.options.selectedExplorer === 'jsxColors' ? 'is-active' : ''}`}>
-          {this.props.state.options.selectedExplorer === 'jsxColors' && <JsxColorsMain options={this.props.state.compiled.explorer} onSelectCode={onSelectCode} {...this.props.state.jsxColors} />}
+          <article className={`editorExplorerBodyMember jsxColors ${this.props.selectedExplorer === 'jsxColors' ? 'is-active' : ''}`}>
+            {this.props.selectedExplorer === 'jsxColors' && <JsxColorsMain />}
           </article>
-          {/* <article className={`editorExplorerBodyMember implementations ${this.props.state.options.selectedExplorer === 'implementations' ? 'is-active' : ''}`}>
-            <ImplExplorer editor={this.props.state.editor} compiled={this.props.state.compiled} onSelectCode={onSelectCode} />
-          </article> */}
         </div>
 
         <div className="tile is-vertical is-8">
@@ -112,3 +109,11 @@ export class EditorExplorerBody extends Component<{state: State}> {
   }
 
 }
+
+export const EditorExplorerBody = connect (
+  (state: State) => ({
+    selectedExplorer: state.options.selectedExplorer
+  })
+)(EditorExplorerBody_) 
+
+

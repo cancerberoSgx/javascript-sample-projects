@@ -54,7 +54,7 @@ export async function start() {
   document.body.appendChild(div)
   
   // its kind of important that div is attached - mostly because of monaco
-  ReactDom.render(<Provider store={store}><App state={store.getState()} /></Provider>, div)
+  ReactDom.render(<Provider store={store}><App /></Provider>, div)
  
 
 

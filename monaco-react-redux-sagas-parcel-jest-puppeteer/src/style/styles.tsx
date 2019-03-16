@@ -1,10 +1,11 @@
 import * as React from 'react'
-import { Theme } from '../store/types'
+import { Theme, State } from '../store/types'
 import { Component } from '../components/util/component'
 import { globalStyles } from './globals'
 import { cyborg_css } from '../util/filesPacked/cyborg_css';
 import { default_css } from '../util/filesPacked/default_css';
 import { getState } from '../store/store';
+import { connect } from 'react-redux';
 
 let stringStyle = ``
 
@@ -22,7 +23,7 @@ export async function registerStyle(s:  string | ((theme: Theme) => string)) {
   } 
 }
 
-export class Styles extends Component<{ theme: Theme }> {
+ class Styles_ extends Component<{ theme: Theme }> {
   render() {
     registerStyle(globalStyles(this.props.theme))
     return <div>
@@ -32,3 +33,9 @@ export class Styles extends Component<{ theme: Theme }> {
     </div>
   }
 }
+export const Styles = connect (
+  (state: State) => ({
+    theme: state.layout.theme
+  })
+)(Styles_) 
+

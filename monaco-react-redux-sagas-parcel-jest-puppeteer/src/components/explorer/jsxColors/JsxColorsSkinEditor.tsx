@@ -4,7 +4,6 @@ import { dispatch } from '../../../store/store';
 import { registerStyle } from '../../../style/styles';
 import { Component } from '../../util/component';
 import { showInModal } from '../../util/showInModal';
-import { SelectCode } from '../explorers';
 import { jsxColorsClasses, ClassName } from './classesData';
 import { JsxColorsPropertyEditor } from './JsxColorsPropertyEditor';
 import { JsxColorsState, JsxSyntaxSkin } from "./jsxColorsTypes";
@@ -16,7 +15,6 @@ registerStyle(`
 `);
 
 interface P extends JsxColorsState {
-  onSelectCode?(sel: SelectCode): void
 
 }
 export class JsxColorsEditor extends Component<P> {

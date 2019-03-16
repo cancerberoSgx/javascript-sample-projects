@@ -6,6 +6,7 @@ import { jsxColorSkins } from '../components/explorer/jsxColors/skinsData';
 import { registerStyle } from '../style/styles';
 import { dispatch, getState } from './store';
 import { COMPILED_ACTION } from './compiled';
+import { installSyntaxHighLightStyles } from '../monaco/jsxSyntaxHighlight';
 
 const initialState: JsxColorsState = {
   predefined: jsxColorSkins,
@@ -57,13 +58,13 @@ interface ApplySkinStylesAction extends Action<JSX_COLORS_ACTIONS.APPLY_SKIN_STY
 export type JSXColorsActions = ChangeToolAction | SelectSkinAction | EditorChangePropValueAction | ApplySkinStylesAction
 
 function* watchForSkinSelected() {
-  // when skin is selected we change the tool to editor and make sure selected skin is applied (by dispatching EDITOR_SKIN_CHANGED). also we trigger a compilation 
+  // when skin is selected we change the tool to editor and make sure selected skin is applied (by dispatching EDITOR_SKIN_CHANGED). also we trigger a compilation sinceit might happen that compiled response has not the required data
   yield takeEvery(JSX_COLORS_ACTIONS.SELECT_SKIN,
     function* skinSelected(action: SelectSkinAction) {
-      yield dispatch({ type: JSX_COLORS_ACTIONS.CHANGE_TOOL, payload: { tool: 'editor' } })
-      yield dispatch({ type: JSX_COLORS_ACTIONS.EDITOR_SKIN_CHANGED, payload: { changed: action.payload.selected } })
-      getState().then(state=>{
+      yield getState().then(state=>{
         dispatch({ type: COMPILED_ACTION.FETCH_COMPILED, payload: {request: state.compiled.request}})
+        dispatch({ type: JSX_COLORS_ACTIONS.CHANGE_TOOL, payload: { tool: 'editor' } })
+        dispatch({ type: JSX_COLORS_ACTIONS.EDITOR_SKIN_CHANGED, payload: { changed: action.payload.selected } })
       })
     }
   )
@@ -82,7 +83,8 @@ function* watchForCssChange() {
   // when there is new styles to apply we use registerStyle to render them in the DOM
   yield takeEvery(JSX_COLORS_ACTIONS.APPLY_SKIN_STYLES,
     function* skinSelected(action: ApplySkinStylesAction) {
-      yield registerStyle(action.payload.styles)
+      yield installSyntaxHighLightStyles(action.payload.styles)
+      // yield registerStyle(action.payload.styles)
     }
   )
 }

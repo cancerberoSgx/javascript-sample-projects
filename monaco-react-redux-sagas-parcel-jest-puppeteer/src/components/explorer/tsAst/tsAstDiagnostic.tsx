@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { CodeWorkerResponseJsxAstDiagnostic } from '../../../store/types'
 import { Component } from '../../util/component'
-import { SelectCode } from '../explorers'
+import { SelectCode } from './tsAstExplorer';
 
 interface P {
   d: CodeWorkerResponseJsxAstDiagnostic

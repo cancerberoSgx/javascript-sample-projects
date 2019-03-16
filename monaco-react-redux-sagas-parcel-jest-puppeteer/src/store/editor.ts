@@ -53,30 +53,30 @@ export interface EditorChangedCursorPositionAction extends Action<EDITOR_ACTION.
 
 export type editorActions = RequestCodeChangeAction | EditorModelChangedAction | EditorChangedCursorPositionAction
 
-function* watchEditorModelChanged() {
-  yield takeEvery(EDITOR_ACTION.EDITOR_MODEL_CHANGED,
-    function* (action: RequestCodeChangeAction) {
-      yield getState().then(state => {
-        // if (state.options.autoApply) {
-        const a: FetchCompiledAction = {
-          type: COMPILED_ACTION.FETCH_COMPILED,
-          payload: {
-            request:
-            {
-              ...action.payload
-            }
-          }
-        }
-        dispatch(a)
-        // }
-      })
-    })
-}
+// function* watchEditorModelChanged() {
+//   yield takeEvery(EDITOR_ACTION.EDITOR_MODEL_CHANGED,
+//     function* (action: RequestCodeChangeAction) {
+//       yield getState().then(state => {
+//         // if (state.options.autoApply) {
+//         const a: FetchCompiledAction = {
+//           type: COMPILED_ACTION.FETCH_COMPILED,
+//           payload: {
+//             request:
+//             {
+//               ...action.payload
+//             }
+//           }
+//         }
+//         dispatch(a)
+//         // }
+//       })
+//     })
+// }
 
 function* watchRequestEditorChange() {
   yield takeEvery(EDITOR_ACTION.REQUEST_CODE_CHANGE,
     function* (action: RequestCodeChangeAction) {
-      yield dispatch({ type: OPTIONS_ACTIONS.SET_WORKING, payload: { working: true } })
+      // yield dispatch({ type: OPTIONS_ACTIONS.SET_WORKING, payload: { working: true } })
       yield getMonacoInstance()!.getModel()!.setValue(action.payload.code)
     }
   )
@@ -84,6 +84,6 @@ function* watchRequestEditorChange() {
 
 export function* editorSagas() {
   yield all([
-    watchRequestEditorChange(), watchEditorModelChanged()
+    watchRequestEditorChange()//, watchEditorModelChanged()
   ])
 }

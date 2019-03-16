@@ -26,12 +26,21 @@ export function dispatchSyntaxHighlight(data: CodeWorkerResponse) {
       }
     }
   })
-
+debugger
   lastJsxDecorations = editor.deltaDecorations(lastJsxDecorations, decorations)
 }
 
 export function jsxSyntaxHighlightInstall() {
   const { styles } = buildCssForSkin(jsxColorSkins.find(t => t.name === 'Default Light') || jsxColorSkins[0])
-  registerStyle(styles)
+  installSyntaxHighLightStyles(styles)
+}
 
+export function installSyntaxHighLightStyles(css: string) {
+  let s = document.body.querySelector('#installSyntaxHighLightStyles')
+  if(!s){
+    s = document.createElement('style')
+    s.setAttribute('id', '#installSyntaxHighLightStyles')
+    document.body.appendChild(s)
+  }
+  s.innerHTML = css
 }

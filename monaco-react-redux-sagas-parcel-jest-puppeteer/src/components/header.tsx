@@ -3,7 +3,7 @@ import { examples } from '../examples/examples'
 import { EDITOR_ACTION } from '../store/editor'
 import { OPTIONS_ACTIONS } from '../store/options'
 import { dispatch } from '../store/store'
-import { State } from '../store/types'
+import { State, Options, Theme, CompiledExplorerOptions } from '../store/types'
 import { allThemes } from '../style/theme'
 import { ForkRibbon } from './content/forkRibbon'
 import { WhatsThis } from './content/whatsThis'
@@ -12,22 +12,25 @@ import { Component } from './util/component'
 import { showInModal } from './util/showInModal'
 import { THEME_ACTIONS } from '../store/theme';
 import { COMPILED_ACTION } from '../store/compiled';
+import { connect } from 'react-redux';
 
 interface P {
-  state: State
+  options: Options
+  theme: Theme
+  compiledOptions?: CompiledExplorerOptions
 }
 
-export class Header extends Component<P> {
+class Header_ extends Component<P> {
 
   render() {
-    const theme = this.props.state.layout.theme
+    const theme = this.props.theme
     const nextThemeName = theme.name === 'dark' ? 'noStyles' : theme.name === 'noStyles' ? 'light' : 'dark'
     const nextTheme = allThemes.find(t => t.name === nextThemeName)!
 
     return <nav className="navbar is-fixed-top is-primary" role="navigation" aria-label="main navigation">
       <ForkRibbon />
       <div className="navbar-brand">
-        <EditorExplorerMenu {...this.props} />
+        <EditorExplorerMenu/>
 
         <a role="button" className="navbar-burger burger is-large" aria-label="menu" aria-expanded="false" data-target="jsxExplorerNavbar" onClick={e => this.query('#jsxExplorerNavbar').classList.toggle('is-active')}>
           <span aria-hidden="true" onClick={e => this.query('#jsxExplorerNavbar').classList.toggle('is-active')}></span>
@@ -58,7 +61,7 @@ export class Header extends Component<P> {
             <div className="navbar-dropdown">
               <a className="navbar-item">
                 <label className="content">
-                  <input checked={this.props.state.options.autoApply} type="checkbox" onChange={e =>
+                  <input checked={this.props.options.autoApply} type="checkbox" onChange={e =>
                     dispatch({ type: OPTIONS_ACTIONS.CHANGE_AUTO_APPLY, payload: { autoApply: e.currentTarget.checked } })
                   }
                   />
@@ -69,7 +72,7 @@ export class Header extends Component<P> {
             </a>
             <a className="navbar-item">
                 <label className="content" title="update timeout in seconds">
-                  <input type="number" value={this.props.state.options.updateTimeout} onChange={e =>{
+                  <input type="number" value={this.props.options.updateTimeout} onChange={e =>{
                    if( e.currentTarget.valueAsNumber<5 ) {
                     alert('Must be greater than 5 (in seconds)')
                     return
@@ -89,7 +92,7 @@ export class Header extends Component<P> {
 
             <a className="navbar-item">
                 <label className="content">
-                  <input checked={this.props.state.compiled.explorer && this.props.state.compiled.explorer.disableElementsExplorer} type="checkbox" onChange={e =>
+                  <input checked={this.props.compiledOptions && this.props.compiledOptions.disableElementsExplorer} type="checkbox" onChange={e =>
                     dispatch({ type: COMPILED_ACTION.CHANGE_EXPLORER_OPTIONS, payload: { disableElementsExplorer: e.currentTarget.checked } })
                   }
                   />
@@ -101,7 +104,7 @@ export class Header extends Component<P> {
 
             <a className="navbar-item">
                 <label className="content">
-                  <input checked={this.props.state.compiled.explorer && this.props.state.compiled.explorer.disableEditorBind} type="checkbox" onChange={e =>
+                  <input checked={this.props.compiledOptions && this.props.compiledOptions.disableEditorBind} type="checkbox" onChange={e =>
                     dispatch({ type: COMPILED_ACTION.CHANGE_EXPLORER_OPTIONS, payload: { disableEditorBind: e.currentTarget.checked } })
                   }
                   />
@@ -113,7 +116,7 @@ export class Header extends Component<P> {
 
             <a className="navbar-item">
                 <label className="content">
-                  <input checked={this.props.state.compiled.explorer && this.props.state.compiled.explorer.disableJSXSyntaxHighlight} type="checkbox" onChange={e =>
+                  <input checked={this.props.compiledOptions && this.props.compiledOptions.disableJSXSyntaxHighlight} type="checkbox" onChange={e =>
                     dispatch({ type: COMPILED_ACTION.CHANGE_EXPLORER_OPTIONS, payload: { disableJSXSyntaxHighlight: e.currentTarget.checked } })
                   }
                   />
@@ -125,7 +128,7 @@ export class Header extends Component<P> {
 
             <a className="navbar-item">
                 <label className="content">
-                  <input checked={this.props.state.compiled.explorer && this.props.state.compiled.explorer.disableJsAstExplorer} type="checkbox" onChange={e =>
+                  <input checked={this.props.compiledOptions && this.props.compiledOptions.disableJsAstExplorer} type="checkbox" onChange={e =>
                     dispatch({ type: COMPILED_ACTION.CHANGE_EXPLORER_OPTIONS, payload: { disableJsAstExplorer: e.currentTarget.checked } })
                   }
                   />
@@ -204,3 +207,11 @@ export class Header extends Component<P> {
     </nav>
   }
 }
+
+export const Header = connect (
+  (state: State) => ({
+    options: state.options,
+    theme: state.layout.theme,
+    compiledOptions: state.compiled.explorer
+  })
+)(Header_) 

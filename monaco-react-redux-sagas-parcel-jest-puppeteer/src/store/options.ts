@@ -3,7 +3,8 @@ import { isMobile } from '../util/media'
 import { ExplorerName, Options } from './types'
 import { dispatch, getState } from './store';
 import { takeEvery, all } from 'redux-saga/effects';
-import { COMPILED_ACTION } from './compiled';
+import { COMPILED_ACTION, FetchCompiledAction } from './compiled';
+import { EDITOR_ACTION, RequestCodeChangeAction } from './editor';
 
 const initialState: Options = {
   logs: [],
@@ -84,9 +85,22 @@ function* watchSelectExplorerChange() {
   )
 }
 
+function* watchEditorModelChangedForAutoAApply() {
+  // if autoApply we compile each time the model changes. we have this logic only here (not in store shouldBeDispatched for ex)
+  yield takeEvery(EDITOR_ACTION.EDITOR_MODEL_CHANGED,
+    function* (action: RequestCodeChangeAction) {
+      yield getState().then(state => {
+        if (state.options.autoApply) {
+        dispatch( {
+          type: COMPILED_ACTION.FETCH_COMPILED,
+          payload: {            request:            {              ...action.payload            }          }        })
+        }
+      })
+    })
+}
 export function* optionsSagas() {
   yield all([
-    watchSelectExplorerChange()
+    watchSelectExplorerChange(), watchEditorModelChangedForAutoAApply()
   ])
 }
 
