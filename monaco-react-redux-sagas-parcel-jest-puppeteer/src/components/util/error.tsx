@@ -7,9 +7,9 @@ export function Error(props: {
   evaluated: string
 }) {
   const { error, title = 'ERROR', evaluated } = props
-  return <div>
+  return <div className="test-error">
     <h3>{title}</h3>
-    Name: {error.name}<br />
+      Name: <span className="error-name">{error.name}</span><br />
     Message: {error.message}<br />
     Stack: <pre>
       {(error.stack || '')}

@@ -15,7 +15,7 @@ import { connect } from 'react-redux';
 //   options?: CompiledExplorerOptions
 //   compiled: Compiled
 // }
-interface P   {
+interface P {
   // onSelectCode?(sel: SelectCode): void
   // options?: CompiledExplorerOptions
   compiled: Compiled
@@ -36,10 +36,10 @@ registerStyle(`
 class ElementExplorer_ extends Component<P, S> {
 
   render() {
-   
-    if (this.props.compiled.explorer && this.props.compiled.explorer.disableElementsExplorer){
+
+    if (this.props.compiled.explorer && this.props.compiled.explorer.disableElementsExplorer) {
       return <div className="content">
-       <h3>Disabled</h3>
+        <h3>Disabled</h3>
         <p>By configuration, disableElementsExplorer option is turned on so I'm disabled. </p>
       </div>
     }
@@ -57,11 +57,11 @@ class ElementExplorer_ extends Component<P, S> {
           onClick={e => showInModal(<ElementNodeHtmlCodeModal html={jsonImplOutputElAsHtml(result!)} />, 'HTML')}>
           HTML output of everything</button>
 
-        <button className="button" title="Details of everything"
-          onClick={e => this.setState({ 
-            showDetailsOfEverything: !this.state.showDetailsOfEverything, 
-            collapseAllMode:  !this.state.showDetailsOfEverything ===true ? 'expand' : this.state.collapseAllMode
-            })}>
+        <button className="button test-show-all-info" title="Details of everything"
+          onClick={e => this.setState({
+            showDetailsOfEverything: !this.state.showDetailsOfEverything,
+            collapseAllMode: !this.state.showDetailsOfEverything === true ? 'expand' : this.state.collapseAllMode
+          })}>
           {this.state.showDetailsOfEverything ? 'Hide' : 'Show'} details of everything</button>
 
         <button className="button" title="Collapse all"
@@ -107,9 +107,9 @@ function ElementNodeHtmlCodeModal(props: { html: string }) {
   </div>
 }
 
-export const ElementExplorer = connect (
+export const ElementExplorer = connect(
   (state: State) => ({
     compiled: state.compiled
   })
-)(ElementExplorer_) 
+)(ElementExplorer_)
 

@@ -97,10 +97,10 @@ interface AP {
 class Attrs extends Component<AP> {
   protected removeChildrenOnUpdate = true
   render() {
-    return <table className="table content">
+    return <table>
       {Object.keys(this.props.node.attrs).map(a => <tr className="tr">
-        <td><em>{a} ({typeof this.props.node.attrs[a]})</em><code>=</code></td>
-        <td>{this.printValue(a, this.props.node.attrs[a])} </td>
+        <td><em className="test-attribute-name">{a} ({typeof this.props.node.attrs[a]})</em><code>=</code></td>
+        <td className="test-attribute-name">{this.printValue(a, this.props.node.attrs[a])}</td>
       </tr>)}
       {typeof this.props.node.innerHtml === 'string' && <tr className="tr">
         <td><em>innerHtml</em></td>
