@@ -1,6 +1,6 @@
 import * as monaco from 'monaco-editor'
 import { CodeWorkerResponse } from '../store/types'
-import { registerStyle } from '../style/styles'
+import { registerStyle, installStyleWithTagId } from '../style/styles'
 import { getMonacoInstance } from './monaco'
 import { jsxColorSkins } from '../components/explorer/jsxColors/skinsData';
 import { buildCssForSkin } from '../components/explorer/jsxColors/jsxColorsCssBuilder';
@@ -36,11 +36,5 @@ export function jsxSyntaxHighlightInstall() {
 }
 
 export function installSyntaxHighLightStyles(css: string) {
-  let s = document.body.querySelector('#installSyntaxHighLightStyles')
-  if(!s){
-    s = document.createElement('style')
-    s.setAttribute('id', '#installSyntaxHighLightStyles')
-    document.body.appendChild(s)
-  }
-  s.innerHTML = css
+  installStyleWithTagId(css, 'jsxSyntaxHighlightInstall')
 }

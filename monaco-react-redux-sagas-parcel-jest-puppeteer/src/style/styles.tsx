@@ -39,3 +39,13 @@ export const Styles = connect (
   })
 )(Styles_) 
 
+
+export function installStyleWithTagId(css: string, id: string) {
+  let s = document.body.querySelector(`#${id}`)
+  if(!s){
+    s = document.createElement('style')
+    s.setAttribute('id', `${id}`)
+    document.body.appendChild(s)
+  }
+  s.innerHTML = css
+}
