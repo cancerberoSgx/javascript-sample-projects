@@ -2,7 +2,7 @@
 import { applyMiddleware, combineReducers, createStore, ReducersMapObject } from 'redux'
 import createSagaMiddleware from 'redux-saga'
 import { all } from 'redux-saga/effects'
-import { installCodeWWorker as installCodeWorker } from './util/codeWorkerManager'
+// import { installCodeWWorker as installCodeWorker } from './util/codeWorkerManager'
 // import { Main } from './components/main'
 import { initMonacoWorkers } from './monaco/monaco'
 import { compiled, compiledSagas } from './store/compiled'
@@ -46,7 +46,7 @@ export async function start() {
 
   sagaMiddleware.run(rootSaga)
 
-  installCodeWorker()
+  // installCodeWorker()
 
   initMonacoWorkers()
 

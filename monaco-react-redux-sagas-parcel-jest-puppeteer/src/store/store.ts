@@ -1,4 +1,4 @@
-import { printMs } from 'jsx-alone-core';
+import { printMs } from 'misc-utils-of-mine-generic';
 import { AnyAction, Store } from 'redux';
 import { compiledActions, COMPILED_ACTION } from './compiled';
 import { editorActions, EDITOR_ACTION } from './editor';

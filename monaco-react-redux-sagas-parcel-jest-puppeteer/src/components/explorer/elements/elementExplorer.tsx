@@ -1,4 +1,4 @@
-import { jsonImplOutputElAsHtml } from 'jsx-alone-core'
+// import { jsonImplOutputElAsHtml } from 'jsx-alone-core'
 import * as React from 'react'
 import { registerStyle } from '../../../style/styles'
 import { escapeHtml, queryAll } from '../../../util/util'
@@ -54,7 +54,7 @@ class ElementExplorer_ extends Component<P, S> {
         <p>This is a representation the output HTML when the code renders. Use the buttons to see details or the actual HTML output of each node.</p>
 
         <button className="button" title="See HTML code"
-          onClick={e => showInModal(<ElementNodeHtmlCodeModal html={jsonImplOutputElAsHtml(result!)} />, 'HTML')}>
+          onClick={e => showInModal(<ElementNodeHtmlCodeModal html={'jsonImplOutputElAsHtml(result!)'} />, 'HTML')}>
           HTML output of everything</button>
 
         <button className="button test-show-all-info" title="Details of everything"
@@ -68,7 +68,7 @@ class ElementExplorer_ extends Component<P, S> {
           onClick={e => this.setState({ collapseAllMode: this.state.collapseAllMode !== 'collapse' ? 'collapse' : 'expand' })}>
           {this.state.collapseAllMode !== 'collapse' ? 'Collapse' : 'Expand'} everything</button>
 
-        {!error && !!result && <Node node={result} {...this.state} onShowHtml={html => showInModal(<ElementNodeHtmlCodeModal html={html} />, 'HTML')}></Node>}
+        {!error && !!result && <Node   {...this.state} onShowHtml={html => showInModal(<ElementNodeHtmlCodeModal html={html} />, 'HTML')}></Node>}
 
         {!!error && <Error evaluated={evaluated} error={error} />}
       </div>

@@ -1,7 +1,7 @@
 import { JsxSyntaxSkin } from './jsxColorsTypes';
 import { ClassName, JsxColorsClass, jsxColorsClasses } from './classesData';
 import { keys } from '../../../util/util';
-import { styleObjectToCss } from 'jsx-alone-core';
+import { styleObjectToCss } from 'misc-utils-of-mine-generic';
 
 export function buildCssForSkin(skin: JsxSyntaxSkin) {
 

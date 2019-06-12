@@ -29,10 +29,10 @@ const _promiseResolves: { [version: string]: (...args: any[]) => any } = {}
 /** the only way of client side code to request code compilation */
 export function compileCode(r: CodeWorkerRequest)// : Promise<CodeWorkerResponse> 
 {
-  queue.add(()=>new Promise<CodeWorkerResponse>(resolve => {
-    _promiseResolves[r.version+''] = resolve
-    codeWorker.postMessage(r)
-  }))
+  // queue.add(()=>new Promise<CodeWorkerResponse>(resolve => {
+  //   _promiseResolves[r.version+''] = resolve
+  //   codeWorker.postMessage(r)
+  // }))
 }
 
 const TIME_BETWEEN_REQUESTS = 100
@@ -61,11 +61,11 @@ function codeWorkerErrorListener(ev: ErrorEvent) {
   })
 }
 
-let codeWorker: Worker
+// let codeWorker: Worker
 
-export function installCodeWWorker() {
-  codeWorker = new Worker('../codeWorker/codeWorker.ts')
-  codeWorker.addEventListener('message', ev => codeWorkerListener(ev))
-  codeWorker.addEventListener('error', ev => codeWorkerErrorListener(ev))
-}
+// export function installCodeWWorker() {
+//   // codeWorker = new Worker('../codeWorker/codeWorker.ts')
+//   // codeWorker.addEventListener('message', ev => codeWorkerListener(ev))
+//   // codeWorker.addEventListener('error', ev => codeWorkerErrorListener(ev))
+// }
 

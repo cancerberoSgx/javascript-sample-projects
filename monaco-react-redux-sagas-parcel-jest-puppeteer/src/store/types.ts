@@ -1,7 +1,17 @@
-import { Classification } from '../codeWorker/extractCodeDecorations'
 import { JsxColorsState } from "../components/explorer/jsxColors/jsxColorsTypes";
-import { JsonImplOutputEl } from 'jsx-alone-core';
 
+export interface Classification {
+  startColumn: number
+  startLineNumber: number
+  endLineNumber: number
+  // modifiers?: Modifier[]
+  endColumn: number
+  kind: string
+  parentKind?: string
+  // type?: ParentShipKind
+  // nodeType?: string
+  extra?: string[],
+} 
 export interface State {
   readonly layout: Layout
   readonly editor: Editor
@@ -67,7 +77,7 @@ export interface CodeWorkerResponse {
     classifications: Classification[]
   }
   evaluate: {
-    result?: JsonImplOutputEl;
+    result?: any;
     error?: CodeWorkerError;
     evaluated: string;
   }
