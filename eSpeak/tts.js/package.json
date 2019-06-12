@@ -1,0 +1,47 @@
+{
+  "_from": "tts.js",
+  "_id": "tts.js@0.1.0",
+  "_inBundle": false,
+  "_integrity": "sha1-fKArBsLrkckBuyL3ZowfUeCnDRg=",
+  "_location": "/tts.js",
+  "_phantomChildren": {},
+  "_requested": {
+    "type": "tag",
+    "registry": true,
+    "raw": "tts.js",
+    "name": "tts.js",
+    "escapedName": "tts.js",
+    "rawSpec": "",
+    "saveSpec": null,
+    "fetchSpec": "latest"
+  },
+  "_requiredBy": [
+    "#USER",
+    "/"
+  ],
+  "_resolved": "https://registry.npmjs.org/tts.js/-/tts.js-0.1.0.tgz",
+  "_shasum": "7ca02b06c2eb91c901bb22f7668c1f51e0a70d18",
+  "_spec": "tts.js",
+  "_where": "/Users/sebastiangurin/test",
+  "author": {
+    "name": "Liscon Lee",
+    "email": "licson0729@gmail.com"
+  },
+  "bundleDependencies": false,
+  "dependencies": {},
+  "deprecated": false,
+  "description": "tts.js is a Text-To-Speech compiled from eSpeak using Emscripten and it supports multiple languages.",
+  "engines": {
+    "node": ">= 0.6.x",
+    "npm": ">= 1.0.x"
+  },
+  "keywords": [
+    "tts",
+    "Text-To-Speech",
+    "espeak",
+    "speak"
+  ],
+  "main": "tts.js",
+  "name": "tts.js",
+  "version": "0.1.0"
+}
