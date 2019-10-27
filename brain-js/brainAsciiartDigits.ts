@@ -120,14 +120,33 @@ net.train(trainingData);
 
 
 const result = brain.likely(toArray(
-  '#    ##' +
-  '     # ' +
+  '      #' +
+  '       ' +
   '    #  ' +
   '       ' +
+  '  #    ' +
   '       ' +
-  ' #     ' +
   '#      '
 ), net);
 console.log(result);
 
-// bonus three examples, not like training data
+
+
+
+
+
+
+
+
+// const result = brain.likely(toArray(
+//   '#    ##' +
+//   '     # ' +
+//   '    #  ' +
+//   '       ' +
+//   '       ' +
+//   ' #     ' +
+//   '#      '
+// ), net);
+// console.log(result);
+
+// // bonus three examples, not like training data

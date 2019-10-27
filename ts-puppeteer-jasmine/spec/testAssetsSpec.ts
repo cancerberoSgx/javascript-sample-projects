@@ -1,14 +1,7 @@
 export default describe('assets', () => {
-  it('rotate.png and magick.wasm resources should be available in orther these tests to run', async done => {
-    let r = await fetch('magick.wasm')
+  it('fn.png should be available', async done => {
+    let r =  await fetch('fn.png')
     expect(r.ok).toBe(true)
-
-    r = await fetch('fn.png')
-    expect(r.ok).toBe(true)
-
-    r = await fetch('nonexistent.png')
-    expect(r.ok).toBe(false)
-
     done()
   })
 })
