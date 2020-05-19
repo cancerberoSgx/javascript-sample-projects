@@ -1,0 +1,164 @@
+import { layout } from "./layout"
+
+let magnificationFactor = 10.0
+let limit = 40
+let translateXFactor = 1.0 / 1.6
+let translateYFactor = 1.0 / 2.0
+
+export function installKeys() {
+  document.onkeypress = e => {
+    if (e.key === '+') {
+      magnificationFactor /= 1.5
+    }
+    else if (e.key === '-') {
+      magnificationFactor *= 1.5
+    }
+    else if (e.key === 'l' && !e.shiftKey) {
+      limit += 5
+    }
+    else if (e.key === 'l' && e.shiftKey) {
+      limit -= 5
+    }
+    else if (e.key === 'a') {
+      translateXFactor += 0.1
+    }
+    else if (e.key === 'd') {
+      translateXFactor -= 0.1
+    }
+    else if (e.key === 'w') {
+      translateYFactor += 0.1
+    }
+    else if (e.key === 's') {
+      translateYFactor -= 0.1
+    }
+  }
+}
+
+export async function start() {
+
+  // Set this to false if you prefer a plain image instead.
+  var animate = true;
+
+  // Set up the canvas with a 2D rendering context
+  // var canvas = document.createElement("canvas");
+  // document.body.append(canvas)
+  const canvas = document.querySelector('canvas')
+  var ctx = canvas.getContext("2d");
+  var bcr = canvas.getBoundingClientRect();
+
+  // Compute the size of the viewport
+  var width = bcr.width | 0;
+  var height = bcr.height | 0;
+  var ratio = window.devicePixelRatio || 1;
+  width *= ratio;
+  height *= ratio;
+  var size = width * height;
+  var byteSize = size << 1; // discrete color indices in range [0, 2047] (here: 2b per pixel)
+
+  canvas.width = width;
+  canvas.height = height;
+
+  ctx.scale(ratio, ratio);
+
+  // Compute the size of and instantiate the module's memory
+  var memory = new WebAssembly.Memory({ initial: ((byteSize + 0xffff) & ~0xffff) >>> 16 });
+  var mem = new Uint16Array(memory.buffer);
+  var imageData = ctx.createImageData(width, height);
+  var argb = new Uint32Array(imageData.data.buffer);
+
+  // Fetch and instantiate the module
+  const response = await fetch("build/optimized.wasm")
+  const buffer = await response.arrayBuffer()
+  const module = await WebAssembly.instantiate(buffer, {
+    env: { memory },
+    //@ts-ignore
+    Math
+  })
+
+  var colors = computeColors()
+
+  var exports = module.instance.exports;
+  var computeLine = exports.computeLine;
+  var updateLine = function (y) {
+    var yx = y * width;
+    for (let x = 0; x < width; ++x) {
+      argb[yx + x] = colors[mem[yx + x]];
+    }
+  };
+
+  // Compute an initial balanced version of the set.
+  for (let y = 0; y < height; ++y) {
+    computeLine(y, width, height, limit, magnificationFactor, translateXFactor, translateYFactor);
+    updateLine(y);
+  }
+
+  let renderCount = 0;
+  setInterval(() => {
+    const fps = renderCount
+    renderCount = 0
+    document.querySelector('.fps').innerHTML = fps+''
+
+  }, 1000);
+  // Keep rendering the image buffer.
+  (function render() {
+    if (animate) requestAnimationFrame(render);
+    ctx.putImageData(imageData, 0, 0);
+    renderCount++
+  })();
+
+  if (animate) {
+
+    // Let it glow a bit by occasionally shifting the limit...
+    var currentLimit = limit;
+    var shiftRange = 10;
+    (function updateShift() {
+      currentLimit = limit + (2 * Math.random() * shiftRange - shiftRange) | 0
+      setTimeout(updateShift, 1000 + (1500 * Math.random()) | 0);
+    })();
+
+    // ...while continuously recomputing a subset of it.
+    var flickerRange = 3;
+    (function updateFlicker() {
+      for (let i = 0, k = (0.05 * height) | 0; i < k; ++i) {
+        let ry = (Math.random() * height) | 0;
+        let rl = (2 * Math.random() * flickerRange - flickerRange) | 0;
+        computeLine(ry, width, height, currentLimit + rl, magnificationFactor, translateXFactor, translateYFactor);
+        updateLine(ry);
+      }
+      setTimeout(updateFlicker, 1000 / 30);
+    })();
+
+  }
+}
+
+// Compute a nice set of colors using a gradient
+export function computeColors() {
+  var canvas = document.createElement("canvas");
+  canvas.width = 2048;
+  canvas.height = 1;
+  var ctx = canvas.getContext("2d");
+  var grd = ctx.createLinearGradient(0, 0, 2048, 0);
+  grd.addColorStop(0.00, "#000764");
+  grd.addColorStop(0.16, "#2068CB");
+  grd.addColorStop(0.42, "#EDFFFF");
+  grd.addColorStop(0.6425, "#FFAA00");
+  grd.addColorStop(0.8575, "#000200");
+  ctx.fillStyle = grd;
+  ctx.fillRect(0, 0, 2048, 1);
+  canvas.className = "gradient";
+  setTimeout(() => document.body.appendChild(canvas));
+  return new Uint32Array(ctx.getImageData(0, 0, 2048, 1).data.buffer);
+}
+
+async function main() {
+  try {
+    layout()
+    installKeys()
+    await start()
+  } catch (error) {
+    alert("Failed to load WASM: " + error.message + " (ad blocker, maybe?)");
+    console.log(error.stack);
+  }
+}
+
+main()
