@@ -1,4 +1,5 @@
 import * as i from './index'
+import { state } from './state';
 
 export function layout() {
   const e = append(`
@@ -58,6 +59,15 @@ export function layout() {
 </div>
 <canvas></canvas>
   `);
+
+  installEventHandlers(e);
+
+}
+
+function installEventHandlers(e: ParentNode=document) {
+  e.querySelector<HTMLInputElement>('.animate').addEventListener('change', e => {
+    state.animate = (e.target as any).checked;
+  });
 }
 
 function log(a:any){
