@@ -1,5 +1,7 @@
+import * as i from './index'
+
 export function layout() {
-  append(`
+  const e = append(`
 <style>
   * {
     padding: 0; 
@@ -50,9 +52,16 @@ export function layout() {
   <a href="https://en.wikipedia.org/wiki/Mandelbrot_set">Mandelbrot set</a> in
   <a href="http://assemblyscript.org">AssemblyScript</a>
 </h1>
-<div>Press '+' and '-' to zoom in and out and 'a', 'w', 's', 'd' to move around. FPS: <span class="fps"></span></div>
+<div>Press '+' and '-' to zoom in and out and 'a', 'w', 's', 'd' to move around. FPS: <span class="fps"></span>
+  <label><input class="animate" type="checkbox">animate?</label>
+  <label>Log: <span class="log"></span></label>
+</div>
 <canvas></canvas>
   `);
+}
+
+function log(a:any){
+  document.querySelector('.log').innerHTML=a+''
 }
 function append(s, parent = document.body) {
   const e = document.createElement('div');

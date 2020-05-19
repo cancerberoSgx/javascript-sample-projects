@@ -1,135 +1,173 @@
 import { layout } from "./layout"
 
-let magnificationFactor = 10.0
-let limit = 40
-let translateXFactor = 1.0 / 1.6
-let translateYFactor = 1.0 / 2.0
+// let this.state.magnificationFactor = 10.0
+// let limit = 40
+// let this.state.translateXFactor = 1.0 / 1.6
+// let translateYFactor = 1.0 / 2.0
 
-export function installKeys() {
-  document.onkeypress = e => {
-    if (e.key === '+') {
-      magnificationFactor /= 1.5
-    }
-    else if (e.key === '-') {
-      magnificationFactor *= 1.5
-    }
-    else if (e.key === 'l' && !e.shiftKey) {
-      limit += 5
-    }
-    else if (e.key === 'l' && e.shiftKey) {
-      limit -= 5
-    }
-    else if (e.key === 'a') {
-      translateXFactor += 0.1
-    }
-    else if (e.key === 'd') {
-      translateXFactor -= 0.1
-    }
-    else if (e.key === 'w') {
-      translateYFactor += 0.1
-    }
-    else if (e.key === 's') {
-      translateYFactor -= 0.1
-    }
-  }
+interface State {
+  magnificationFactor: number
+  limit: number
+  translateXFactor: number
+  translateYFactor: number
+}
+const state: State = {
+  magnificationFactor: 10.0,
+  limit: 50,
+  translateXFactor: 1.0 / 1.6,
+  translateYFactor: 1.0 / 2.0
 }
 
-export async function start() {
+class Application {
 
-  // Set this to false if you prefer a plain image instead.
-  var animate = true;
+  canvas: HTMLCanvasElement
+  module: WebAssembly.WebAssemblyInstantiatedSource & WebAssembly.Instance
+  width: number
+  height: number
+  mem: Uint16Array
+  argb: Uint32Array
+  imageData: ImageData
+  ctx: CanvasRenderingContext2D
+  colors: Uint32Array
 
-  // Set up the canvas with a 2D rendering context
-  // var canvas = document.createElement("canvas");
-  // document.body.append(canvas)
-  const canvas = document.querySelector('canvas')
-  var ctx = canvas.getContext("2d");
-  var bcr = canvas.getBoundingClientRect();
+  constructor(public state: State){}
 
-  // Compute the size of the viewport
-  var width = bcr.width | 0;
-  var height = bcr.height | 0;
-  var ratio = window.devicePixelRatio || 1;
-  width *= ratio;
-  height *= ratio;
-  var size = width * height;
-  var byteSize = size << 1; // discrete color indices in range [0, 2047] (here: 2b per pixel)
+  async start() {
 
-  canvas.width = width;
-  canvas.height = height;
+    this.colors = computeColors()
 
-  ctx.scale(ratio, ratio);
+    // Set up the canvas with a 2D rendering context
+    this.canvas = document.querySelector('canvas')
+    this.ctx = this.canvas.getContext("2d");
+    var bcr = this.canvas.getBoundingClientRect();
 
-  // Compute the size of and instantiate the module's memory
-  var memory = new WebAssembly.Memory({ initial: ((byteSize + 0xffff) & ~0xffff) >>> 16 });
-  var mem = new Uint16Array(memory.buffer);
-  var imageData = ctx.createImageData(width, height);
-  var argb = new Uint32Array(imageData.data.buffer);
+    // Compute the size of the viewport
+    this.width = bcr.width | 0;
+    this.height = bcr.height | 0;
+    var ratio = window.devicePixelRatio || 1;
+    this.width *= ratio;
+    this.height *= ratio;
+    var size = this.width * this.height;
+    var byteSize = size << 1; // discrete color indices in range [0, 2047] (here: 2b per pixel)
 
-  // Fetch and instantiate the module
-  const response = await fetch("build/optimized.wasm")
-  const buffer = await response.arrayBuffer()
-  const module = await WebAssembly.instantiate(buffer, {
-    env: { memory },
-    //@ts-ignore
-    Math
-  })
+    this.canvas.width = this.width;
+    this.canvas.height = this.height;
 
-  var colors = computeColors()
+    this.ctx.scale(ratio, ratio);
 
-  var exports = module.instance.exports;
-  var computeLine = exports.computeLine;
-  var updateLine = function (y) {
-    var yx = y * width;
-    for (let x = 0; x < width; ++x) {
-      argb[yx + x] = colors[mem[yx + x]];
+    // Compute the size of and instantiate the module's memory
+    var memory = new WebAssembly.Memory({ initial: ((byteSize + 0xffff) & ~0xffff) >>> 16 });
+    this.mem = new Uint16Array(memory.buffer);
+    this.imageData = this.ctx.createImageData(this.width, this.height);
+    this.argb = new Uint32Array(this.imageData.data.buffer);
+
+    // Fetch and instantiate the module
+    const response = await fetch("build/optimized.wasm")
+    const buffer = await response.arrayBuffer()
+    this.module = await WebAssembly.instantiate(buffer, {
+      env: { memory },
+      //@ts-ignore
+      Math
+    })
+    this.installKeys()
+    return this
+  }
+
+  updateLine(y: number) {
+    var yx = y * this.width;
+    for (let x = 0; x < this.width; ++x) {
+      this.argb[yx + x] = this.colors[this.mem[yx + x]];
     }
   };
-
-  // Compute an initial balanced version of the set.
-  for (let y = 0; y < height; ++y) {
-    computeLine(y, width, height, limit, magnificationFactor, translateXFactor, translateYFactor);
-    updateLine(y);
+  computeLine(y, limit, magnificationFactor, translateXFactor, translateYFactor) {
+    // var f = this.module.instance.exports.computeLine;
+    //@ts-ignore
+    this.module.instance.exports.computeLine(y, this.width, this.height, limit, this.state.magnificationFactor, this.state.translateXFactor, translateYFactor);
+  }
+  render() {
+    this.ctx.putImageData(this.imageData, 0, 0)
+    if (animate) {
+      requestAnimationFrame(()=>this.render());
+    }
+  }
+  paint(){
+    // Compute an initial balanced version of the set.
+    for (let y = 0; y < this.height; ++y) {
+      this.computeLine(y, this.state.limit, this.state.magnificationFactor, this.state.translateXFactor, this.state.translateYFactor);
+      this.updateLine(y);
+    }
+    if (animate) {
+      // Let it glow a bit by occasionally shifting the limit...
+      var currentLimit = this.state.limit;
+      var shiftRange = 10;
+      let updateShiftTimer, updateFlickerTimer
+      (function updateShift() {
+        currentLimit = this.state.limit + (2 * Math.random() * shiftRange - shiftRange) | 0
+        if (animate) {
+          updateShiftTimer = setTimeout(updateShift, 1000 + (1500 * Math.random()) | 0);
+        }else {
+          clearTimeout(updateShiftTimer)
+        }
+      })();
+      // ...while continuously recomputing a subset of it.
+      var flickerRange = 3;
+      (function updateFlicker() {
+        for (let i = 0, k = (0.05 * this.height) | 0; i < k; ++i) {
+          let ry = (Math.random() * this.height) | 0;
+          let rl = (2 * Math.random() * flickerRange - flickerRange) | 0;
+          this.computeLine(ry, currentLimit + rl, this.state.magnificationFactor, this.state.translateXFactor, this.state.translateYFactor);
+          this.updateLine(ry);
+        }
+        if (animate) {
+          updateFlickerTimer = setTimeout(updateFlicker, 1000 / 30);
+        }else {
+          clearTimeout(updateFlickerTimer)
+        }
+      })();
+    }
+    this.render()
   }
 
-  let renderCount = 0;
-  setInterval(() => {
-    const fps = renderCount
-    renderCount = 0
-    document.querySelector('.fps').innerHTML = fps+''
-
-  }, 1000);
-  // Keep rendering the image buffer.
-  (function render() {
-    if (animate) requestAnimationFrame(render);
-    ctx.putImageData(imageData, 0, 0);
-    renderCount++
-  })();
-
-  if (animate) {
-
-    // Let it glow a bit by occasionally shifting the limit...
-    var currentLimit = limit;
-    var shiftRange = 10;
-    (function updateShift() {
-      currentLimit = limit + (2 * Math.random() * shiftRange - shiftRange) | 0
-      setTimeout(updateShift, 1000 + (1500 * Math.random()) | 0);
-    })();
-
-    // ...while continuously recomputing a subset of it.
-    var flickerRange = 3;
-    (function updateFlicker() {
-      for (let i = 0, k = (0.05 * height) | 0; i < k; ++i) {
-        let ry = (Math.random() * height) | 0;
-        let rl = (2 * Math.random() * flickerRange - flickerRange) | 0;
-        computeLine(ry, width, height, currentLimit + rl, magnificationFactor, translateXFactor, translateYFactor);
-        updateLine(ry);
+  installKeys() {
+    document.onkeypress = e => {
+      if (e.key === '+') {
+        this.state.magnificationFactor /= 1.5
       }
-      setTimeout(updateFlicker, 1000 / 30);
-    })();
-
+      else if (e.key === '-') {
+        this.state.magnificationFactor *= 1.5
+      }
+      else if (e.key === 'l' && !e.shiftKey) {
+        this.state.limit += 5
+      }
+      else if (e.key === 'l' && e.shiftKey) {
+        this.state.limit -= 5
+      }
+      else if (e.key === 'p') {
+        animate = !animate
+      }
+      else if (e.key === 'a') {
+        this.state.translateXFactor += 0.1
+      }
+      else if (e.key === 'd') {
+        this.state.translateXFactor -= 0.1
+      }
+      else if (e.key === 'w') {
+        this.state.translateYFactor += 0.1
+      }
+      else if (e.key === 's') {
+        this.state.translateYFactor -= 0.1
+      } else {
+        return
+      }
+      this.paint()
+    }
   }
+
 }
+
+
+// Set this to false if you prefer a plain image instead.
+export var animate = false;
 
 // Compute a nice set of colors using a gradient
 export function computeColors() {
@@ -153,8 +191,9 @@ export function computeColors() {
 async function main() {
   try {
     layout()
-    installKeys()
-    await start()
+    const app = await new Application(state).start()
+    // installKeys(app)
+    app.paint()
   } catch (error) {
     alert("Failed to load WASM: " + error.message + " (ad blocker, maybe?)");
     console.log(error.stack);
@@ -162,3 +201,76 @@ async function main() {
 }
 
 main()
+
+
+
+// export async function start() {  
+
+//   // const app = await new Application().start()
+//   // app.paint()
+
+//   // var computeLine = app.module.instance.exports.computeLine;
+
+//   // function paint() {
+//   //   // Compute an initial balanced version of the set.
+//   //   for (let y = 0; y < app.height; ++y) {
+//   //     app.computeLine(y, limit, this.state.magnificationFactor, this.state.translateXFactor, translateYFactor);
+//   //     app.updateLine(y);
+//   //   }
+
+//   //   if (animate) {
+
+//   //     // Let it glow a bit by occasionally shifting the limit...
+//   //     var currentLimit = limit;
+//   //     var shiftRange = 10;
+//   //     (function updateShift() {
+//   //       currentLimit = limit + (2 * Math.random() * shiftRange - shiftRange) | 0
+//   //       if (animate) {
+//   //         setTimeout(updateShift, 1000 + (1500 * Math.random()) | 0);
+//   //       }
+//   //     })();
+
+//   //     // ...while continuously recomputing a subset of it.
+//   //     var flickerRange = 3;
+//   //     (function updateFlicker() {
+//   //       for (let i = 0, k = (0.05 * app.height) | 0; i < k; ++i) {
+//   //         let ry = (Math.random() * app.height) | 0;
+//   //         let rl = (2 * Math.random() * flickerRange - flickerRange) | 0;
+//   //         app.computeLine(ry, currentLimit + rl, this.state.magnificationFactor, this.state.translateXFactor, translateYFactor);
+//   //         app.updateLine(ry);
+//   //       }
+//   //       if (animate) {
+//   //         setTimeout(updateFlicker, 1000 / 30);
+//   //       }
+//   //     })();
+
+//   //     // }
+//   //   }
+    
+//   //   app.render()
+//   //   // if (animate) {
+//   //   //   requestAnimationFrame(render);
+//   //   // }
+//   //   // else {
+//   //   //   render()
+//   //   // }
+//   // }
+//   // paint();
+
+//   // let renderCount = 0;
+//   // setInterval(() => {
+//   //   const fps = renderCount
+//   //   renderCount = 0
+//   //   document.querySelector('.fps').innerHTML = fps+''
+
+//   // // }, 1000);
+//   // // Keep rendering the image buffer.
+//   // (function render() {
+//   //   // if (animate) requestAnimationFrame(render);
+//   //   if (animate) setTimeout(render, 1000)
+//   //   ctx.putImageData(imageData, 0, 0);
+//   //   // renderCount++
+//   // })();
+
+// }
+
