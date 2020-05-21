@@ -1,32 +1,37 @@
 import { Application } from "./worker/application";
-import { state } from "./worker/state";
+import { sleep } from "misc-utils-of-mine-generic";
 
 let app: Application
 
 onmessage = async function (e) {
-  if(e.data.canvas){
-    console.log('WRKER: Message received from main script', e);
-    app = new Application(e.data.canvas)
-    await app.start()
-    app.paint()
-  }
-  else if(e.data.onkeypress){
-    app.onKeyPress(e.data.onkeypress)
+  try {
+    if (e.data.initialize) {
+      app = new Application(e.data.initialize.canvas)
+      await app.start()
+      app.paint()
+    }
+    if (e.data.paint) {
+      app.paint()
+    }
+    if (e.data.state) {
+      app.setState(e.data.state)
+      app.paint()
+    }
+    else if (e.data.onkeypress) {
+      app.onKeyPress(e.data.onkeypress)
+    }
+    else if (e.data.onclick) {
+      app.onClick(e.data.onclick)
+    }
+    else if (e.data.test1) {
+      console.log('w received');
+      await sleep(1000)
+    }
+    postMessage({ status: 0, __timestamp: e.data.__timestamp }, undefined)
+  } catch (error) {
+    postMessage({ status: 1, __timestamp: e.data.__timestamp, error }, undefined)
   }
 
-  // async function main() {
-  //   var memory = new WebAssembly.Memory({ initial: 2048 });
-  //   const response = await fetch("build/optimized.wasm")
-  //   const buffer = await response.arrayBuffer()
-  //   const module = await WebAssembly.instantiate(buffer, {
-  //     env: { memory },
-  //     Math: Math as any
-  //   })    
-  //   const f1 = module.instance.exports.f1 as any
-  //   console.log('asd', f1());
-  //   postMessage(f1(), undefined as any);
-  // }
-  // main()
 }
 
 

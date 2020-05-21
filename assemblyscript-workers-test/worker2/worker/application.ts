@@ -1,6 +1,7 @@
 import { state } from "./state";
 
 export class Application {
+
   // canvas: HTMLCanvasElement
   module: WebAssembly.WebAssemblyInstantiatedSource
   width: number
@@ -104,10 +105,10 @@ export class Application {
   }
   onKeyPress(e){
     if (e.key === '+') {
-      state.magnificationFactor /= 1.5
+      state.magnificationFactor /= state.magnificationFactorStep
     }
     else if (e.key === '-') {
-      state.magnificationFactor *= 1.5
+      state.magnificationFactor *= state.magnificationFactorStep
     }
     else if (e.key === 'l' && !e.shiftKey) {
       state.limit += 5
@@ -134,6 +135,12 @@ export class Application {
       return
     }
     this.paint()
+  }
+  onClick(e) {
+    throw new Error("Method not implemented.");
+  }
+  setState(newState: any) {
+    Object.assign(state, newState)
   }
 }
 

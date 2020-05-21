@@ -3,10 +3,12 @@ export const state: State = {
   limit: 50,
   translateXFactor: 1.0 / 1.6,
   translateYFactor: 1.0 / 2.0,
-  animate: false
+  animate: false,
+  magnificationFactorStep: 1.5,
 };
 
 export interface State {
+  magnificationFactorStep: number;
   magnificationFactor: number;
   limit: number;
   translateXFactor: number;
