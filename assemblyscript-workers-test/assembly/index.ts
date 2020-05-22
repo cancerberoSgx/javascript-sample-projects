@@ -1,4 +1,4 @@
-export function f1(): number{
+export function f1(): number {
   return 123
 }
 
@@ -12,15 +12,15 @@ const NUM_COLORS = 2048;
 
 /** Computes a single line in the rectangle `width` x `height`. */
 export function computeLine(y: f64, width: f64, height: f64, limit: f64, magnificationFactor: f64, translateXFactor: f64, translateYFactor: f64): void {
-  var translateX = width  * translateXFactor;
+  var translateX = width * translateXFactor;
   // var translateX = width  * (1.0 / 1.6);
   var translateY = height * translateYFactor;
   // var translateY = height * (1.0 / 2.0);
-  var scale      = magnificationFactor / min(3.0 * width, 4.0 * height);
-  var imaginary  = (y - translateY) * scale;
+  var scale = magnificationFactor / min(3.0 * width, 4.0 * height);
+  var imaginary = (y - translateY) * scale;
   var realOffset = translateX * scale;
-  var stride     = i32(y * width) << 1;
-  var invLimit   = 1.0 / limit;
+  var stride = i32(y * width) << 1;
+  var invLimit = 1.0 / limit;
 
   var minIterations = min(8, limit);
 
@@ -58,9 +58,38 @@ export function computeLine(y: f64, width: f64, height: f64, limit: f64, magnifi
   }
 }
 
-/** Clamps a value between the given minimum and maximum. */
-@inline
-function clamp<T>(value: T, minValue: T, maxValue: T): T {
+@inline function clamp<T>(value: T, minValue: T, maxValue: T): T {
   return min(max(value, minValue), maxValue);
 }
+@inline function randomIntBetween<T extends number>(a: T, b: T): T {
+  return trunc(Math.random() * b) + a as T;
+}
+@inline function randomU8(a: u8, b: u8): u8 {
+  return u8(trunc(Math.random() * b) + a)
+}
 
+export function sharedMemTest(width: u32, height: u32): number {
+  const size = width * height * 4;
+  for (let i:u32 = 0; i < size; i++) {  
+    store<u8>(i, randomU8(0, 255));
+  }
+  // for (let y: u32 = 0; y < height; y++) {
+  //   for (let x: u32 = 0; x < width; x++) {
+  //     store<u8>(y * width + x, randomU8(0, 255));
+  //   }
+  // }
+  return randomIntBetween(1, 12)
+}
+
+// int data[WIDTH * HEIGHT];
+// int red = (255 << 24) | 255;
+
+// int* EMSCRIPTEN_KEEPALIVE render() {
+//    for (int y = 0; y < HEIGHT; y++) {
+//      int yw = y * WIDTH;
+//      for (int x = 0; x < WIDTH; x++) {
+//        data[yw + x] = red;
+//      }
+//    }
+//    return &data[0];
+// }
