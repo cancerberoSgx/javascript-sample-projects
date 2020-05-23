@@ -12,9 +12,11 @@ class Base {
     this.id = unique()
   }
 }
-
+/** everything is a unit, tiles, cities, resources */
 class Unit {
-
+  type:'tile'|'city'|'unit'|'accident'='tile'
+  movable=false
+  killable=false
 }
 class Entry extends Base {
   units: Unit[]
@@ -58,16 +60,25 @@ class Board {
           ${this.items.map(col => `
           <tr>
             ${col.map(entry => `
-            <td id="entry-${entry.id}" style="background-color: ${randomCssColor()};">
+            <td id="board-entry-${entry.id}" class="board-entry" style="background-color: ${randomCssColor()};">
+            <span>alksjd${entry.id}asd</span>
             </td>`).join('')}
           </tr>`).join('')}
         </table>`
       this.container = append(s, parent)
       this.styleEl = this.container.querySelector('#board-style')
       this.installKeys()
+      this.installMouse()
     }
     this.drawStyle()
   }
+  installMouse() {
+    this.container.addEventListener('click', e=>{
+      console.log(e, findParent(e.target as HTMLElement, (e:HTMLElement)=>e.classList.contains('board-entry')));
+      
+    })
+  }
+
   installKeys() {
     window.addEventListener('keypress', e=>{
       if(e.key==='+'){
@@ -80,6 +91,17 @@ class Board {
       }
     })
   }
+}
+
+function findParent(e: HTMLElement, predicate: (e: HTMLElement) => boolean):HTMLElement|null {
+  if(e.parentElement){
+    if(predicate(e.parentElement)){
+      return e.parentElement
+    }else {
+      return findParent(e.parentElement, predicate)
+    }
+  }
+  return null
 }
 
 function main() {
