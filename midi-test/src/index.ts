@@ -1,8 +1,9 @@
 import { randomItem, array } from 'misc-utils-of-mine-generic'
 import { buildCadence, getNoteName } from './notes';
 import { Player, Preset, IWebAudioFontPlayer } from './WebAudioFontPlayer'
-import { Waltz1Agent, Waltz2LeftAgent, Waltz2RightAgent } from './agent';
+import { Waltz1Agent, Waltz2LeftAgent, Waltz2RightAgent, AgentPlayer } from './agent';
 import { Song } from './types';
+import { note } from './note';
 
 function append(s, parent = document.body) {
 	const e = document.createElement('div');
@@ -24,6 +25,7 @@ async function main1() {
 	installPlay3();
 	installPlay4();
 	installPlay5();
+	installPlay6();
 }
 
 const song: Song = {
@@ -32,6 +34,27 @@ const song: Song = {
 	},
 	compass: 0,
 	cadence: { base: 60, mode: 'major' }
+}
+
+function installPlay6() {
+	append(`<button>play6</button>`).querySelector('button').addEventListener('click', e => {
+		const left = new Waltz2LeftAgent(song)
+		const right = new Waltz2RightAgent(song)
+		const agentPlayer = new AgentPlayer(player, audioContext, preset, song)
+
+		song.cadence.base = note(4, 5)
+		agentPlayer.playCompasses(4, [left, right])
+
+		song.cadence.base = note(1, 5)
+		agentPlayer.playCompasses(4, [left, right])
+
+		song.cadence.base = note(5, 5)
+		agentPlayer.playCompasses(4, [left])
+
+		song.cadence.base = note(1, 5)
+		agentPlayer.playCompasses(4, [left, right])
+
+	});
 }
 
 function installPlay5() {
