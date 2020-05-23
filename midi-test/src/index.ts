@@ -1,4 +1,4 @@
-import { randomItem } from 'misc-utils-of-mine-generic'
+import { randomItem, array } from 'misc-utils-of-mine-generic'
 import { buildCadence, getNoteName } from './notes';
 import { Player, Preset, IWebAudioFontPlayer } from './WebAudioFontPlayer'
 
@@ -19,37 +19,54 @@ async function main1() {
 	player = new Player();
 	installPlay1();
 	installPlay2();
+	installPlay3();
 }
 
+function installPlay3() {
+	function play() {
+		const tempo = 0.3 /* tempo unit in seconds */
+		array(10)
+		.map(i => {
+			return [
+				{ t: 0, notes: [NOTES[1]], volume: 1.0, duration: tempo },
+				{ t: 1, notes: [NOTES[5]], volume: 0.5, duration: tempo },
+				{ t: 2, notes: [NOTES[3]], volume: 0.2, duration: tempo },
+			].map(n=>({...n, t: n.t*tempo+ i*tempo*3}))
+		})
+		.flat()
+		.forEach(n=>{
+			// player.queueWaveTable(audioContext, audioContext.destination, preset, n.t, n.notes[0] + 60, n.duration, n.volume);
+			player.queueChord(audioContext, audioContext.destination, preset, n.t, n.notes.map(n=>n+60), n.duration, n.volume)
+		})
+	}
+	append(`<button>generated</button>`).querySelector('button').addEventListener('click', e => {
+		play();
+	});
+}
 
+const NOTES = [0, 0, 2, 4, 5, 7, 9, 11]
 function installPlay2() {
 	const tempo = 0.3 /* tempo unit in seconds */
 	let t = 0
 	function playCompass() {
 		const compass = [
-			{ t: 0, notes: [0] },
-			{ t: 1, notes: [7] },
-			{ t: 2, notes: [5] },
+			{ t: 0, notes: [NOTES[1]], volume: 1.0, duration: tempo },
+			{ t: 1, notes: [NOTES[5]], volume: 0.5, duration: tempo },
+			{ t: 2, notes: [NOTES[3]], volume: 0.2, duration: tempo },
 		]
 		compass.forEach(c => {
-			player.queueWaveTable(audioContext, audioContext.destination, preset, t + c.t * tempo, c.notes[0] + 60, 0.3, 0.5);
+			player.queueWaveTable(audioContext, audioContext.destination, preset, t + c.t * tempo, c.notes[0] + 60, c.duration, c.volume);
 		})
 	}
 	function play() {
-		// const iterations = 10
-
-		function f(){
+		function f() {
 			playCompass()
 			t += tempo * 3
 			setTimeout(f, tempo * 3 * 1000);
 		}
 		f()
-		// setInterval(() => {
-		// 	playCompass()
-		// 	t += tempo * 3
-		// }, tempo * 3 * 1000);
 	}
-	append(`<button>play2</button>`).querySelector('button').addEventListener('click', e => {
+	append(`<button>timeout</button>`).querySelector('button').addEventListener('click', e => {
 		play();
 	});
 }
