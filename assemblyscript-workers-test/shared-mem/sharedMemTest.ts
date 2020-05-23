@@ -20,8 +20,7 @@ const module = await WebAssembly.instantiate(buffer, {
   Math: Math as any
 })
 const sharedMemTest = module.instance.exports.sharedMemTest as any
-
-console.log(sharedMemTest(width, height));
+sharedMemTest(width, height)
 
 const data = new Uint8ClampedArray(memory.buffer, 0, width * height * 4);
 const imageData = new ImageData(data, width, height)

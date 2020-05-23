@@ -1,0 +1,16 @@
+{
+  "name": "midi-js-example",
+  "version": "1.0.0",
+  "license": "true",
+  "private": true,
+  "scripts": {
+    "start": "npx parcel src/index.html"
+  },
+  "devDependencies": {
+    "parcel": "^1.12.4",
+    "typescript": "^3.9.2"
+  },
+  "dependencies": {
+    "misc-utils-of-mine-generic": "file:../../misc-utils-of-mine/misc-utils-of-mine-generic"
+  }
+}

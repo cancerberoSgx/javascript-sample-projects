@@ -16,6 +16,6 @@
     "typescript": "^3.9.2"
   },
   "dependencies": {
-    "misc-utils-of-mine-generic": "^0.2.35"
+    "misc-utils-of-mine-generic": "file:../../misc-utils-of-mine/misc-utils-of-mine-generic"
   }
 }
