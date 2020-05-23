@@ -1,6 +1,8 @@
 import { randomItem, array } from 'misc-utils-of-mine-generic'
 import { buildCadence, getNoteName } from './notes';
 import { Player, Preset, IWebAudioFontPlayer } from './WebAudioFontPlayer'
+import { Waltz1Agent, Waltz2LeftAgent, Waltz2RightAgent } from './agent';
+import { Song } from './types';
 
 function append(s, parent = document.body) {
 	const e = document.createElement('div');
@@ -20,27 +22,72 @@ async function main1() {
 	installPlay1();
 	installPlay2();
 	installPlay3();
+	installPlay4();
+	installPlay5();
+}
+
+const song: Song = {
+	tempo: {
+		unit: 0.3, compass: 3
+	},
+	compass: 0,
+	cadence: { base: 60, mode: 'major' }
+}
+
+function installPlay5() {
+	append(`<button>play5</button>`).querySelector('button').addEventListener('click', e => {
+		const left = new Waltz2LeftAgent(song)
+		const right = new Waltz2RightAgent(song)
+
+		const x = 4
+		left.buildCompassNotes(x+1, 0)
+			.forEach(n => {
+				player.queueChord(audioContext, audioContext.destination, preset, n.t, n.notes, n.duration, n.volume)
+			})
+		right.buildCompassNotes(x,x)
+			.forEach(n => {
+				player.queueChord(audioContext, audioContext.destination, preset, n.t, n.notes, n.duration, n.volume)
+			})
+
+			left.buildCompassNotes(x, x+x-1)
+			.forEach(n => {
+				player.queueChord(audioContext, audioContext.destination, preset, n.t, n.notes, n.duration, n.volume)
+			})
+		right.buildCompassNotes(x,x+x-1)
+			.forEach(n => {
+				player.queueChord(audioContext, audioContext.destination, preset, n.t, n.notes, n.duration, n.volume)
+			})
+	});
+}
+
+function installPlay4() {
+	append(`<button>play4</button>`).querySelector('button').addEventListener('click', e => {
+		const agent = new Waltz1Agent(song)
+		array(10)
+			.map(i => agent.buildCompass(i * song.tempo.unit * song.tempo.compass, i))
+			.flat()
+			.forEach(n => {
+				player.queueChord(audioContext, audioContext.destination, preset, n.t, n.notes.map(n => n + 60), n.duration, n.volume)
+			})
+	});
 }
 
 function installPlay3() {
-	function play() {
+	append(`<button>generated</button>`).querySelector('button').addEventListener('click', e => {
 		const tempo = 0.3 /* tempo unit in seconds */
 		array(10)
-		.map(i => {
-			return [
-				{ t: 0, notes: [NOTES[1]], volume: 1.0, duration: tempo },
-				{ t: 1, notes: [NOTES[5]], volume: 0.5, duration: tempo },
-				{ t: 2, notes: [NOTES[3]], volume: 0.2, duration: tempo },
-			].map(n=>({...n, t: n.t*tempo+ i*tempo*3}))
-		})
-		.flat()
-		.forEach(n=>{
-			// player.queueWaveTable(audioContext, audioContext.destination, preset, n.t, n.notes[0] + 60, n.duration, n.volume);
-			player.queueChord(audioContext, audioContext.destination, preset, n.t, n.notes.map(n=>n+60), n.duration, n.volume)
-		})
-	}
-	append(`<button>generated</button>`).querySelector('button').addEventListener('click', e => {
-		play();
+			.map(i => {
+				return [
+					{ t: 0, notes: [NOTES[1]], volume: 1.0, duration: tempo * 3 },
+					{ t: 1, notes: [NOTES[5]], volume: 0.5, duration: tempo },
+					{ t: 2, notes: [NOTES[3]], volume: 0.2, duration: tempo },
+				].map(n => ({ ...n, t: n.t * tempo + i * tempo * 3 }))
+			})
+			.flat()
+			.forEach(n => {
+				// player.queueWaveTable(audioContext, audioContext.destination, preset, n.t, n.notes[0] + 60, n.duration, n.volume);
+				player.queueChord(audioContext, audioContext.destination, preset, n.t, n.notes.map(n => n + 60), n.duration, n.volume)
+			})
 	});
 }
 

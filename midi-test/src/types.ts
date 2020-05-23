@@ -8,7 +8,7 @@ export interface Tempo {
 }
 
 export interface Cadence {
-	dominant: number
+	base: number
 	mode: Mode
 }
 
@@ -19,9 +19,11 @@ export interface CompassPlayer {
 
 export interface Song {
 	tempo: Tempo
+	cadence: Cadence
 	compass: number
-	players: CompassPlayer[]
-	cadences: Cadence[]
+
+	// players: CompassPlayer[]
+	// cadences: Cadence[]
 }
 
 export type TODO = any;
