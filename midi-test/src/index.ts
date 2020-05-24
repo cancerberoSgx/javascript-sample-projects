@@ -4,13 +4,7 @@ import { Player, Preset, IWebAudioFontPlayer } from './WebAudioFontPlayer'
 import { Waltz1Agent, Waltz2LeftAgent, Waltz2RightAgent, AgentPlayer } from './agent';
 import { Song } from './types';
 import { note } from './note';
-
-function append(s, parent = document.body) {
-	const e = document.createElement('div');
-	e.innerHTML = s;
-	parent.append(e);
-	return e;
-}
+import { append, loadJSONPreset } from './util';
 
 let player: IWebAudioFontPlayer
 let audioContext: AudioContext
@@ -87,7 +81,7 @@ function installPlay4() {
 	append(`<button>play4</button>`).querySelector('button').addEventListener('click', e => {
 		const agent = new Waltz1Agent(song)
 		array(10)
-			.map(i => agent.buildCompass(i * song.tempo.unit * song.tempo.compass, i))
+			.map(i => agent.buildCompass(i * song.tempo.unit * song.tempo.compass))
 			.flat()
 			.forEach(n => {
 				player.queueChord(audioContext, audioContext.destination, preset, n.t, n.notes.map(n => n + 60), n.duration, n.volume)
@@ -156,11 +150,6 @@ function installPlay1() {
 	});
 }
 
-async function loadJSONPreset(path: string): Promise<Preset> {
-	const response = await fetch(path)
-	const s = await response.text()
-	return JSON.parse(s)
-}
 
 main1()
 

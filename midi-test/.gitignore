@@ -3,3 +3,4 @@
 /.cache
 /build
 .DS_Store
+/tmp*
