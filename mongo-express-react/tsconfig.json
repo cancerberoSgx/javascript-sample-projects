@@ -5,7 +5,8 @@
       "ESNext",
       "dom"
     ],
-    "sourceMap": true
+    "sourceMap": true,
+    "jsx": "react"
   },
   "include": [
     "src"
