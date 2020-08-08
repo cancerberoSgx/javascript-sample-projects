@@ -1,8 +1,8 @@
-import * as express from 'express'
+import express from 'express'
 import { celebrate, Segments, Joi } from 'celebrate'
 import { port } from './config'
 import { collection } from './db'
-import { Movie } from '../types'
+import { Movie, SearchResult } from '../types'
 
 const app = express()
 
@@ -14,11 +14,23 @@ app.get('/v1/search',
     },
   }),
   async (req, res, next) => {
-    const movies = await collection<Movie>('movies')
-    res.json({status: 'ok', size: (await movies.find({}).toArray()).length})
+    try {
+      const skip = parseInt(req.query.skip + '')
+      const limit = parseInt(req.query.limit + '')
+      const movies = await collection<Movie>('movies')
+      const result: SearchResult = {
+        total: await movies.count(),
+        skip,
+        limit,
+        results: await movies.find({}, { limit, skip }).toArray()
+      }
+      res.json(result)
+    } catch (error) {
+      next(error)
+    }
   }
 )
 
 app.listen(port, () => {
-  console.log(`Listening on port ${port}`);
-});
+  console.log(`Listening on port ${port}`)
+})

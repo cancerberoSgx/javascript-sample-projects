@@ -5,8 +5,9 @@
   "private": true,
   "scripts": {
     "server": "ts-node src/server/server.ts",
+    "server:watch": "ts-node-dev --respawn --transpile-only src/server/server.ts",
+    "server:test": "npx ts-node node_modules/.bin/jasmine",
     "client": "npx parcel src/client/index.html",
-    "test": "npx ts-node node_modules/.bin/jasmine",
     "create-db": "npx ts-node src/db-creation/createDb.ts",
     "download": "npx ts-node src/db-creation/download.ts"
   },
@@ -20,6 +21,7 @@
     "nodemon": "^2.0.4",
     "parcel": "^1.12.4",
     "ts-node": "^8.10.2",
+    "ts-node-dev": "^1.0.0-pre.56",
     "typescript": "^3.9.2"
   },
   "dependencies": {

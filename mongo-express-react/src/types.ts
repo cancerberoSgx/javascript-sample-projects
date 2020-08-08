@@ -48,3 +48,10 @@ interface Torrent {
   date_uploaded: string;
   date_uploaded_unix: number;
 }
+
+export interface SearchResult {
+  total: number
+  skip: number 
+  limit: number
+  results: Movie[]
+}

@@ -1,5 +1,6 @@
 import React, { Component } from 'react'
-import { Grid, Input, Pagination, Segment, PaginationProps } from 'semantic-ui-react'
+import { Grid, Input, Pagination, Segment, PaginationProps, Icon } from 'semantic-ui-react'
+import { array } from 'misc-utils-of-mine-generic'
 
 export default class PaginationExampleControlled extends Component {
   state = { activePage: 1 }
@@ -14,13 +15,15 @@ export default class PaginationExampleControlled extends Component {
   handlePaginationChange(event: React.MouseEvent<HTMLAnchorElement>, data: PaginationProps) {
     this.setState({ activePage: data.activePage })
   }
+// 
+  // data = array(10).map(i=>{a: i})
 
   render() {
     const { activePage } = this.state
 
     return (
       <Grid columns={2} verticalAlign='middle'>
-        <Grid.Column>
+        <Grid.Row>
           <Segment secondary>
             <div>activePage: {activePage}</div>
             <Input
@@ -31,14 +34,19 @@ export default class PaginationExampleControlled extends Component {
               value={activePage}
             />
           </Segment>
-        </Grid.Column>
-        <Grid.Column>
+        </Grid.Row>
+        <Grid.Row>
           <Pagination
             activePage={activePage}
             onPageChange={this.handlePaginationChange}
-            totalPages={5}
+            ellipsisItem={{ content: <Icon name='ellipsis horizontal' />, icon: true }}
+            firstItem={{ content: <Icon name='angle double left' />, icon: true }}
+            lastItem={{ content: <Icon name='angle double right' />, icon: true }}
+            prevItem={{ content: <Icon name='angle left' />, icon: true }}
+            nextItem={{ content: <Icon name='angle right' />, icon: true }}
+            totalPages={10}
           />
-        </Grid.Column>
+        </Grid.Row>
       </Grid>
     )
   }

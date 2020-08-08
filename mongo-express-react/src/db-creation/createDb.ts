@@ -1,10 +1,15 @@
 import { trace } from "console";
 import { readFileSync } from "fs";
-import { Movie } from "../types";
-import { collection } from "../server/db";
+import { collection, getDb } from "../server/db";
 
 async function main() {
   try {
+    const db = await getDb()
+    // drop will fail if collection doesn't exists so we try to create it first
+    try {
+      await db.createCollection('movies')
+    } catch (error) {
+    }
     const col = await collection('movies')
     await col.drop()
 
@@ -19,4 +24,5 @@ async function main() {
 
   }
 }
+
 main()

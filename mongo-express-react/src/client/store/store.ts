@@ -12,3 +12,7 @@ export function getStore() {
 export function _setStore(s: State) {
   store = new Store(s)
 }
+
+export function getState() {
+  return getStore().getState()
+}
