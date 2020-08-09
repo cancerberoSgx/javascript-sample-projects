@@ -3,6 +3,7 @@ import { celebrate, Segments, Joi } from 'celebrate'
 import { port } from './config'
 import { collection } from './db'
 import { Movie, SearchResult } from '../types'
+import { resolve } from 'path'
 
 const app = express()
 
@@ -30,6 +31,8 @@ app.get('/v1/search',
     }
   }
 )
+
+app.use(express.static(resolve('dist')));
 
 app.listen(port, () => {
   console.log(`Listening on port ${port}`)

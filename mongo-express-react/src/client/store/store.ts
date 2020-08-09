@@ -16,3 +16,7 @@ export function _setStore(s: State) {
 export function getState() {
   return getStore().getState()
 }
+
+export function setState(s:Partial<State>) {
+  getStore().setState(s)
+}

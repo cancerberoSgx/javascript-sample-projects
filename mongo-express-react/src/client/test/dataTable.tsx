@@ -14,7 +14,7 @@ const defaultState: DataTableState<any> = {
   data: []
 }
 
-export default class MovieTable<T> extends Component<DataTableProps, DataTableState<T>> {
+export default class DataTableTest<T> extends Component<DataTableProps, DataTableState<T>> {
   constructor(p:any, s:any) {
     super(p, s)
     this.state = { ...defaultState, data: p.data }

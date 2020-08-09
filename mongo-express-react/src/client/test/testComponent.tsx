@@ -1,6 +1,6 @@
 import React, { MouseEvent } from 'react'
-import { StoreComponent } from './store/storeComponent'
-import { getStore } from './store/store'
+import { StoreComponent } from '../store/storeComponent'
+import { getStore } from '../store/store'
 
 export default class TestComponent extends StoreComponent {
   render() {
