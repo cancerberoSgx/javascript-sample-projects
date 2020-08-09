@@ -14,8 +14,3 @@ export async function getDb() {
 export async function collection<T>(name: string) {
   return (await getDb()).collection<T>(name)
 }
-
-// export async function collectionExists(name:string){
-//   const db = await getDb()
-//   db.system.namespaces.find( { name: dbName +'.' + collectionName } );
-// }

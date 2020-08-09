@@ -23,4 +23,3 @@ export async function main(appOptions: AppOptions) {
   await sleep(1000)
   await search(s.search)
 }
-

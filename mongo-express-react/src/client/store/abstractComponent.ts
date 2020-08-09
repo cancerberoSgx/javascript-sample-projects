@@ -1,4 +1,4 @@
-import React, { Component } from 'react'
+import { Component } from 'react'
 
 export abstract class AbstractComponent<S, P extends Partial<S>> extends Component<P, S> {
   constructor(p: P, s: S) {

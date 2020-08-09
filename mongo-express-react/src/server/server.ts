@@ -1,10 +1,10 @@
+import { celebrate, Joi, Segments } from 'celebrate'
 import express from 'express'
-import { celebrate, Segments, Joi } from 'celebrate'
+import { readFileSync } from 'fs'
+import { resolve } from 'path'
+import { Movie, SearchResult } from '../types'
 import { port } from './config'
 import { collection } from './db'
-import { Movie, SearchResult } from '../types'
-import { resolve } from 'path'
-import { readFile, readFileSync } from 'fs'
 
 const app = express()
 

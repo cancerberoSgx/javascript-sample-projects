@@ -5,10 +5,6 @@ export class AbstractStore<S> extends Emitter<{ oldState: S; partial: Partial<S>
     super();
   }
 
-  get(s: string): any {
-    return (this.state as any)[s];
-  }
-
   setState(state: Partial<S>) {
     const oldState = this.state;
     this.state = { ...this.state, ...state };

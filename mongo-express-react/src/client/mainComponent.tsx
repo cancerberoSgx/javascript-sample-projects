@@ -3,7 +3,7 @@ import { Container } from 'semantic-ui-react'
 import Link from './link'
 import MovieTable from './movieTable'
 import { StoreComponent } from './store/storeComponent'
-import TestComponent from './test/testComponent'
+import TestComponent from './testComponent'
 
 export default class MainComponent extends StoreComponent {
   render() {
@@ -24,5 +24,4 @@ export default class MainComponent extends StoreComponent {
     </Container>
     )
   }
-
 }

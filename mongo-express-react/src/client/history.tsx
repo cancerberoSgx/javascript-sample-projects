@@ -1,6 +1,6 @@
-import { getStore, getState, setState } from './store/store';
-import { State, getInitialState } from './store/state';
 import { getParametersFromUrl, parseUrl } from 'misc-utils-of-mine-generic'
+import { State } from './store/state'
+import { getState, setState } from './store/store'
 
 /** when the app starts, given url must be parsed and the state updated. Example /search/?skip=100 - state.search.skip=100 */
 export async function setStateFromUrl(url?: string) {

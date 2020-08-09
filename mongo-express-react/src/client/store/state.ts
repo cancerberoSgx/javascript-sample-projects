@@ -1,7 +1,7 @@
-import { Movie } from "../../types";
+import { Movie } from '../../types'
 
 export interface State {
-  page: 'search'|'test'|'404'
+  page: 'search' | 'test' | '404'
   search: Search
   test: {
     counter: number
@@ -9,7 +9,7 @@ export interface State {
 }
 
 export interface Search {
-  error?: Error;
+  error?: Error
   skip: number
   limit: number
   results: Movie[]
@@ -32,4 +32,4 @@ export function getInitialState(appOptions: AppOptions): State {
   }
 }
 
-export interface AppOptions{}
+export interface AppOptions { }

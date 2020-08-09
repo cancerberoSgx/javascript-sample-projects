@@ -7,34 +7,34 @@
     "server": "ts-node src/server/server.ts",
     "server:watch": "ts-node-dev --respawn --transpile-only src/server/server.ts",
     "server:test": "npx ts-node node_modules/.bin/jasmine",
-    "client": "npx parcel src/client/index.html",
-    "create-db": "npx ts-node src/db-creation/createDb.ts",
-    "download": "npx ts-node src/db-creation/download.ts"
+    "client": "parcel src/client/index.html",
+    "create-db": "ts-node src/db-creation/createDb.ts",
+    "download": "ts-node src/db-creation/download.ts",
+    "build": "npx tsc && rm -rf dist && npx parcel build src/client/index.html -d dist --no-content-hash --detailed-report --no-source-maps --public-url './' "
   },
   "devDependencies": {
     "@types/express": "^4.17.7",
     "@types/jasmine": "^3.5.12",
     "@types/mongodb": "^3.5.25",
-    "@types/node": "^14.0.5",
-    "@types/react": "^16.9.44",
+    "@types/node": "^14.0.27",
+    "@types/react": "^16.9.45",
     "@types/react-dom": "^16.9.8",
     "nodemon": "^2.0.4",
     "parcel": "^1.12.4",
     "ts-node": "^8.10.2",
     "ts-node-dev": "^1.0.0-pre.56",
-    "typescript": "^3.9.2"
+    "typescript": "^3.9.7"
   },
   "dependencies": {
-    "@octokit/rest": "^18.0.0",
     "axios": "^0.19.2",
-    "celebrate": "^12.1.2",
+    "celebrate": "^12.2.0",
     "express": "^4.17.1",
     "jasmine": "^3.6.1",
-    "misc-utils-of-mine-generic": "^0.2.37",
+    "misc-utils-of-mine-generic": "file:../../misc-utils-of-mine/misc-utils-of-mine-generic",
     "mongodb": "^3.6.0",
     "react": "^16.13.1",
     "react-dom": "^16.13.1",
     "semantic-ui-css": "^2.4.1",
-    "semantic-ui-react": "^1.1.0"
+    "semantic-ui-react": "^1.1.1"
   }
 }
