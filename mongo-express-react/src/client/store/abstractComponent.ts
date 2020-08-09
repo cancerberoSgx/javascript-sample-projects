@@ -6,7 +6,7 @@ export abstract class AbstractComponent<S, P extends Partial<S>> extends Compone
     this.state = { ...this.getStore().getState(), ...p }
     this.storeChange = this.storeChange.bind(this)
   }
-  componentDidMount() {
+  componentDidMount() { 
     this.getStore().add(this.storeChange)
   }
   componentWillUnmount() {

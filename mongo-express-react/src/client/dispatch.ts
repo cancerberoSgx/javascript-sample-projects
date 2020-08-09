@@ -9,11 +9,15 @@ export async function search(search: Partial<Search>) {
   const s = getState()
   Object.assign(s.search, search)
   s.search.loading = true
-  setState(s)
   try {
-    search = {...getState().search, ...search}
     const response = await axios.get<SearchResult>(`v1/search?skip=${search.skip}&limit=${search.limit}`)
+    // console.log(response.status);
+    s.search = {...s.search, ...search, ...response.data}
   } catch (error) {
     s.search.error = error
   }
+  s.search.loading = false
+  console.log(s.search);
+  
+  setState(s)
 }

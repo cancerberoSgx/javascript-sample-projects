@@ -4,6 +4,7 @@ import { port } from './config'
 import { collection } from './db'
 import { Movie, SearchResult } from '../types'
 import { resolve } from 'path'
+import { readFile, readFileSync } from 'fs'
 
 const app = express()
 
@@ -33,6 +34,16 @@ app.get('/v1/search',
 )
 
 app.use(express.static(resolve('dist')));
+
+const indexHtml = readFileSync('dist/index.html').toString()
+
+app.use((req, res, next) => {
+  if (['/search', '/test'].includes(req.path) && req.method.toLowerCase() === 'get') {
+    res.send(indexHtml)
+  } else {
+    next()
+  }
+})
 
 app.listen(port, () => {
   console.log(`Listening on port ${port}`)

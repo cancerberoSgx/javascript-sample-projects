@@ -1,54 +1,36 @@
-import React, { Component } from 'react'
-import { Icon, Label, Pagination, PaginationProps, Table } from 'semantic-ui-react'
+import React from 'react'
+import { Label, Table } from 'semantic-ui-react'
 import { StoreComponent } from './store/storeComponent'
-import { getStore } from './store/store'
-
 
 export default class MovieTable extends StoreComponent {
-  columns = ['title', 'description']
+  // columns = ['title', 'description']
   render() {
+    if(this.state.search.loading){
+      return <div>Loading...</div>
+    }
     return (
       <div>
         <Table celled>
           <Table.Header>
             <Table.Row>
-              {this.columns.map(c => <Table.HeaderCell>{c}</Table.HeaderCell>)}
+              {/* {this.columns.map(c => <Table.HeaderCell>{c}</Table.HeaderCell>)} */}
+              <Table.HeaderCell>Title</Table.HeaderCell>
+              <Table.HeaderCell>Description</Table.HeaderCell>
             </Table.Row>
           </Table.Header>
 
           <Table.Body>
-            <Table.Row>
-              <Table.Cell>
-                <Label ribbon>First</Label>
-              </Table.Cell>
-              <Table.Cell>Cell</Table.Cell>
-              <Table.Cell>Cell</Table.Cell>
-            </Table.Row>
-            <Table.Row>
-              <Table.Cell>Cell</Table.Cell>
-              <Table.Cell>Cell</Table.Cell>
-              <Table.Cell>Cell</Table.Cell>
-            </Table.Row>
-            <Table.Row>
-              <Table.Cell>Cell</Table.Cell>
-              <Table.Cell>Cell</Table.Cell>
-              <Table.Cell>Cell</Table.Cell>
-            </Table.Row>
+            {this.state.search.results.map(movie=>
+             <Table.Row>
+             <Table.Cell>{movie.title}</Table.Cell>
+             <Table.Cell>{movie.description_full}</Table.Cell>
+           </Table.Row>
+              )}
           </Table.Body>
 
           <Table.Footer>
             <Table.Row>
               <Table.HeaderCell colSpan='3'>
-                {/* <Pagination
-                  activePage={activePage}
-                  onPageChange={this.handlePaginationChange}
-                  ellipsisItem={{ content: <Icon name='ellipsis horizontal' />, icon: true }}
-                  firstItem={{ content: <Icon name='angle double left' />, icon: true }}
-                  lastItem={{ content: <Icon name='angle double right' />, icon: true }}
-                  prevItem={{ content: <Icon name='angle left' />, icon: true }}
-                  nextItem={{ content: <Icon name='angle right' />, icon: true }}
-                  totalPages={10} 
-                />*/}
               </Table.HeaderCell>
             </Table.Row>
           </Table.Footer>
@@ -57,6 +39,4 @@ export default class MovieTable extends StoreComponent {
       </div>
     )
   }
-  // handleInputChange = (e: any, d: any) => this.setState({ activePage: d.value })
-
 }

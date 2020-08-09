@@ -8,7 +8,7 @@ export function loadMovies(){
 
 export async function extractMetadata() {
   const movies = loadMovies();
-  let g = [];
+  let g: any[] = [];
   movies.forEach(movie => {
     g.push(...movie.genres || []);
   });
