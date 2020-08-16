@@ -10,6 +10,14 @@ describe('search', () => {
     expect(response.data.results.length).toBe(5)
     expectPositiveNumber(response.data.total)
   })
+  it('genres', async ()=>{
+    const r1 = await axios.get<SearchResult>(`${baseUrl}/v1/search?skip=0&limit=99999`)
+    const r2 = await axios.get<SearchResult>(`${baseUrl}/v1/search?skip=0&limit=99999&genres=Drama`)
+    const r3 = await axios.get<SearchResult>(`${baseUrl}/v1/search?skip=0&limit=99999&genres=Drama,Thriller,Documentary`)
+    expect(r1.data.results.length).toBeGreaterThan(r2.data.results.length)
+    expect(r1.data.results.length).toBeGreaterThan(r3.data.results.length)
+    expect(r2.data.results.length).toBeLessThan(r3.data.results.length)
+  })
 })
 
 export function expectPositiveNumber(value: any) {

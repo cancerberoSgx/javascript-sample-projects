@@ -5,6 +5,7 @@ import { resolve } from 'path'
 import { Movie, SearchResult } from '../types'
 import { port } from './config'
 import { collection } from './db'
+import { moviesGenres } from '../common/metadata'
 
 const app = express()
 
@@ -13,18 +14,32 @@ app.get('/v1/search',
     [Segments.QUERY]: {
       skip: Joi.number().optional(),
       limit: Joi.number().optional(),
+      genres: Joi.string().optional(),
     },
   }),
   async (req, res, next) => {
     try {
       const skip = parseInt(req.query.skip + '')
       const limit = parseInt(req.query.limit + '')
+      const genres = (req.query.genres ? (req.query.genres + '') : '').split(',').map(s => s.trim()).filter(s=>s)
+      if (genres.find(g => !moviesGenres.includes(g))) {
+        return next(new Error('Invalid genres ' + genres.join(', ')))
+      }
       const movies = await collection<Movie>('movies')
+      const query = {}
+      console.log(genres);
+      
+      if (genres.length) {
+        // db.inventory.find( { tags: { $all: ["red", "blank"] } } )
+        // {genres: {$not: {$elemMatch: {$nin: [g]}}}}
+        Object.assign(query, { genres: { $not: { $elemMatch: { $nin: genres } } } })
+      }
+      const options = { limit, skip }
       const result: SearchResult = {
-        total: await movies.count(),
         skip,
         limit,
-        results: await movies.find({}, { limit, skip }).toArray()
+        total: await movies.count(),
+        results: await movies.find(query, options).toArray()
       }
       res.json(result)
     } catch (error) {

@@ -32,7 +32,7 @@ export function stateToUrl(state: State): string | undefined {
   }
 }
 /** when user lands on an url or navigates we need to decode the state from the url */
-export function urlToState(url: string): State {
+export function urlToState(url: string = window.location.href): State {
   const s = getState()
   const location = parseUrl(url)
   const params = getParametersFromUrl(url, { parseNumber: true })
