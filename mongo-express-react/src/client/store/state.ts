@@ -12,7 +12,7 @@ export interface Search {
   error?: Error
   skip: number
   limit: number
-  genres?: string[]
+  genres: string[]
   results: Movie[]
   loading: boolean
   total: number
@@ -28,6 +28,7 @@ export function getInitialState(appOptions: AppOptions): State {
       loading: true,
       error: undefined,
       total: 0,
+      genres: []
     },
     test: {
       counter: 0

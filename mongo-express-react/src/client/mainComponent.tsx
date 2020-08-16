@@ -4,6 +4,7 @@ import Link from './link'
 import MovieTable from './movieTable'
 import { StoreComponent } from './store/storeComponent'
 import TestComponent from './testComponent'
+import './mainComponent.css'
 
 export default class MainComponent extends StoreComponent {
   render() {

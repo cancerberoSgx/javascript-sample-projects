@@ -26,7 +26,7 @@ export async function setStateFromUrl(url?: string) {
  */
 export function stateToUrl(state: State): string | undefined {
   if (state.page === 'search') {
-    return `/search?limit=${state.search.limit}&skip=${state.search.skip}`
+    return `/search?limit=${state.search.limit}&skip=${state.search.skip}&genres=${(state.search.genres||[]).join(',')}`
   } else if (state.page === 'test') {
     return `/test`
   }
@@ -36,9 +36,12 @@ export function urlToState(url: string = window.location.href): State {
   const s = getState()
   const location = parseUrl(url)
   const params = getParametersFromUrl(url, { parseNumber: true })
+
   if (location?.pathname === '/search') {
     s.page = 'search'
-    s.search = { ...s.search, ...params }
+    Object.assign(s.search, params, {genres: (params.genres||'').split(',')})
+    // s.search = { ...s.search, ...params, genres: (params.genres||'').split(',') }
+    console.log(s.search, (params.genres||'').split(','));
   }
   else if (location?.pathname === '/test') {
     s.page = 'test'

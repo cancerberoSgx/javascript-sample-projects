@@ -14,31 +14,28 @@ app.get('/v1/search',
     [Segments.QUERY]: {
       skip: Joi.number().optional(),
       limit: Joi.number().optional(),
-      genres: Joi.string().optional(),
+      genres: Joi.string().optional().empty().allow(null).allow(''),
     },
   }),
   async (req, res, next) => {
     try {
       const skip = parseInt(req.query.skip + '')
       const limit = parseInt(req.query.limit + '')
-      const genres = (req.query.genres ? (req.query.genres + '') : '').split(',').map(s => s.trim()).filter(s=>s)
+      const genres = (req.query.genres ? (req.query.genres + '') : '').split(',').map(s => s.trim()).filter(s => s)
       if (genres.find(g => !moviesGenres.includes(g))) {
         return next(new Error('Invalid genres ' + genres.join(', ')))
       }
       const movies = await collection<Movie>('movies')
       const query = {}
       console.log(genres);
-      
       if (genres.length) {
-        // db.inventory.find( { tags: { $all: ["red", "blank"] } } )
-        // {genres: {$not: {$elemMatch: {$nin: [g]}}}}
         Object.assign(query, { genres: { $not: { $elemMatch: { $nin: genres } } } })
       }
       const options = { limit, skip }
       const result: SearchResult = {
         skip,
         limit,
-        total: await movies.count(),
+        total: await movies.count(query),
         results: await movies.find(query, options).toArray()
       }
       res.json(result)

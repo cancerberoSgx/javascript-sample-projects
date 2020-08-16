@@ -1,0 +1,8 @@
+.pages li {
+  display: inline-block;
+  padding-right: 10px;
+}
+
+.current-page {
+  border: 2px solid pink;
+}

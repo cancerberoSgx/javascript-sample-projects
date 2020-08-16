@@ -10,7 +10,7 @@ export async function search(search: Partial<Search>) {
   s.search.loading = true
   setState(s)
   try {
-    const response = await axios.get<SearchResult>(`v1/search?skip=${s.search.skip}&limit=${s.search.limit}`)
+    const response = await axios.get<SearchResult>(`v1/search?skip=${s.search.skip}&limit=${s.search.limit}&genres=${s.search.genres.join(',')}`)
     s.search = { ...s.search, ...response.data }
   } catch (error) {
     s.search.error = error

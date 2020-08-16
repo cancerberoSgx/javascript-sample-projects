@@ -5,8 +5,7 @@ import { search } from './dispatch'
 import { setStateFromUrl } from './history'
 import MainComponent from './mainComponent'
 import { AppOptions, getInitialState } from './store/state'
-import { getStore, _setStore } from './store/store'
-import { sleep } from 'misc-utils-of-mine-generic'
+import { _setStore } from './store/store'
 
 export async function main(appOptions: AppOptions) {
   if (!document.querySelector('#main')) {
@@ -20,6 +19,5 @@ export async function main(appOptions: AppOptions) {
   await setStateFromUrl()
   render(<MainComponent />, document.getElementById('main'))
 
-  await sleep(1000)
   await search(s.search)
 }
