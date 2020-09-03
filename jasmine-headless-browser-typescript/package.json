@@ -24,7 +24,7 @@
     "jasmine": "^3.3.0",
     "opn": "^5.4.0",
     "opn-cli": "^3.1.0",
-    "puppeteer": "^1.10.0",
+    "puppeteer": "^1.13.0",
     "typescript": "^3.1.6",
     "webpack-stream": "^5.1.1"
   }
