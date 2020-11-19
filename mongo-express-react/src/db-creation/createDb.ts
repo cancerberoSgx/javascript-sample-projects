@@ -17,6 +17,8 @@ async function main() {
     const result = await col.insertMany(movies)
     console.log(`Inserted ${result.result.n}, ${result.ops.length}`);
 
+    await col.createIndex({ title: "text" })
+
     process.exit(0)
   } catch (error) {
     trace(error)

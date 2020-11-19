@@ -3,6 +3,7 @@ import { SearchResult } from "../types"
 import { Search } from "./store/state"
 import { getState, setState } from "./store/store"
 import { urlToState, stateToUrl } from './history'
+import { printMs } from 'misc-utils-of-mine-generic';
 
 export async function search(search: Partial<Search>) {
   const s = {...getState(), ...urlToState()}
@@ -15,9 +16,13 @@ export async function search(search: Partial<Search>) {
   } catch (error) {
     s.search.error = error
   }
+
   s.search.loading = false
   const url = stateToUrl(s)
-  console.log(url, s);
+
+  // console.log(url, s);
   history.pushState({}, document.title, url)
+
   setState(s)
+  
 }

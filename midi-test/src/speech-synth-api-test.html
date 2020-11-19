@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <button onclick="play()">speak</button>
+  <script>
+    function play() {
+      const text = `
+      <speak>
+  Here are <say-as interpret-as="characters">SSML</say-as> samples.
+</speak>
+      `
+      const synth = window.speechSynthesis;
+      console.log(synth.getVoices());
+      var utterThis = new SpeechSynthesisUtterance(text);
+      utterThis.lang='es'
+      synth.speak(utterThis)
+    }
+  </script>
+<media>
+<speak>
+<p>
+<s>You have 4 new messages.</s>
+<s>The first is from Stephanie Williams and arrived at <break/> 3:45pm.
+</s>
+<s>
+The subject is <prosody rate="-20%">ski trip</prosody>
+</s>
+</p>
+</speak>
+</media>
+</body>
+</html>

@@ -1,4 +1,4 @@
-import { array } from 'misc-utils-of-mine-generic'
+import { array, printMs } from 'misc-utils-of-mine-generic'
 import React from 'react'
 import { Dimmer, Loader, Segment, Table } from 'semantic-ui-react'
 import Link from './link'
@@ -10,7 +10,8 @@ import { StoreComponent } from './store/storeComponent'
 export default class MovieTable extends StoreComponent {
 
   render() {
-
+  const t0 = Date.now()
+   
     if (this.state.search.loading) {
       return <div>
         <SearchFilters />
@@ -20,7 +21,7 @@ export default class MovieTable extends StoreComponent {
       </div>
     }
 
-    return <div>
+    const result = <div>
       <Segment>
         <SearchFilters />
       </Segment>
@@ -40,7 +41,7 @@ export default class MovieTable extends StoreComponent {
   
           <Table.Body>
             {this.state.search.results.map(movie =>
-              <Table.Row>
+              <Table.Row key={movie.id}>
                 <Table.Cell><Link href={`movie/${movie.id}`}>{movie.title}</Link></Table.Cell>
                 <Table.Cell>{movie.description_full}</Table.Cell>
                 <Table.Cell>{movie.year}</Table.Cell>
@@ -65,6 +66,11 @@ export default class MovieTable extends StoreComponent {
       </Segment>
 
     </div>
+
+console.log(printMs(Date.now()-t0));
+
+              
+    return result
 
   }
 

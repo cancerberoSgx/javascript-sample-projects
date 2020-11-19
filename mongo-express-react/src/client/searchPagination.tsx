@@ -46,7 +46,7 @@ export default class SearchPagination extends StoreComponent {
                     <li>...</li>
                     {
                       pages.map(page =>
-                        <li className={currentPage === page ? 'current-page' : ''}>
+                        <li className={currentPage === page ? 'current-page' : ''} key={page}>
                           <Link action={() => search({ skip: page * this.state.search.limit })}>{page}</Link>
                         </li>)
                     }

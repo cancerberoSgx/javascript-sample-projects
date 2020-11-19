@@ -5,7 +5,7 @@ import { MoviesData, Movie } from '../types';
 
 export async function downloadMovies() {
   const url = `https://yt` + `s.mx/api/v2/list_` + `movies.json`
-  // TODO: another for series // https:// ez tv.i o/api/
+  // TODO: another for series // htt ps:// ez tv.i o/api/  htt ps:// ez tv. re/ a p i/
   const response = await axios.get<MoviesData>(`${url}?page=1&limit=1`)
   const pages = Math.trunc(response.data.data.movie_count / 50)
   const movies: Movie[] = []
