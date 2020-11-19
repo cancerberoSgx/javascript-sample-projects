@@ -1,7 +1,7 @@
 import {dec2bin, bin2dec} from './baseConverter'
 import {array} from 'misc-utils-of-mine-generic'
 
-export function buildNumber(a: number, length: number) {
+export function number2input_straight(a: number, length: number) {
   const bin = dec2bin(a)
   if(bin.length>length) {
     throw new Error('Number greater than length')
@@ -16,10 +16,10 @@ export function isPrime(num: number) {
 }
 
 const digitLength = dec2bin(9).length
-export function number2InputDigitByDigit(a: number) {
-  return `${a}`.split('').map(i=>parseInt(i, 10)).map(i=>buildNumber(i, digitLength)).flat()  
+export function number2Input_digitByDigit(a: number) {
+  return `${a}`.split('').map(i=>parseInt(i, 10)).map(i=>number2input_straight(i, digitLength)).flat()  
 }
-export function input2NumberDigitByDigit(input: number[]) {
+export function input2number_digitByDigit(input: number[]) {
   const digits = []
   let acc = []
   input.map((n, i)=>{

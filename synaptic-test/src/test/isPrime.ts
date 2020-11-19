@@ -1,6 +1,6 @@
 import { Architect, Trainer, Network } from 'synaptic'
 import { dec2bin, bin2dec } from '../baseConverter'
-import { buildNumber, isPrime } from '../inputUtil'
+import { number2input_straight, isPrime } from '../inputUtil'
 import { array } from 'misc-utils-of-mine-generic'
 
 // learn to detect numbers divisible by 3
@@ -10,7 +10,7 @@ function main() {
   const network = new Architect.Perceptron(numberSize, numberSize, 1)
   var trainer = new Trainer(network)
   const trainingSet = array(max).map(i => ({
-    input: [...buildNumber(i, numberSize)],
+    input: [...number2input_straight(i, numberSize)],
     output: [isPrime(i) ? 1 : 0]
   }))
   trainer.train(trainingSet, {
@@ -20,9 +20,9 @@ function main() {
     shuffle: true,
     cost: Trainer.cost.CROSS_ENTROPY
   });
-  console.log(network.activate(buildNumber(101, numberSize)), isPrime(101));
-  console.log(network.activate(buildNumber(102, numberSize)), isPrime(102));
-  console.log(network.activate(buildNumber(7, numberSize)));
+  console.log(network.activate(number2input_straight(101, numberSize)), isPrime(101));
+  console.log(network.activate(number2input_straight(102, numberSize)), isPrime(102));
+  console.log(network.activate(number2input_straight(7, numberSize)));
 }
 
 main()
