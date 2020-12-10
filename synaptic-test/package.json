@@ -11,7 +11,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "misc-utils-of-mine-generic": "^0.2.37",
+    "misc-utils-of-mine-generic": "file:../../misc-utils-of-mine/misc-utils-of-mine-generic",
     "shelljs": "^0.7.8",
     "synaptic": "^1.0.12"
   },

@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "outDir": "dist",
+    "lib": [
+      "ESNext",
+      "dom"
+    ],
+    "sourceMap": true,
+    "esModuleInterop": true,
+    "strict": false,
+    "noImplicitAny": false
+  },
+  "include": [
+    "src", "spec"
+  ]
+}
