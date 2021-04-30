@@ -1,0 +1,21 @@
+{
+  "name": "brain-js",
+  "version": "1.0.0",
+  "description": "",
+  "main": "float.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "brain.js": "^2.0.0-beta.2",
+    "misc-utils-of-mine-generic": "file:../../misc-utils-of-mine/misc-utils-of-mine-generic"
+  },
+  "devDependencies": {
+    "@types/node": "^14.14.9",
+    "ts-node": "^9.0.0",
+    "typescript": "^4.1.2"
+  }
+}

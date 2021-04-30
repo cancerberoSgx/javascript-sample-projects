@@ -1,0 +1,33 @@
+
+<h3>Perforce Configuration</h3>
+<p>The following are perforce configuration properties for obtaining the changelists we want to display. </p>
+
+<form role="form">
+  <div class="form-group">
+    <label for="fileInput">Perforce file</label>
+    <input type="text" id="fileInput" class="form-control" name="file" placeholder="//depot/My Repositories/Project1/...">    
+    <p class="help-block">Depot file name or folder in which case it must ends with "/..."</p>
+  </div>
+  <div class="form-group">
+    <label for="usersInput">Users</label>
+    <input type="password" id="usersInput" class="form-control" placeholder="">
+    <p class="help-block">Optional. Multiple users must be separated with comma, like sgurin,bgates,rstallman</p>
+  </div>
+  <div class="form-group">
+    <label for="maxResultsInput">Maximun Result Count</label>
+    <input type="number" name="maxresults" id="maxResultsInput" value="1500">
+    <p class="help-block"> </p>
+  </div>
+  <button type="submit" class="btn btn-default">Load Changelists</button>
+</form>
+
+<br/>
+<p><b>Also</b> you can drag and drop a perforce change dump file from your desktop. You can generate the dump file like this: </p>
+
+<pre>
+$ p4 changes -l -m 1500 //MyRepository/myProject/... > dump.txt
+</pre>
+
+<p dropzone class="lead">Drop here your initial files!</p>
+
+<p class="output1"></p>

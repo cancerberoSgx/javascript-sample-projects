@@ -1,0 +1,28 @@
+{
+	"name": "browserify-shim"
+,	"version": "0.1.0"
+,	"description": "exampl of using browserify with shim alone"
+,	"devDependencies": {
+		"browserify-shim": "~3.0.0"
+	}
+,	"browserify": {
+		"transform": ["browserify-shim"]
+	}
+,	"browser": {
+		"jquery": "./js/vendor/jquery-2.0.3.js"
+	,	"underscore": "./js/vendor/underscore.js"
+	,	"backbone": "./js/vendor/backbone.js"
+	}
+,	"browserify-shim": {
+		"jquery": {
+			"exports": "$"
+		}
+	,	"underscore": {
+			"exports": "_"
+		}
+	,	"backbone": {
+			"exports": "Backbone"
+		,	"depends": ["underscore"]
+		}
+	}
+}

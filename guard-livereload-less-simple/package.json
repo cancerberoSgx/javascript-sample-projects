@@ -1,0 +1,9 @@
+{
+  "name": "javascript-sample-projects-guard-livereload-lss-simple",
+  "version": "0.1.0",
+  "url": "https://github.com/cancerberoSgx/javascript-sample-projects",
+  "dependencies": {
+    "express" : "3.x",
+    "underscore": "1.5.1"
+  }
+}

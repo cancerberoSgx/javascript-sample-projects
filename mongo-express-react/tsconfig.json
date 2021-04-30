@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "outDir": "dist",
+    "lib": [
+      "ESNext",
+      "dom"
+    ],
+    "sourceMap": true,
+    "jsx": "react",
+    "esModuleInterop": true,
+    "strict": true,
+    "noImplicitAny": false
+  },
+  "include": [
+    "src"
+  ]
+}

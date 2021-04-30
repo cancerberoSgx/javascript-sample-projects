@@ -1,0 +1,8 @@
+/dist
+/node_modules
+/.cache
+/build
+.DS_Store
+/tmp*
+/static
+/data

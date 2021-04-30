@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "outDir": "dist",
+    "lib": [
+      "ESNext",
+      "dom"
+    ]
+  },
+  "include": [
+    "src"
+  ]
+}

@@ -1,0 +1,1 @@
+a web application with jasmine tests using gulp-jasmine-browser to run tests headless with puppeteer nice experience (npm test)

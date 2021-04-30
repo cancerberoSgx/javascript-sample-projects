@@ -1,0 +1,324 @@
+<html>
+
+<head>
+  <title>Wye labs</title>
+
+  <style>
+    .note-content {
+      display: none;
+      position: fixed;
+      bottom: 0px;
+      right: 0px;
+      background-color: white;
+      opacity: 0.6;
+    }
+
+    .visible {
+      display: block !important;
+    }
+
+    section {
+      margin-bottom: 1000px;
+    }
+
+    button {
+      opacity: 0.5;
+    }
+
+    .note {
+      float: right;
+    }
+
+    h1 {
+      font-size: 3em;
+    }
+
+    body {
+      font-size: 1.2em;
+    }
+    .yapa img {
+      height: 600px;
+    }
+  </style>
+
+  <script>
+    function notes(event) {
+      const content = event.target.parentElement.querySelector('.note-content')
+      const visible = content.getAttribute('data-toggled') === 'true'
+      content.setAttribute('data-toggled', visible ? 'false' : 'true')
+      if (visible) {
+        content.classList.add('visible')
+      } else {
+        content.classList.remove('visible')
+      }
+    }
+  </script>
+
+</head>
+
+<body>
+
+  <section>
+
+    <div class="note">
+      <button onclick="notes(event)">?</button>
+      <pre class="note-content">
+        * enfocarnos en un problema complejo e interesante
+        * en dónde tanto artistas como ingenieros se metieron a resolver
+        * discutir como una solución es válida no por su "perfección" sino por cómo resuelve las necesidades del usuario
+      </pre>
+    </div>
+
+    <h1>bitmap to vector graphics</h1>
+
+    <h3>"y cómo el arte le ganó a la ingeniería"</h3>
+    <h5>Seba Gurin</h5>
+
+  </section>
+
+
+
+  <section>
+
+    <div class="note">
+      <button onclick="notes(event)">?</button>
+      <pre class="note-content">
+        porque la rasterization es tan fácil pero verctorizar es muy complicado de resolver. 
+        Pensarlo por un momento, en particular una foto.
+      </pre>
+    </div>
+
+    <h1>El problema</h1>
+
+    <h2>vectorization (<a href="https://en.wikipedia.org/wiki/Image_tracing">image tracing</a>) </h2>
+
+    <p>Se trata de representar un bitmap (imagen/foto) con figuras primitivas (como triangulos, rectangulos, ellipses,
+      bleziers) </p>
+
+    <table>
+      <tr>
+        <td>
+          <img src="circle.png"></td>
+        <td>
+          <pre>
+      &lt;circle cx="50" cy="50" r="40" stroke="green" stroke-width="4" fill="yellow" />
+    </pre>
+        </td>
+      </tr>
+      <tr>
+        <td><img src="lenna.png"></td>
+        <td>
+          ?????????????????????????????????????????????????????????????????????
+          ?????????????????????????????????????????????????????????????????????
+          ?????????????????????????????????????????????????????????????????????
+        </td>
+      </tr>
+    </table>
+
+    <h2>El problema contrario: <a href="https://en.wikipedia.org/wiki/Rasterisation">rasterization</a></h2>
+
+  </section>
+
+
+
+
+
+
+  <section>
+
+    <div class="note">
+      <button onclick="notes(event)">?</button>
+      <pre class="note-content">
+        * el objetivo de las soluciones ingenieriles va por tratar de discritizar "eficientemente" el bitmap
+        * les debo la descripción de los algoritmos ingenieriles (Image tracing)
+      </pre>
+    </div>
+
+    <h1>Soluciones ingenieriles</h1>
+
+    <p>En la vida real transformar un bitmap a vectores aplica a:</p>
+    <ul>
+      <li>design paper-to-cad (plotters, guillotinas, etc)</li>
+      <li>geographic satellite-aerial images to maps</li>
+      <li>graphics: vectorization for easy resize, image feature, etc</li>
+      <li>OCR : handwritten text or signatures.</li>
+    </ul>
+
+    <p>El objetivo es tratar más de extraer figuras a un número eficiente de primitivas. El objetivo no
+      es el realismo, por ejemplo pocas soluciones ingenieriles soportan colores ya que se trata más de extraer shapes
+      eficientemente</p>
+
+    <img src="imagetracer-example.png">
+
+    <br />
+
+    <table>
+      <tr>
+        <td><img src="lenna.png"></td>
+        <td><img src="lenna-ingenieria-1.svg"></td>
+      </tr>
+    </table>
+
+    <p>Vale la pena notar que si bien para fotos de facebook no hacen un gran trabajos, para digitalizar drawings,
+      blueprints, texto, dibujos lo hacen muy bien. por ejemplo una misma letra en un texto escaneado probablemente sea
+      representada por el mismo set de figuras primitivas. See <a
+        href="https://cancerberosgx.github.io/demos/svg-png-converter/playground/#">diagram example</a> </p>
+
+  </section>
+
+
+
+
+  <section>
+
+    <div class="note">
+      <button onclick="notes(event)">?</button>
+      <pre class="note-content">
+        * mostrar el avance e ir explicando que hace
+        * mostrar arte con parametros chicos
+        * cuanto más error más artístico
+        * las mutaciones son random a propósito
+      </pre>
+    </div>
+
+    <h1>Solución artística</h1>
+
+    <ul>
+      <li>Original idea is from <a
+          href="https://primitive.lol/">primitive</a>. Implementación utilizada aquí: <a href="https://www.geometrize.co.uk/">geometrize</a>.</li>
+      <li>El objetivo es obtener representaciones lindas, a veces incluso casi irreconocibles. </li>
+      <li><a href="https://github.com/fogleman/primitive#how-it-works-part-ii">how it works</a>: randomness, mutations,
+        scores, hill-climbing</li>
+    </ul>
+
+    <img width="100%" src="primitive-example.png">
+
+    <p>Aunque no fue el objetivo original de los autores, me di cuenta que con respecto al problema de la "perfectitud" esta solución también es óptima, y mejor aún, es arbitrariamente óptima, solo hay que dejarla iterar</p>
+
+    <h2><a href="https://twitter.com/PrimitivePic">Ejemplos de arte</a></h2>
+
+    <table class="yapa">
+      <tr>
+        <td>first the basic background </td>
+        <td> <img src="wye-00.png"></td>
+        <td> <img src="wye-00b.png"></td>
+        <td> <img src="wye-00c.png"></td>
+      </tr>
+      <tr>
+        <td>The primary shapes</td>
+        <td> <img src="wye-01.png"></td>
+        <td> <img src="wye-01b.png"></td>
+        <td> <img src="wye-01c.png"></td>
+      </tr>
+
+      <tr>
+        <td>bla</td>
+        <td> <img src="wye-02.png"></td>
+        <td> <img src="wye-02b.png"></td>
+      </tr>
+
+      <tr>
+        <td>bla</td>
+        <td> <img src="wye-03.png"></td>
+      </tr>
+      <tr>
+        <td>bla</td>
+        <td> <img src="wye-04.png"></td>
+      </tr>
+      <tr>
+        <td>bla</td>
+        <td> <img src="wye-05.png"></td>
+      </tr>
+    </table>
+
+
+    <h2>Parámetros</h2>
+
+    <ul>
+      <li>iterations (number of shapes)</li>
+      <li>candidate shapes per iteration</li>
+      <li>mutations per shape</li>
+    </ul>
+
+    <table>
+      <tr>
+        <td>Original</td>
+        <td><img src="lenna.png"></td>
+      </tr>
+      <tr>
+        <td>300 iterations, 10 candidate shapes, 10 shape mutations</td>
+        <td><img src="lenna-300-10-10.svg"></td>
+      </tr>
+      <tr>
+        <td>300 iterations, 300 candidate shapes, 200 shape mutations</td>
+        <td><img src="lenna-300-300-200.svg"></td>
+      </tr>
+      <tr>
+        <td>9000 iterations, 300 candidate shapes, 100 shape mutations</td>
+        <td><img src="lenna-9000-300-100.svg"></td>
+      </tr>
+    </table>
+
+  </section>
+
+
+
+
+  <section>
+
+    <div class="note">
+      <button onclick="notes(event)">?</button>
+      <pre class="note-content">
+        * explicar el problema de pablo. 
+          * A él no le daban el svg, sino que le tenía q sacar foto a la fachada de una panadería para 
+            extraer el logo y luego giullotinar para luego imprimir o sublimar, tazas, pegotines, remeras. 
+            En su caso para hacer un logo negro en una remera blanca necesita recortar la figura. 
+        * porqué la solucion artistica y perfecta no serve en el mundo real (mapas, shape detection, plotters.). 
+            se imaginan una guillotina recortando todas las shapes de cada una? cual es mejor?
+        * Para lo único que podría servir es a aquellos que, por algún motivo necesiten convertir un pdf en svg con "perfeccción arbitraria".
+      </pre>
+    </div>
+
+    <h1>Vida real - missleading title</h1>
+
+    <p>Real world: imprentas, plotters, guillotinas</p>
+    <p>Cuál de las siguientes es mejor para cortar el ojo con una guillotina o plotter?</p>
+
+    <img src="lenna-eye-ingenieria.png">
+    <br />
+    <img src="lenna-eye-art.png">
+
+  </section>
+
+
+
+  <section>
+
+    <div class="note">
+      <button onclick="notes(event)">?</button>
+      <pre class="note-content">
+        * por suerte hay muchos proyectos de investigacion y no ingenieriles
+      </pre>
+    </div>
+
+    <h1>Finale</h1>
+
+    <h2>Espero que en esta charla se hayan copado con</h2>
+
+    <ul>
+      <li>png2svg: un problema interesante a resolver</li>
+      <li>las imagenes artisticas y el algoritmo</li>
+      <li>Cómo los problemas de ingeniería son terrenales y estamos atados a las necesidades del usuario más que a "soluciones perfectas"</li>
+    </ul>
+
+
+    <h2>Yapa</h2>
+
+    <p><a href="haxe.org">Haxe</a> y <a href="https://www.npmjs.com/package/geometrizer-js">geometrizerjs</a></p>
+
+  </section>
+
+
+</body>
+
+</html>

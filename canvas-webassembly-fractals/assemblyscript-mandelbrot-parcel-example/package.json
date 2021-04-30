@@ -1,0 +1,18 @@
+{
+  "name": "@assemblyscript/mandelbrot-example",
+  "version": "1.0.0",
+  "license": "Apache-2.0",
+  "private": true,
+  "scripts": {
+    "asbuild:untouched": "asc assembly/index.ts -b dist/build/untouched.wasm -t dist/build/untouched.wat --use Math=JSMath --runtime none --importMemory --sourceMap --debug --measure",
+    "asbuild:optimized": "asc assembly/index.ts -b dist/build/optimized.wasm -t dist/build/optimized.wat -d dist/build/optimized.d.ts --use Math=JSMath --runtime none -O3 --importMemory --sourceMap --measure",
+    "asbuild": "npm run asbuild:untouched && npm run asbuild:optimized",
+    "start": "npx parcel index.html",
+    "build": "rm -rf build; npx parcel build index.html && npm run asbuild"
+  },
+  "devDependencies": {
+    "assemblyscript": "latest",
+    "parcel": "^1.12.4",
+    "typescript": "^3.9.2"
+  }
+}

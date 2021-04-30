@@ -1,0 +1,9 @@
+node_modules
+tmp
+spec
+src
+dist/spec
+tsconfig.json
+.vscode
+*.tgz
+api

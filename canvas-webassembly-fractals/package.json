@@ -1,0 +1,21 @@
+{
+  "name": "canvasTest",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "npx parcel src/index.html",
+    "build": "rm -rf build; mkdir build; npx parcel build --out-dir build  --experimental-scope-hoisting src/index.html"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "parcel": "^1.12.4",
+    "typescript": "^3.8.3"
+  },
+  "dependencies": {
+    "misc-utils-of-mine-generic": "file:../../git/misc-utils-of-mine/misc-utils-of-mine-generic"
+  }
+}

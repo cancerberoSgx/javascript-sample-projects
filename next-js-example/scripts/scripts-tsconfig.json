@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "lib": [
+      "esnext"
+    ],
+    "strict": false,
+    "target": "es2015",
+    "module": "commonjs",
+    "moduleResolution": "node"
+  },
+  "include": [
+    "./**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

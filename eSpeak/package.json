@@ -1,0 +1,31 @@
+{
+  "name": "eSpeak-inferno-ts-decorators-example",
+  "version": "1.0.0",
+  "description": "",
+  "main": "test.js",
+  "scripts": {
+    "start": "npx parcel serve src/probes/testBrowser3.html --no-source-maps",
+    "build": "npx parcel build src/probes/testBrowser3.html --no-source-maps",
+    "clean": "rm -rf dist",
+    "format": "npx ts-refactor format \"src/**/*.ts*\" ./formatCodeSettings.json --tsConfigPath ./tsconfig.json --dontAsk",
+    "organizeImports": "npx ts-refactor organizeImports \"src/**/*.ts*\"  ./formatCodeSettings.json --tsConfigPath ./tsconfig.json  --dontAsk ",
+    "lint": "npm run organizeImports && npm run format",    
+    "all": "npm run clean && npm run lint && npm run build"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^12.0.8",
+    "parcel": "^1.12.3",
+    "ts-node": "^8.2.0",
+    "ts-refactor": "0.0.6",
+    "typescript": "^3.5.1"
+  },
+  "dependencies": {
+    "babel-polyfill": "^6.26.0",
+    "inferno": "^7.1.13",
+    "inferno-create-element": "^7.1.13",
+    "reflect-metadata": "^0.1.13"
+  }
+}

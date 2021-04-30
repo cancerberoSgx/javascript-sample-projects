@@ -1,0 +1,51 @@
+<% 
+var data = view.application.dataManager.data; 
+%>
+
+<div class="ListChangelistsView">
+
+<div class="row">
+	<div class="col-md-8">
+	<span>Order By</span>
+		<select data-action="orderby">
+			<option value="changelist">Changelist</option>
+			<option value="date">Date</option>
+			<option value="user">User</option>
+		</select>	
+	</div>
+  <div class="col-md-4">
+  </div>
+</div>
+<div class="row">
+	<div class="col-md-12">
+		<% if(!data){%>
+		<p>No data to display, please load some data first using <a href="/perforce-config">Perforce Configuration tool</a></p>
+		<% } 
+		else {%>
+		<table  class="table table-responsive">
+			<thead>
+	          <tr>
+	            <th>Changelist</th>
+	            <th>Date</th>
+	            <th>User</th>
+	            <th>Message</th>
+	          </tr>
+	        </thead>
+	        <tbody>
+	        	<% _(data).each(function(changelist){
+        		%>
+        			<tr>
+        				<td><%= changelist.changelist%></td>
+        				<td><%= changelist.date%></td>
+        				<td><%= changelist.user%></td>
+
+        			</tr>
+        		<%
+	        	}); %>
+	        </tbody>
+		</table>
+		<% } %>
+	</div>
+</div>
+
+<div>

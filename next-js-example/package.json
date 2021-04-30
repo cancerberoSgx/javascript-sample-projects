@@ -1,0 +1,25 @@
+{
+  "name": "test",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "create-migration": "touch migrations/$(date +%Y%m%d%H%M%S)-my-migration-name.sql",
+    "migrations": "ts-node -P scripts/scripts-tsconfig.json scripts/migrations.ts"
+  },
+  "dependencies": {
+    "mysql": "^2.18.1",
+    "next": "10.0.5",
+    "react": "17.0.1",
+    "react-dom": "17.0.1"
+  },
+  "devDependencies": {
+    "@types/mysql": "^2.15.17",
+    "@types/node": "^14.14.22",
+    "@types/react": "^17.0.0",
+    "ts-node": "^9.1.1",
+    "typescript": "^4.1.3"
+  }
+}

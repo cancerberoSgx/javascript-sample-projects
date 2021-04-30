@@ -1,0 +1,13 @@
+Guardfile
+
+guard 'livereload' do
+
+  guard 'livereload' do
+    watch(%r{.+\.(css|html|js)$})
+  end
+
+end
+
+guard 'less', :all_on_start => true, :all_after_change => true do
+  watch(%r{^.+\.less$})
+end

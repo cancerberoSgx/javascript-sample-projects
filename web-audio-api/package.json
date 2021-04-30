@@ -1,0 +1,19 @@
+{
+  "name": "test",
+  "version": "1.0.0",
+  "license": "true",
+  "private": true,
+  "scripts": {
+    "copy": "mkdir -p dist; cp -r src/static/* dist",
+    "start": "npm run copy && npx parcel src/voice-change-o-matic/index.html"
+  },
+  "devDependencies": {
+    "@types/node": "^14.0.5",
+    "parcel": "^1.12.4",
+    "typescript": "^3.9.2"
+  },
+  "dependencies": {
+    "misc-utils-of-mine-generic": "^0.2.35",
+    "tone": "14"
+  }
+}
