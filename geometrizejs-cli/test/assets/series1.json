@@ -1,7 +1,0 @@
-{
-  "shapeTypes": "circle",
-  "noOptimize": true,
-  "series": [
-    {"iterations": 10},{"iterations": 20}
-  ]
-}
