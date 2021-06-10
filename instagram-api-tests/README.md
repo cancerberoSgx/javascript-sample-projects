@@ -20,4 +20,5 @@ sudo ts-node src/webapp/server.ts
 
 # TODO
 
+ * media pagination how to: https://developers.facebook.com/docs/graph-api/using-graph-api#paging   use limit, next, previous
  * https://developers.facebook.com/docs/instagram-basic-display-api/guides/long-lived-access-tokens

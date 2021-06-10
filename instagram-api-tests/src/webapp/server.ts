@@ -13,16 +13,16 @@ let userId=''
 
 var app = express()
 
-app.get('/listImages', (req, res, next)=>{
-  res.type('html');
-  if(!accessToken){
-    res.send('Cannot list without an access token. Please <a href="/">start again</a>')
-  } else {
-    res.send(`<h1>Images</h1>
-    <ul>${['foo.png'].map(img=>`<li><img src="${img}"></li>`).join()}</ul>
-    <p><a href="/">start all over again</a></p>`)
-  }
-}) 
+// app.get('/listImages', (req, res, next)=>{
+//   res.type('html');
+//   if(!accessToken){
+//     res.send('Cannot list without an access token. Please <a href="/">start again</a>')
+//   } else {
+//     res.send(`<h1>Images</h1>
+//     <ul>${['foo.png'].map(img=>`<li><img src="${img}"></li>`).join()}</ul>
+//     <p><a href="/">start all over again</a></p>`)
+//   }
+// }) 
 
 app.get('/', function (req, res) {
   res.type('html');
@@ -42,21 +42,33 @@ curl -X POST \
     accessToken = accessTokenResponse.access_token
     userId = accessTokenResponse.user_id
 
-    console.log(exec(`curl -X GET \
-    'https://graph.instagram.com/${userId}?fields=id,username&access_token=${accessToken}'`).stdout);
+    // console.log(exec(`curl -X GET \
+    // 'https://graph.instagram.com/${userId}?fields=id,username&access_token=${accessToken}'`).stdout);
     
+const listMediaCommand =`curl -X GET \
+'https://graph.instagram.com/${userId}/media?fields=id,media_type,permalink,timestamp,username,thumbnail_url,media_url,caption&access_token=${accessToken}'`
+console.log(listMediaCommand);
 
     res.send(`
     <p>Authorization code obtained: ${code}</p>
-    <code>${command}</code>
+    <pre>${command}</pre>
     <div>
     Access token response: 
-    <code>${JSON.stringify(accessTokenResponse)}</code>
+    <pre>${JSON.stringify(accessTokenResponse)}</pre>
     </div>
-    <div>User info: <code>${exec(`curl -X GET \
-    'https://graph.instagram.com/${userId}?fields=id,username&access_token=${accessToken}'`).stdout}</code>
+    <div>User info: 
+      <pre>${curl(`curl -X GET \
+    'https://graph.instagram.com/${userId}?fields=id,username&access_token=${accessToken}'`, 'formattedString')}</pre>
+    </div>
+    <div>User media: 
+    <pre>${curl(listMediaCommand, 'formattedString')}</pre>
+  </div>
     <a href="/listImages">List images</a>
     `)
+
+    // console.log(`curl -X GET \
+    // 'https://graph.instagram.com/${userId}/media?access_token=${accessToken}'`);
+    
   } 
   else {
     // first screen
@@ -75,12 +87,13 @@ createServer({
   console.log('Example app listening at https://example.test')
 })
 
-function curl(command: string) {
-  const r = exec(command)
-  return JSON.parse(r.stdout)
-  // if(r.code===0) {
-  //   return JSON.parse(r.stdout)
-  // }else {
-
-  // }
+function curl(command: string, format: 'object'|'formattedString' = 'object') {
+  const r = exec(command, {silent: true})
+  const obj =  JSON.parse(r.stdout)
+  if(format==='formattedString') {
+    return JSON.stringify(obj, null, 2)
+  }
+  else {
+    return obj
+  }
 }
