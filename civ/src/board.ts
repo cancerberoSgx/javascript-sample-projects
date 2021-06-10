@@ -17,11 +17,11 @@ export class Board {
   drawStyle() {
     this.styleEl.innerHTML = `    
       table {
-        width: ${Math.trunc(this.entryWidth * this.zoom * this.width)}px
+        width: ${Math.trunc(this.entryWidth * this.zoom * this.width)}px;
       }
       td {
-        width: ${Math.trunc(this.entryWidth * this.zoom)}px
-        height: ${Math.trunc(this.entryHeight * this.zoom)}px        
+        width: ${Math.trunc(this.entryWidth * this.zoom)}px;
+        height: ${Math.trunc(this.entryHeight * this.zoom)}px;
       }`
   }
 

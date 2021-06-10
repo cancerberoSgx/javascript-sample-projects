@@ -14,6 +14,8 @@
 		7D6EF6F0F30692F588C99B35 /* libPods-MyApp-MyAppTests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 7983CB854D00C7442E863F13 /* libPods-MyApp-MyAppTests.a */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
 		EB5CC11CDA3046A81FAC0534 /* libPods-MyApp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B4D3CD7A2C30C36E45201EF5 /* libPods-MyApp.a */; };
+		FAD784B72667C99D00A7CFE0 /* libRNImageModifier.a in Frameworks */ = {isa = PBXBuildFile; fileRef = FAD784B42667C98B00A7CFE0 /* libRNImageModifier.a */; };
+		FAD784BA2667C9D300A7CFE0 /* libRNImageModifier.a in Frameworks */ = {isa = PBXBuildFile; fileRef = FAD784B42667C98B00A7CFE0 /* libRNImageModifier.a */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -23,6 +25,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = 13B07F861A680F5B00A75B9A;
 			remoteInfo = MyApp;
+		};
+		FAD784B32667C98B00A7CFE0 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = FAD784AF2667C98B00A7CFE0 /* RNImageModifier.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 134814201AA4EA6300B7C361;
+			remoteInfo = RNImageModifier;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -43,6 +52,7 @@
 		A1991B4562EBCA84ED06B73F /* Pods-MyApp.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-MyApp.debug.xcconfig"; path = "Target Support Files/Pods-MyApp/Pods-MyApp.debug.xcconfig"; sourceTree = "<group>"; };
 		B4D3CD7A2C30C36E45201EF5 /* libPods-MyApp.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-MyApp.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
+		FAD784AF2667C98B00A7CFE0 /* RNImageModifier.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = RNImageModifier.xcodeproj; path = "../node_modules/react-native-image-modifier/ios/RNImageModifier.xcodeproj"; sourceTree = "<group>"; };
 		FEE1C0C048E443A9CA7DF5C3 /* Pods-MyApp.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-MyApp.release.xcconfig"; path = "Target Support Files/Pods-MyApp/Pods-MyApp.release.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -51,6 +61,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FAD784BA2667C9D300A7CFE0 /* libRNImageModifier.a in Frameworks */,
 				7D6EF6F0F30692F588C99B35 /* libPods-MyApp-MyAppTests.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -59,6 +70,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FAD784B72667C99D00A7CFE0 /* libRNImageModifier.a in Frameworks */,
 				EB5CC11CDA3046A81FAC0534 /* libPods-MyApp.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -109,6 +121,7 @@
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
 			isa = PBXGroup;
 			children = (
+				FAD784AF2667C98B00A7CFE0 /* RNImageModifier.xcodeproj */,
 			);
 			name = Libraries;
 			sourceTree = "<group>";
@@ -133,6 +146,14 @@
 			children = (
 				13B07F961A680F5B00A75B9A /* MyApp.app */,
 				00E356EE1AD99517003FC87E /* MyAppTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		FAD784B02667C98B00A7CFE0 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				FAD784B42667C98B00A7CFE0 /* libRNImageModifier.a */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -222,6 +243,12 @@
 			mainGroup = 83CBB9F61A601CBA00E9B192;
 			productRefGroup = 83CBBA001A601CBA00E9B192 /* Products */;
 			projectDirPath = "";
+			projectReferences = (
+				{
+					ProductGroup = FAD784B02667C98B00A7CFE0 /* Products */;
+					ProjectRef = FAD784AF2667C98B00A7CFE0 /* RNImageModifier.xcodeproj */;
+				},
+			);
 			projectRoot = "";
 			targets = (
 				13B07F861A680F5B00A75B9A /* MyApp */,
@@ -229,6 +256,16 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXReferenceProxy section */
+		FAD784B42667C98B00A7CFE0 /* libRNImageModifier.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libRNImageModifier.a;
+			remoteRef = FAD784B32667C98B00A7CFE0 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+/* End PBXReferenceProxy section */
 
 /* Begin PBXResourcesBuildPhase section */
 		00E356EC1AD99517003FC87E /* Resources */ = {

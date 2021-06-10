@@ -7,11 +7,14 @@
     "start": "npx parcel src/index.html"
   },
   "devDependencies": {
+    "@types/express": "^4.17.12",
     "@types/node": "^14.0.5",
-    "parcel": "^1.12.4",
+    "@types/shelljs": "^0.8.8",
     "typescript": "^3.9.2"
   },
   "dependencies": {
-    "misc-utils-of-mine-generic": "^0.2.37"
+    "express": "^4.17.1",
+    "instagram-private-api": "^1.45.1",
+    "shelljs": "^0.8.4"
   }
 }

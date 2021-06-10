@@ -1,5 +1,4 @@
 import { unique } from "misc-utils-of-mine-generic";
-let model;
 export class Base {
   id: string;
   constructor() {
