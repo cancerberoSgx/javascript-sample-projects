@@ -13,17 +13,6 @@ let userId=''
 
 var app = express()
 
-// app.get('/listImages', (req, res, next)=>{
-//   res.type('html');
-//   if(!accessToken){
-//     res.send('Cannot list without an access token. Please <a href="/">start again</a>')
-//   } else {
-//     res.send(`<h1>Images</h1>
-//     <ul>${['foo.png'].map(img=>`<li><img src="${img}"></li>`).join()}</ul>
-//     <p><a href="/">start all over again</a></p>`)
-//   }
-// }) 
-
 app.get('/', function (req, res) {
   res.type('html');
   if(req.url.includes('?code=')) {
