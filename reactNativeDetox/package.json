@@ -1,0 +1,60 @@
+{
+  "name": "reactnativedetox",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "android": "react-native run-android",
+    "ios": "react-native run-ios",
+    "start": "react-native start",
+    "test": "jest",
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "ios-clean": "rm -rf ios/pods ; rm -rf ios/build ; rm ios/Podfile.lock ; rm -rf node_modules ; npm i && cd ios && pod install && npm run clean",
+    "clean": "watchman watch-del-all && npm start -- --reset-cache"
+  },
+  "dependencies": {
+    "react": "17.0.1",
+    "react-native": "0.64.1"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.12.9",
+    "@babel/runtime": "^7.12.5",
+    "@react-native-community/eslint-config": "^2.0.0",
+    "@types/detox": "^17.14.2",
+    "@types/jest": "^26.0.24",
+    "@types/react-native": "^0.64.12",
+    "@types/react-test-renderer": "^16.9.2",
+    "babel-jest": "^26.6.3",
+    "detox": "^18.19.0",
+    "eslint": "^7.14.0",
+    "jest": "^26.6.3",
+    "metro-react-native-babel-preset": "^0.64.0",
+    "react-test-renderer": "17.0.1",
+    "typescript": "^3.8.3"
+  },
+  "resolutions": {
+    "@types/react": "^17"
+  },
+  "jest": {
+    "preset": "react-native",
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js",
+      "jsx",
+      "json",
+      "node"
+    ]
+  },
+  "detox": {
+    "configurations": {
+      "ios.sim.debug": {
+        "binaryPath": "ios/build/Build/Products/Debug-iphonesimulator/reactNativeDetox.app",
+        "build": "xcodebuild -project ios/reactNativeDetox.xcodeproj -scheme reactNativeDetox -configuration Debug -sdk iphonesimulator -derivedDataPath ios/build",
+        "type": "ios.simulator",
+        "device": {
+          "type": "iPhone 11 Pro"
+        }
+      }
+    }
+  }
+}
