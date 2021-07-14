@@ -22,7 +22,6 @@ app.get('/', async function (req, res) {
   if (req.url.includes('?code=')) {
     // redirected from instagram auth window with the code param
     const code = req.url.substring(req.url.indexOf('?code=') + '?code='.length, req.url.length)
-
     let response = await axios({
       method: "post",
       url: "https://api.instagram.com/oauth/access_token",
@@ -37,35 +36,17 @@ app.get('/', async function (req, res) {
     })
     // console.log('1', response.status, response.data, '\n\n');
     console.log(response.data);
-    
+
     accessToken = response.data.access_token
     userId = response.data.user_id
 
     response = await axios({
       method: "get",
-      url: `https://graph.instagram.com/${userId}/media?fields=id,media_type,permalink,timestamp,username,thumbnail_url,media_url,caption&access_token=${accessToken}`,
+      // url: `https://graph.instagram.com/${userId}/media?fields=id,media_type,permalink,timestamp,username,thumbnail_url,media_url,caption&access_token=${accessToken}`,
+      url: `https://graph.instagram.com/${userId}/media?fields=id,media_type,media_url&access_token=${accessToken}`,
       headers: { "Content-Type": 'application/x-www-form-urlencoded' },
     })
     const userMedia = JSON.stringify(response.data, null, 2)
-
-    // response = await axios({
-    //   method: "get",
-    //   url: `https://graph.instagram.com/${userId}/media?fields=id,media_type,permalink,timestamp,username,thumbnail_url,media_url,caption&access_token=${accessToken}`,
-    //   headers: { "Content-Type": 'application/x-www-form-urlencoded' },
-    // })
-    // const userMedia = JSON.stringify(response.data, null, 2)
-    // console.log('2', response.status, response.data, '\n\n');
-
-    // response = await axios({
-    //   method: "get",
-    //   url: `https://graph.instagram.com/${userId}?fields=id,username&access_token=${accessToken}`,
-    //   // headers: { "Content-Type": 'application/x-www-form-urlencoded' },
-    // })
-    // console.log(response.status, response.data, '\n\n');
-
-    //     const listMediaCommand =`curl -X GET \
-    //       'https://graph.instagram.com/${userId}/media?fields=id,media_type,permalink,timestamp,username,thumbnail_url,media_url,caption&access_token=${accessToken}'`
-    //     console.log(listMediaCommand);
 
     res.send(`
         <p>Authorization code obtained: ${code}</p>
@@ -82,10 +63,6 @@ app.get('/', async function (req, res) {
           <pre>${userMedia}</pre>
         </div>
         `)
-
-    //     // console.log(`curl -X GET \
-    //     // 'https://graph.instagram.com/${userId}/media?access_token=${accessToken}'`);
-
   }
   else {
     // first screen
