@@ -9,7 +9,9 @@
     "test": "jest",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "ios-clean": "rm -rf ios/pods ; rm -rf ios/build ; rm ios/Podfile.lock ; rm -rf node_modules ; npm i && cd ios && pod install && npm run clean",
-    "clean": "watchman watch-del-all && npm start -- --reset-cache"
+    "clean": "watchman watch-del-all && npm start -- --reset-cache",
+    "e2e": "detox test",
+    "e2e-watch": "npm run e2e; watch -p \"e2e/*.js\" -c \"npm run e2e\""
   },
   "dependencies": {
     "react": "17.0.1",
@@ -29,7 +31,8 @@
     "jest": "^26.6.3",
     "metro-react-native-babel-preset": "^0.64.0",
     "react-test-renderer": "17.0.1",
-    "typescript": "^3.8.3"
+    "typescript": "^3.8.3",
+    "watch-cli": "^0.2.3"
   },
   "resolutions": {
     "@types/react": "^17"

@@ -1,0 +1,24 @@
+{
+  "name": "phaser-notes",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "clean": "rm -rf dist; mkdir -p dist",
+    "assets": "cp -r src/assets dist/assets",
+    "build": "npm run clean; npm run assets; parcel build src/test.html",
+    "start": "npm run clean; npm run assets; parcel src/test.html",
+    "check": "tsc --noEmit"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "phaser": "^3.55.2"
+  },
+  "devDependencies": {
+    "parcel": "^2.0.0",
+    "ts-node": "^10.3.0",
+    "typescript": "^4.4.4"
+  }
+}

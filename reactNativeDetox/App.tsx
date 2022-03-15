@@ -1,17 +1,6 @@
 import React, { useState } from 'react';
-import {
-  Button,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  Text,
-  useColorScheme,
-  View
-} from 'react-native';
-import {
-  Colors,
-  Header
-} from 'react-native/Libraries/NewAppScreen';
+import { Button, SafeAreaView, ScrollView, StatusBar, Text, useColorScheme, View } from 'react-native';
+import { Colors, Header } from 'react-native/Libraries/NewAppScreen';
 
 const App = () => {
   const isDarkMode = useColorScheme() === 'dark';
@@ -28,18 +17,17 @@ const App = () => {
         contentInsetAdjustmentBehavior="automatic"
         style={backgroundStyle}>
         <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          {screen==='first' && <View>
+        <View style={backgroundStyle}>
+          {screen === 'first' && <View>
             <Text testID="screen-title">Screen 1</Text>
-            <Button testID="screen-button" title="click me 1" onPress={() =>setScreen('second')}/>
+            <Button testID="screen-button" title="click me 1" onPress={() => setScreen('second')} />
           </View>}
-          {screen==='second' && <View>
+          {screen === 'second' && <View>
             <Text testID="screen-title">Screen 2</Text>
-            <Button testID="screen-button" title="click me 2" onPress={() =>setScreen('first')}/>
+            <Button testID="screen-button" title="click me 2" onPress={() => setScreen('first')} />
           </View>}
+          <Text style={{ height: 800, borderColor: 'pink', borderStyle: 'solid', borderWidth: 4 }}>Placeholder</Text>
+          <Text testID="bottom-text">bottom text</Text>
         </View>
       </ScrollView>
     </SafeAreaView>

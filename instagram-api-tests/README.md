@@ -16,7 +16,7 @@ In /etc/hosts: 127.0.0.1 example.test
 
 Add `https://example.test/` in your instagram redirect domains
 
-sudo ts-node src/webapp/server.ts
+sudo CLIENT_ID=1234 CLIENT_SECRET=2345 ts-node src/webapp/server.ts
 
 # TODO
 

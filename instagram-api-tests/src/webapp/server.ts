@@ -8,6 +8,8 @@ const REDIRECT_URL='https://example.test/'
 const CLIENT_ID=process.env.CLIENT_ID
 const CLIENT_SECRET=process.env.CLIENT_SECRET
 
+console.log('Using', {REDIRECT_URL, CLIENT_ID, CLIENT_SECRET});
+
 let accessToken=''
 let userId=''
 
