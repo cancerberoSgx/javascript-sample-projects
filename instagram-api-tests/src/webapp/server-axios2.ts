@@ -6,7 +6,11 @@ import { readFileSync } from 'fs'
 import { createServer } from 'https'
 import { exec } from 'shelljs'
 import axios from 'axios'
-import { stringify } from 'qs'
+// import { stringify } from 'qs'
+
+function stringify(o: any) {
+  return Object.keys(o).map(name=>`${name}=${encodeURIComponent(o[name])}`).join('&')
+}
 
 const REDIRECT_URL = 'https://example.test/'
 const CLIENT_ID = process.env.CLIENT_ID
@@ -22,6 +26,16 @@ app.get('/', async function (req, res) {
   if (req.url.includes('?code=')) {
     // redirected from instagram auth window with the code param
     const code = req.url.substring(req.url.indexOf('?code=') + '?code='.length, req.url.length)
+    console.log({ code });
+
+    console.log('stringify', stringify({
+      client_id: CLIENT_ID,
+      client_secret: CLIENT_SECRET,
+      grant_type: 'authorization_code',
+      redirect_uri: REDIRECT_URL,
+      code
+    }));
+    
     let response = await axios({
       method: "post",
       url: "https://api.instagram.com/oauth/access_token",
@@ -35,10 +49,12 @@ app.get('/', async function (req, res) {
       headers: { "Content-Type": 'application/x-www-form-urlencoded' },
     })
     // console.log('1', response.status, response.data, '\n\n');
-    console.log(response.data);
+    console.log('response data', response.data);
 
     shortLiveToken = response.data.access_token
     userId = response.data.user_id
+
+    console.log({ shortLiveToken, userId });
 
     response = await axios({
       method: "get",
@@ -47,41 +63,33 @@ app.get('/', async function (req, res) {
     })
 
     const longTermToken = response.data.access_token
-    // console.log('LTT RESPONSE: ', response.status, response.data);
+    console.log('longTermToken', longTermToken);
 
-    try {
-      
-    response = await axios({
-      method: "get",
-      url: `https://graph.instagram.com/refresh_access_token?grant_type=ig_refresh_token&access_token=${shortLiveToken}`,
-      headers: { "Content-Type": 'application/x-www-form-urlencoded' },
-    })
+    console.log('LTT RESPONSE: ', response.status, response.data);
 
-    console.log('REFRESH RESPONSE: ', response.status, response.data);
+    //   try {
+    //   response = await axios({
+    //     method: "get",
+    //     url: `https://graph.instagram.com/refresh_access_token?grant_type=ig_refresh_token&access_token=${shortLiveToken}`,
+    //     headers: { "Content-Type": 'application/x-www-form-urlencoded' },
+    //   })
+    //   console.log('REFRESH RESPONSE: ', response.status, response.data);
+    // } catch (error) {
+    //     console.log(error.response.status, error.response.data);
+    // }
 
-  } catch (error) {
-      console.log(error.response.status, error.response.data);
-      
-  }
-
-
-  //   curl -i -X GET "https://graph.instagram.com/refresh_access_token
-  // ?grant_type=ig_refresh_token
-  // &access_token={long-lived-access-token}"
+    // try {
+    // response = await axios({
+    //   method: "get",
+    //   // url: `https://graph.instagram.com/${userId}/media?fields=id,media_type,permalink,timestamp,username,thumbnail_url,media_url,caption&access_token=${accessToken}`,
+    //   url: `https://graph.instagram.com/${userId}/media?fields=id,media_type,media_url&access_token=${shortLiveToken}`,
+    //   headers: { "Content-Type": 'application/x-www-form-urlencoded' },
+    // })
+    // // } catch (error) {
+    // //   console.log(error.response.status, error.response.data);
+    // // }
     
-
-  //   curl -i -X GET "https://graph.instagram.com/access_token
-  // ?grant_type=ig_exchange_token
-  // &client_secret={instagram-app-secret}
-  // &access_token={short-lived-access-token}"
-
-    response = await axios({
-      method: "get",
-      // url: `https://graph.instagram.com/${userId}/media?fields=id,media_type,permalink,timestamp,username,thumbnail_url,media_url,caption&access_token=${accessToken}`,
-      url: `https://graph.instagram.com/${userId}/media?fields=id,media_type,media_url&access_token=${shortLiveToken}`,
-      headers: { "Content-Type": 'application/x-www-form-urlencoded' },
-    })
-    const userMedia = JSON.stringify(response.data, null, 2)
+    const userMedia = 'dummy'//JSON.stringify(response.data, null, 2)
 
     res.send(`
         <p>Authorization code obtained: ${code}</p>
@@ -91,8 +99,7 @@ app.get('/', async function (req, res) {
         <pre>${/* JSON.stringify(accessTokenResponse)*/''}</pre>
         </div>
         <div>User info: 
-          <pre>${curl(`curl -X GET \
-        'https://graph.instagram.com/${userId}?fields=id,username&access_token=${shortLiveToken}'`, 'formattedString')}</pre>
+        
         </div>
         <div>User media: 
           <pre>${userMedia}</pre>
@@ -115,14 +122,3 @@ createServer({
   .listen(443, 'example.test', function () {
     console.log('Example app listening at https://example.test')
   })
-
-function curl(command: string, format: 'object' | 'formattedString' = 'object') {
-  const r = exec(command, { silent: true })
-  const obj = JSON.parse(r.stdout)
-  if (format === 'formattedString') {
-    return JSON.stringify(obj, null, 2)
-  }
-  else {
-    return obj
-  }
-}
