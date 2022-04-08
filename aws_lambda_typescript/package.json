@@ -1,0 +1,24 @@
+{
+  "name": "lambda_sample",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build-ts": "tsc",
+    "bundle": "webpack dist/index.js --mode development --target node --devtool false --output-library-target umd -o index.js",
+    "zip-bundle": "rm -rf lambda_sample.zip; zip -r --exclude=\\*.git\\*  --exclude=\\*node_modules\\* --exclude=\\*.DS_Store\\* --exclude=\\*dist\\* lambda_sample.zip .",
+    "zip-node_modules": "npm i ; npm run build-ts && rm -rf lambda_sample.zip node_modules; npm i --production ; cp index-export.js index.js; zip -r --exclude=\\*.git\\* --exclude=\\*.DS_Store\\* lambda_sample.zip .",
+    "build": "npm run build-ts && npm run bundle && npm run zip-bundle"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "typescript": "^4.3.5",
+    "webpack": "^4.42.0",
+    "webpack-cli": "^3.3.11"
+  },
+  "dependencies": {
+    "moment": "^2.29.2"
+  }
+}

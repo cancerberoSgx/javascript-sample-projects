@@ -1,0 +1,6 @@
+node_modules/
+docs/
+dist/
+.DS_Store
+/tmp*
+lambda_sample.zip
