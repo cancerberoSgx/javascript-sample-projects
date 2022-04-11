@@ -1,7 +1,7 @@
 {
   "name": "lambda_sample",
   "version": "1.0.0",
-  "description": "",
+  "description": "an example of typescript project able to compile to an AWS lambda function ready to deploy as zip file",
   "main": "index.js",
   "scripts": {
     "build-ts": "tsc",
@@ -11,14 +11,18 @@
     "build": "npm run build-ts && npm run bundle && npm run zip-bundle"
   },
   "keywords": [],
-  "author": "",
+  "author": "cancerberoSgx",
   "license": "ISC",
+  "dependencies": {
+    "axios": "^0.26.1",
+    "moment": "^2.29.2",
+    "mysql": "^2.18.1"
+  },
   "devDependencies": {
+    "@types/mysql": "^2.15.19",
+    "@types/node": "^16.4.12",
     "typescript": "^4.3.5",
     "webpack": "^4.42.0",
     "webpack-cli": "^3.3.11"
-  },
-  "dependencies": {
-    "moment": "^2.29.2"
   }
 }
