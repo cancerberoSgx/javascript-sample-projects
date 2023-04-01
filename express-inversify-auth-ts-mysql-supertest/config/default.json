@@ -1,0 +1,15 @@
+{
+  "app": {
+    "xFeatureEnabled": true
+  },  
+  "database": {
+    "host": "localhost",
+    "user": "root",
+    "password": "1234",
+    "name": "projectDB",
+    "connectionLimit": 5
+  },
+  "server": {
+    "clusterModeEnabled": false
+  }
+}

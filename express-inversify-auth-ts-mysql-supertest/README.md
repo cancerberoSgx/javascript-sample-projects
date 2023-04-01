@@ -1,0 +1,1 @@
+Sample web server using express, jwt auth, typescript, mysql, docker

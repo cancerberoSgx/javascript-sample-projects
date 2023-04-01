@@ -1,0 +1,11 @@
+{
+  "app": {
+    "xFeatureEnabled": true
+  },
+  "server": {
+    "clusterModeEnabled": true
+  },
+  "database": {
+    "connectionLimit": 40
+  }
+}

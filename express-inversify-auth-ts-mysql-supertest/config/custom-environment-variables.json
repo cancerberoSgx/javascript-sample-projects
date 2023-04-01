@@ -1,0 +1,12 @@
+{
+  "app": {
+    "xFeatureEnabled": "APP_X_FEATURE_ENABLED"
+  },
+  "database": {
+    "host": "DB_HOST",
+    "user": "DB_USERNAME",
+    "password": "DB_PASSWORD",
+    "name": "DB_NAME",
+    "connectionLimit": "DB_CONNECTION_LIMIT"
+  }
+}

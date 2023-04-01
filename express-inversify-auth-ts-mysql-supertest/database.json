@@ -1,0 +1,24 @@
+{
+  "defaultEnv": {"ENV": "NODE_ENV"},
+  "test": {
+    "driver": "mysql",
+    "user": "root",
+    "password": "1234",
+    "host": "mysql",
+    "database": "projectDB"
+  },
+  "local": {
+    "driver": "mysql",
+    "user": "root",
+    "password": "1234",
+    "host": "localhost",
+    "database": "projectDB"
+  },
+  "qa": {
+    "driver": "mysql",
+    "user": {"ENV": "DB_USERNAME"},
+    "password": {"ENV": "DB_PASSWORD"},
+    "host": {"ENV": "DB_HOST"},
+    "database": {"ENV": "DB_NAME"}
+  }
+}

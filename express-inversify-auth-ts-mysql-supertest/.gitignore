@@ -1,0 +1,11 @@
+node_modules/
+.idea/
+docs/
+.env
+dist/
+config/local.json
+.nyc_output/
+*.zip
+.DS_Store
+/tmp*
+/coverage
