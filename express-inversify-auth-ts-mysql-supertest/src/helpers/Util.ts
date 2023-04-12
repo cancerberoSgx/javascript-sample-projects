@@ -1,31 +1,5 @@
 import * as moment from 'moment'
-// import { Location } from '../../model/Profile';
 import { toArray } from 'lodash'
-
-// Type safe alternatives for Object.keys and Object.entries, this
-// is a workaround for a well known limitation of Typescript (keys are
-// always intepreted as strings)
-// sa: https://github.com/microsoft/TypeScript/issues/35101
-// sa: https://github.com/microsoft/TypeScript/pull/12253
-
-export type Keys<T> = (keyof T)[]
-
-export type Entries<T> = {
-  [K in keyof T]: [K, T[K]]
-}[keyof T][]
-
-// TODO Define the type
-// export type Values<T> = ...
-
-// For a typesafe alternative replace Object.keys(obj) by keys(obj)
-export function keys<T>(obj: T): Keys<T> {
-  return Object.keys(obj) as any
-}
-
-// For a typesafe alternative replace Object.entries(obj) by entries(obj)
-export function entries<T>(obj: T): Entries<T> {
-  return Object.entries(obj) as any
-}
 
 // Format for dates to be stored into database
 export const dbDateFormat: string = 'YYYY-MM-DD HH:mm:ss'
@@ -99,26 +73,13 @@ export function nextWeekDay(from: Date, desiredDay: number) {
   return result
 }
 
-// export interface DbPoint {
-//   x: number;
-//   y: number;
-// }
-
-// export function pointToLocation(
-//   point?: DbPoint,
-//   defaultLocation: Location = null
-// ): Location | null {
-//   if (point) return { longitude: point.x, latitude: point.y };
-//   return defaultLocation;
-// }
-
 /** Returns given string length counting emojis correctly. */
 export function stringLength(value: any) {
   return toArray(value).length
 }
 
 /**
- * Rreturns enum key strings for enums like `{a=1, b=2}`
+ * Returns enum key strings for enums like `{a=1, b=2}`
  */
 export function enumKeys(anEnum: any): string[] {
   return Object.keys(anEnum)

@@ -1,8 +1,9 @@
 import { expect } from 'chai'
-import * as faker from 'faker/locale/en'
+// import * as faker from 'faker/locale/en'
+// import { faker } from '@faker-js/faker';
 import * as moment from 'moment'
-import * as ngeohash from 'ngeohash'
-import { Location } from '../../src/app/model/Profile'
+// import * as ngeohash from 'ngeohash'
+// import { Location } from '../../src/app/model/Profile'
 
 export function array<T = number>(n: number, sample?: T): T[] {
   const a: (T | number)[] = []
@@ -81,26 +82,26 @@ export function asArray<T>(value: T | T[]): T[] {
   return Array.isArray(value) ? value : [value]
 }
 
-export function encodeLocation(location: Location | string) {
-  return typeof location === 'string' ? location : ngeohash.encode(location.latitude, location.longitude)
-}
+// export function encodeLocation(location: Location | string) {
+//   return typeof location === 'string' ? location : ngeohash.encode(location.latitude, location.longitude)
+// }
 
-export function decodeLocation(location: Location | string): Location {
-  return typeof location !== 'string' ? location : ngeohash.decode(location)
-}
+// export function decodeLocation(location: Location | string): Location {
+//   return typeof location !== 'string' ? location : ngeohash.decode(location)
+// }
 
-export function sqlPointToLocation(point: { x: number; y: number }): Location {
-  return { latitude: point.y, longitude: point.x }
-}
+// export function sqlPointToLocation(point: { x: number; y: number }): Location {
+//   return { latitude: point.y, longitude: point.x }
+// }
 
-export function randomLocation(): Location {
-  // Latitude and longitude are in decimal degrees format and range from -90 to 90 for latitude and -180 to 180 for longitude.
-  // We add a padding to avoid maths
-  return {
-    latitude: faker.datatype.number({ min: 90, max: 45 }), // -90 to 90
-    longitude: faker.datatype.number({ min: 90, max: 90 }), // -180 to 180
-  }
-}
+// export function randomLocation(): Location {
+//   // Latitude and longitude are in decimal degrees format and range from -90 to 90 for latitude and -180 to 180 for longitude.
+//   // We add a padding to avoid maths
+//   return {
+//     latitude: faker.datatype.number({ min: 90, max: 45 }), // -90 to 90
+//     longitude: faker.datatype.number({ min: 90, max: 90 }), // -180 to 180
+//   }
+// }
 
 export function removeWhites(s: string, replaceWith = ' ') {
   return s.replace(/\s+/gm, replaceWith).trim()

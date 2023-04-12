@@ -1,6 +1,7 @@
 import { inject, injectable } from 'inversify'
 import { Pool } from 'mysql'
 import { MySQLRepository } from '../../MySQLRepository'
+import { User } from './usersTypes'
 
 @injectable()
 export class UsersStorage extends MySQLRepository {
@@ -14,8 +15,8 @@ export class UsersStorage extends MySQLRepository {
     return result.insertId
   }
 
-  public async health(): Promise<boolean> {
-    await this._doQuery('SELECT TRUE', [])
-    return true
+  async getUserByEmail(email: string): Promise<User & { password: string }> {
+    const result = await this._doQuery('SELECT id, name, email, password FROM users WHERE email = :email', { email })
+    return result[0]
   }
 }

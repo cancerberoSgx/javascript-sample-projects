@@ -10,9 +10,7 @@ import { bindAppModuleDependencies } from './appModuleDependencies'
 import { errorHandler, notFoundHandler } from './errorHandler'
 
 const numCPUs = cpus().length
-// logger.info(`Number of cpus: ${numCPUs}`);
 
-// Routes definition
 export const container = new Container()
 
 let server = new InversifyExpressServer(container)
@@ -22,9 +20,7 @@ bindAppModuleDependencies(container)
 const port = process.env.PORT || 3000
 
 server.setConfig(app => {
-  // setAppLoggers(app);
   app.use(bodyParser.json())
-  // app.use(metricsMiddleware('', { timeByUrl: true }));
   app.use(
     helmet({
       referrerPolicy: { policy: 'no-referrer' },

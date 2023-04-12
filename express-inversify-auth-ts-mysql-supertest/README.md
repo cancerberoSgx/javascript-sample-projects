@@ -5,7 +5,13 @@ code architecture structured in Repository, Service and Controller layers.
 other techs:
  * mocha, chai
  * apidocs
- * 
+ * config by environment & env-vars
+
+features implemented:
+
+ * auth (jwt & test mode)
+   * auth middleware, login
+ * basic users endpoint
 
 # Useful commands
 
@@ -34,8 +40,7 @@ make test-reset-db
 
 # TODO
 
- * auth: remove cognito stuff and use post /users and jwt
- * add user resource & endpoint using auth middleware
+ * authenticated endpoint.
  * logging
  * implement a simple HTML UI in a separate project
  * MySQLRepository _doTransactQueries

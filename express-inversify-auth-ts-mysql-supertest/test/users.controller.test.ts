@@ -1,8 +1,5 @@
-import { describe, it } from 'mocha'
 import { expect } from 'chai'
-import * as request from 'supertest'
-import { Response } from 'supertest'
-import app from '../src/app'
+import { describe, it } from 'mocha'
 import { createUser } from './helpers/users_helper'
 
 describe('users controller', () => {

@@ -9,7 +9,6 @@ export class HealthStorage extends MySQLRepository {
   }
 
   public async health(): Promise<boolean> {
-    // logger.debug('Health');
     await this._doQuery('SELECT TRUE', [])
     return true
   }

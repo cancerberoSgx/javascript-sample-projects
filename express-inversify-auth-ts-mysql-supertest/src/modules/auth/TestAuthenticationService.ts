@@ -1,11 +1,6 @@
-import { IAuthenticationService } from './IAuthenticationService'
+import { AuthService } from './authService'
 import { injectable } from 'inversify'
-// import { contextLogger, flowLogger } from '../../../factory/logger';
-// import { JWTAuthenticationService } from './JWTAuthenticationService';
-// import { Logger } from 'winston';
-
-// const logger: Logger = contextLogger(flowLogger);
-
+import { LoginInput, LoginOutput } from './authTypes'
 /**
  * This class is an "authentication proxy" for unit tests that use an authentication
  * model where tokens and users are equivalent.
@@ -13,22 +8,11 @@ import { injectable } from 'inversify'
  * the facilities located in 'test/helpers/cognito.ts'
  */
 @injectable()
-export class TestAuthenticationService implements IAuthenticationService {
-  constructor() // private cognitoAuthService: JWTAuthenticationService = new JWTAuthenticationService()
-  {
-    // logger.warn('Using test authentication service.');
+export class TestAuthService implements AuthService {
+  public async login(arg: LoginInput): Promise<LoginOutput> {
+    throw new Error('Method not implemented.')
   }
-
-  /**
-   * Extract the user information from the access token.
-   * @param authToken
-   * @param apiKey
-   */
   public async getUserFromAccessToken(authToken: string): Promise<string> {
-    // Fake token or a valid one for Cognito?
-    // if (authToken.length < 100) {
-    // fake token is equivalent to its associated user
     return authToken
-    // } else return this.cognitoAuthService.getUserFromAccessToken(authToken);
   }
 }

@@ -1,14 +1,14 @@
 import { NextFunction, Request, Response } from 'express'
 import { BaseMiddleware } from 'inversify-express-utils'
 import { inject, injectable } from 'inversify'
-import { IAuthenticationService } from './IAuthenticationService'
+import { AuthService } from './authService'
 import { AuthenticationError } from '../../errors'
 
 @injectable()
 export class AuthenticationMiddleware extends BaseMiddleware {
   constructor(
-    @inject('IAuthenticationService')
-    private authenticationService: IAuthenticationService
+    @inject('AuthService')
+    private authenticationService: AuthService
   ) {
     super()
   }

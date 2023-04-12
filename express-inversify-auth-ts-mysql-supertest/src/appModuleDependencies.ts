@@ -7,6 +7,9 @@ import { getConnectionPool } from './mysql'
 import { UsersService } from './modules/users/usersService'
 import { UsersStorage } from './modules/users/usersStorage'
 import { UsersController } from './modules/users/usersController'
+import { AuthService } from './modules/auth/authService'
+import { JWTAuthService } from './modules/auth/JWTAuthenticationService'
+import { AuthController } from './modules/auth/authController'
 
 export const bindAppModuleDependencies = (container: Container) => {
   // Shared dependencies
@@ -18,6 +21,9 @@ export const bindAppModuleDependencies = (container: Container) => {
   // Modules
   container.bind<HealthStorage>('HealthStorage').to(HealthStorage)
   container.bind<HealthController>('HealthController').to(HealthController)
+
+  container.bind<AuthService>('AuthService').to(JWTAuthService)
+  container.bind<AuthController>('AuthController').to(AuthController)
 
   container.bind<UsersStorage>('UsersStorage').to(UsersStorage)
   container.bind<UsersService>('UsersService').to(UsersService)

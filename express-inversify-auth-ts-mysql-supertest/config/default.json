@@ -11,5 +11,8 @@
   },
   "server": {
     "clusterModeEnabled": false
+  },
+  "auth": {
+    "jwtSecret": "1234"
   }
 }

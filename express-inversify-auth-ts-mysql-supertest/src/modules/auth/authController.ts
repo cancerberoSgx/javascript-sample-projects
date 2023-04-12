@@ -3,45 +3,43 @@ import { body, validationResult } from 'express-validator'
 import { inject } from 'inversify'
 import { controller, httpPost } from 'inversify-express-utils'
 import { InvalidParameterError } from '../../errors'
-import { UsersService } from './usersService'
-import { CreateUserResult } from './usersTypes'
+import { AuthService } from './authService'
+import { LoginOutput } from './authTypes'
 
-@controller('/users')
-export class UsersController {
-  constructor(@inject('UsersService') private usersService: UsersService) {}
+@controller('/auth')
+export class AuthController {
+  constructor(@inject('AuthService') private authService: AuthService) {}
 
   /**
-   * @api {post} /users Create new user
-   * @apiDescription Create new user
-   * @apiName Create new user
-   * @apiGroup Users
+   * @api {post} /login Login
+   * @apiDescription Login
+   * @apiName Login
+   * @apiGroup Auth
    *
    * @apiHeader Content-type              application/json
    * @apiHeader Authentication            Authentication token
    *
-   * @apiParam {string}   name
    * @apiParam {string}   email
    * @apiParam {string}   password
    *
    * @apiSuccess {boolean} id        user id
    *
    * @apiSuccessExample {json} Success-Response:
-   * {"id": 12}
+   * TODO
    **/
   @httpPost(
-    '/',
-    body('name', 'name should be a string').isString().exists(),
+    '/login',
     body('email', 'email should be a string').isString().exists(),
     body('password', 'password should be a string').isString().exists()
   )
-  public async createUser(req: Request, res: Response, next: NextFunction): Promise<CreateUserResult> {
+  public async login(req: Request, res: Response, next: NextFunction): Promise<LoginOutput> {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
         throw new InvalidParameterError(errors.array()[0]['msg'])
       }
-      const { name, email, password } = req.body
-      const result = await this.usersService.createUser({ name, email, password })
+      const { email, password } = req.body
+      const result = await this.authService.login({ email, password })
       return result
     } catch (err) {
       next(err)
