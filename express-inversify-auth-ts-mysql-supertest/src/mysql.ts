@@ -1,5 +1,5 @@
-import * as config from 'config';
-import * as mysql from 'mysql';
+import * as config from 'config'
+import * as mysql from 'mysql'
 
 export const getConnectionPool = () => {
   return mysql.createPool({
@@ -12,12 +12,12 @@ export const getConnectionPool = () => {
     connectTimeout: 60 * 1000,
     acquireTimeout: 60 * 1000,
     timezone: 'UTC+0', // avoids zone conversion when fetching data
-  });
-};
+  })
+}
 
 /**
  * @param {Pool} mysqlConn
  */
 export const closeConnection = (mysqlConn: mysql.Pool) => {
-  mysqlConn.end();
-};
+  mysqlConn.end()
+}

@@ -1,5 +1,5 @@
-import { IAuthenticationService } from './IAuthenticationService';
-import { injectable } from 'inversify';
+import { IAuthenticationService } from './IAuthenticationService'
+import { injectable } from 'inversify'
 // import { contextLogger, flowLogger } from '../../../factory/logger';
 // import { JWTAuthenticationService } from './JWTAuthenticationService';
 // import { Logger } from 'winston';
@@ -14,9 +14,8 @@ import { injectable } from 'inversify';
  */
 @injectable()
 export class TestAuthenticationService implements IAuthenticationService {
-  constructor(
-    // private cognitoAuthService: JWTAuthenticationService = new JWTAuthenticationService()
-  ) {
+  constructor() // private cognitoAuthService: JWTAuthenticationService = new JWTAuthenticationService()
+  {
     // logger.warn('Using test authentication service.');
   }
 
@@ -28,8 +27,8 @@ export class TestAuthenticationService implements IAuthenticationService {
   public async getUserFromAccessToken(authToken: string): Promise<string> {
     // Fake token or a valid one for Cognito?
     // if (authToken.length < 100) {
-      // fake token is equivalent to its associated user
-      return authToken;
+    // fake token is equivalent to its associated user
+    return authToken
     // } else return this.cognitoAuthService.getUserFromAccessToken(authToken);
   }
 }

@@ -1,15 +1,13 @@
-import { NextFunction, Request, Response } from 'express';
-import { body, validationResult } from 'express-validator';
-import { inject } from 'inversify';
-import { controller, httpPost } from 'inversify-express-utils';
-import { InvalidParameterError } from '../../errors';
-import { UsersService } from './usersService';
+import { NextFunction, Request, Response } from 'express'
+import { body, validationResult } from 'express-validator'
+import { inject } from 'inversify'
+import { controller, httpPost } from 'inversify-express-utils'
+import { InvalidParameterError } from '../../errors'
+import { UsersService } from './usersService'
 
 @controller('/users')
 export class UsersController {
-  constructor(
-    @inject('UsersService') private usersService: UsersService,
-  ) {}
+  constructor(@inject('UsersService') private usersService: UsersService) {}
 
   /**
    * @api {post} /users Create new user
@@ -35,18 +33,17 @@ export class UsersController {
     body('email', 'email should be a string').isString().exists(),
     body('password', 'password should be a string').isString().exists()
   )
-  public async createUser(req: Request, res: Response, next: NextFunction): Promise<{id: string}> {
+  public async createUser(req: Request, res: Response, next: NextFunction): Promise<{ id: string }> {
     try {
-      const errors = validationResult(req);
+      const errors = validationResult(req)
       if (!errors.isEmpty()) {
-        throw new InvalidParameterError(errors.array()[0]['msg']);
+        throw new InvalidParameterError(errors.array()[0]['msg'])
       }
-      const {name, email, password } = req.body
-      const result = await this.usersService.createUser({name, email, password })
+      const { name, email, password } = req.body
+      const result = await this.usersService.createUser({ name, email, password })
       return result
     } catch (err) {
-      next(err);
+      next(err)
     }
   }
-
 }

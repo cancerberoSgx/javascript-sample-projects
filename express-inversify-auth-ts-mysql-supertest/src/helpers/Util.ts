@@ -1,6 +1,6 @@
-import * as moment from 'moment';
+import * as moment from 'moment'
 // import { Location } from '../../model/Profile';
-import { toArray } from 'lodash';
+import { toArray } from 'lodash'
 
 // Type safe alternatives for Object.keys and Object.entries, this
 // is a workaround for a well known limitation of Typescript (keys are
@@ -8,40 +8,40 @@ import { toArray } from 'lodash';
 // sa: https://github.com/microsoft/TypeScript/issues/35101
 // sa: https://github.com/microsoft/TypeScript/pull/12253
 
-export type Keys<T> = (keyof T)[];
+export type Keys<T> = (keyof T)[]
 
 export type Entries<T> = {
-  [K in keyof T]: [K, T[K]];
-}[keyof T][];
+  [K in keyof T]: [K, T[K]]
+}[keyof T][]
 
 // TODO Define the type
 // export type Values<T> = ...
 
 // For a typesafe alternative replace Object.keys(obj) by keys(obj)
 export function keys<T>(obj: T): Keys<T> {
-  return Object.keys(obj) as any;
+  return Object.keys(obj) as any
 }
 
 // For a typesafe alternative replace Object.entries(obj) by entries(obj)
 export function entries<T>(obj: T): Entries<T> {
-  return Object.entries(obj) as any;
+  return Object.entries(obj) as any
 }
 
 // Format for dates to be stored into database
-export const dbDateFormat: string = 'YYYY-MM-DD HH:mm:ss';
+export const dbDateFormat: string = 'YYYY-MM-DD HH:mm:ss'
 
 // Convert the given date to UTC in order to be stored in a TIMESTAMP field
 export function dateToDb(dt?: moment.MomentInput): any {
-  if (dt) return moment(dt).utc().format(dbDateFormat);
-  return dt;
+  if (dt) return moment(dt).utc().format(dbDateFormat)
+  return dt
 }
 
 export function nowToDb(): string {
-  return dateToDb(moment());
+  return dateToDb(moment())
 }
 
 export function nanoToMilli(nano: bigint): number {
-  return Math.round(Number(nano / BigInt(1e6)));
+  return Math.round(Number(nano / BigInt(1e6)))
 }
 
 /**
@@ -50,21 +50,21 @@ export function nanoToMilli(nano: bigint): number {
  * Supports strings, numbers lists and dates
  */
 export function printSQLQuery(sql: string, params: any[] = []): string {
-  let counter = 0;
+  let counter = 0
   return sql.replace(/(\?)/g, (txt, key) => {
-    return escapeSqlValue(params[counter++]);
-  });
+    return escapeSqlValue(params[counter++])
+  })
 }
 
 export function escapeSqlValue(value: any): string {
   if (typeof value === 'string') {
-    return `${quote(value, '"')}`;
+    return `${quote(value, '"')}`
   } else if (value instanceof Date) {
-    return dateToDb(value);
+    return dateToDb(value)
   } else if (Array.isArray(value)) {
-    return value.map(escapeSqlValue).join(',');
+    return value.map(escapeSqlValue).join(',')
   } else {
-    return `${value}`;
+    return `${value}`
   }
 }
 
@@ -72,7 +72,7 @@ export function escapeSqlValue(value: any): string {
  * Wrap string with given quote character and escape it in the string. Useful to quote strings to be printed as json, sql values, etc.
  */
 export function quote(s: string, quote: string = '"'): string {
-  return quote + s.replace(new RegExp(quote, 'g'), '\\' + quote) + quote;
+  return quote + s.replace(new RegExp(quote, 'g'), '\\' + quote) + quote
 }
 
 /**
@@ -82,21 +82,21 @@ export function quote(s: string, quote: string = '"'): string {
  */
 export function nextWeekDay(from: Date, desiredDay: number) {
   // const dayINeed = 4; // for Thursday
-  const today = moment(from).isoWeekday();
-  let result: moment.Moment;
+  const today = moment(from).isoWeekday()
+  let result: moment.Moment
   // if we haven't yet passed the day of the week that I need:
   if (today <= desiredDay) {
     // then just give me this week's instance of that day
-    result = moment(from).isoWeekday(desiredDay);
+    result = moment(from).isoWeekday(desiredDay)
   } else {
     // otherwise, give me *next week's* instance of that same day
-    result = moment(from).add(1, 'weeks').isoWeekday(desiredDay);
+    result = moment(from).add(1, 'weeks').isoWeekday(desiredDay)
   }
-  result.set('hour', 23);
-  result.set('minute', 59);
-  result.set('seconds', 59);
-  result.set('milliseconds', 10);
-  return result;
+  result.set('hour', 23)
+  result.set('minute', 59)
+  result.set('seconds', 59)
+  result.set('milliseconds', 10)
+  return result
 }
 
 // export interface DbPoint {
@@ -114,7 +114,7 @@ export function nextWeekDay(from: Date, desiredDay: number) {
 
 /** Returns given string length counting emojis correctly. */
 export function stringLength(value: any) {
-  return toArray(value).length;
+  return toArray(value).length
 }
 
 /**
@@ -123,5 +123,5 @@ export function stringLength(value: any) {
 export function enumKeys(anEnum: any): string[] {
   return Object.keys(anEnum)
     .map(i => anEnum[i as any])
-    .filter((s, i, a) => typeof s === 'string' && a.indexOf(s) === i);
+    .filter((s, i, a) => typeof s === 'string' && a.indexOf(s) === i)
 }

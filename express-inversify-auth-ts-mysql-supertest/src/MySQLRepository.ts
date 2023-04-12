@@ -1,21 +1,21 @@
-import { injectable } from 'inversify';
-import { Pool, PoolConnection } from 'mysql';
-import 'reflect-metadata';
-import { formatQuery } from './helpers/FormattedQuery';
-import { printSQLQuery } from './helpers/Util';
+import { injectable } from 'inversify'
+import { Pool, PoolConnection } from 'mysql'
+import 'reflect-metadata'
+import { formatQuery } from './helpers/FormattedQuery'
+import { printSQLQuery } from './helpers/Util'
 
-type QueryParams = { [key: string]: any };
+type QueryParams = { [key: string]: any }
 @injectable()
 export abstract class MySQLRepository {
-  public constructor(protected mysqlPool: Pool) { }
+  public constructor(protected mysqlPool: Pool) {}
 
   protected async _getConnection(): Promise<PoolConnection> {
     return new Promise<PoolConnection>((resolve, reject) => {
       this.mysqlPool.getConnection((err, connection) => {
-        if (err) return reject(err);
-        resolve(connection);
-      });
-    });
+        if (err) return reject(err)
+        resolve(connection)
+      })
+    })
   }
 
   async _queryHelper(
@@ -31,42 +31,42 @@ export abstract class MySQLRepository {
       connection.query(query, params, (error, results, fields) => {
         if (error) {
           // logger.error('Cannot execute query, error=', error);
-          return reject(error);
+          return reject(error)
         }
 
         // const stopTimeNs: bigint = process.hrtime.bigint();
         // logger.debug(`Result(s), ${nanoToMilli(stopTimeNs - startTimeNs)} ms:`, results);
 
-        resolve(results);
-      });
-    });
+        resolve(results)
+      })
+    })
   }
-  
+
   protected async _doQuery(query: string, params?: any[] | QueryParams): Promise<any[]> {
-    const connection: PoolConnection = await this._getConnection();
+    const connection: PoolConnection = await this._getConnection()
     try {
       if (Array.isArray(params)) {
-        return await this._queryHelper(connection, /*queryLogger(),*/ query, params || []);
+        return await this._queryHelper(connection, /*queryLogger(),*/ query, params || [])
       } else {
-        return await this._doFormattedQuery(query, params || {});
+        return await this._doFormattedQuery(query, params || {})
       }
     } finally {
-      connection.release();
+      connection.release()
     }
   }
 
   /** useful to debug executed queries */
   protected printQuery(query: string, values?: any[] | QueryParams) {
     if (Array.isArray(values)) {
-      return printSQLQuery(query, values);
+      return printSQLQuery(query, values)
     } else {
-      return formatQuery(query, values, this.mysqlPool);
+      return formatQuery(query, values, this.mysqlPool)
     }
   }
 
   protected async _doFormattedQuery(query: string, values: QueryParams): Promise<any[]> {
-    const formattedSql = values ? formatQuery(query, values, this.mysqlPool) : query;
-    return await this._doQuery(formattedSql, []);
+    const formattedSql = values ? formatQuery(query, values, this.mysqlPool) : query
+    return await this._doQuery(formattedSql, [])
   }
 
   // /**
@@ -181,7 +181,6 @@ export abstract class MySQLRepository {
   //     connection.release();
   //   }
   // }
-
 }
 
-export default MySQLRepository;
+export default MySQLRepository

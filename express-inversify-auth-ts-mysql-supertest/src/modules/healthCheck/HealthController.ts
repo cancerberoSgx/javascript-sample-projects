@@ -1,10 +1,9 @@
-import { controller, httpGet } from 'inversify-express-utils';
-import { inject } from 'inversify';
-import { HealthStorage } from './HealthStorage';
+import { controller, httpGet } from 'inversify-express-utils'
+import { inject } from 'inversify'
+import { HealthStorage } from './HealthStorage'
 
 @controller('/health')
 export class HealthController {
-
   constructor(@inject('HealthStorage') private healthStorage: HealthStorage) {}
 
   /**
@@ -22,19 +21,19 @@ export class HealthController {
    **/
   @httpGet('/')
   public async get(req, res, next): Promise<void> {
-    let db = false;
+    let db = false
 
     try {
-      await this.healthStorage.health();
-      db = true;
+      await this.healthStorage.health()
+      db = true
     } catch (e) {
-      console.log('Error getting health status: ', e);
-      db = false;
+      console.log('Error getting health status: ', e)
+      db = false
     }
 
-    let healthy: Boolean = db;
-    healthy ? res.status(200) : res.status(500);
+    let healthy: Boolean = db
+    healthy ? res.status(200) : res.status(500)
 
-    res.json({ healthy, db });
+    res.json({ healthy, db })
   }
 }

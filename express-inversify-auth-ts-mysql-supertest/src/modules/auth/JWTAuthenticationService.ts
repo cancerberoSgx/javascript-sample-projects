@@ -1,18 +1,17 @@
-import 'reflect-metadata';
-import { injectable } from 'inversify';
-import { IAuthenticationService } from './IAuthenticationService';
-import * as  jwt from 'jsonwebtoken'
+import 'reflect-metadata'
+import { injectable } from 'inversify'
+import { IAuthenticationService } from './IAuthenticationService'
+import * as jwt from 'jsonwebtoken'
 
 /**
  * jsonwebtoken based auth
  */
 @injectable()
 export class JWTAuthenticationService implements IAuthenticationService {
-
   async getUserFromAccessToken(accessToken: string): Promise<string> {
-    const decodedToken = jwt.verify(accessToken, process.env.JWT_SECRET);
-    return (decodedToken as any).id;
-    
+    const decodedToken = jwt.verify(accessToken, process.env.JWT_SECRET)
+    return (decodedToken as any).id
+
     // let result: AuthenticationResult = await this.validateToken(accessToken);
 
     // if (result.isValid) {
@@ -27,54 +26,54 @@ export class JWTAuthenticationService implements IAuthenticationService {
   //  * @param apiKey
   //  */
   // public async validateToken(token: string): Promise<any> {
-    // let keys: KeyType[] = await this.publicKeys.get();
+  // let keys: KeyType[] = await this.publicKeys.get();
 
-    // // Get the kid (key id)
-    // let tokenHeader: TokenHeader = CognitoAuthenticationService.parseJWTHeader(token);
-    // let key_id = tokenHeader.kid;
+  // // Get the kid (key id)
+  // let tokenHeader: TokenHeader = CognitoAuthenticationService.parseJWTHeader(token);
+  // let key_id = tokenHeader.kid;
 
-    // // search for the kid key id in the Cognito Keys
-    // const key = keys.find(key => key.kid === key_id);
-    // if (key === undefined) {
-    //   return {
-    //     isValid: false,
-    //     errorMsg: "Token's public key not found in Cognito jwks.json",
-    //   };
-    // }
+  // // search for the kid key id in the Cognito Keys
+  // const key = keys.find(key => key.kid === key_id);
+  // if (key === undefined) {
+  //   return {
+  //     isValid: false,
+  //     errorMsg: "Token's public key not found in Cognito jwks.json",
+  //   };
+  // }
 
-    // // verify JWT Signature
-    // let keyObj = KEYUTIL.getKey(key);
-    // let isValid: boolean = KJUR.jws.JWS.verifyJWT(token, keyObj, {
-    //   alg: ['RS256'],
-    // });
+  // // verify JWT Signature
+  // let keyObj = KEYUTIL.getKey(key);
+  // let isValid: boolean = KJUR.jws.JWS.verifyJWT(token, keyObj, {
+  //   alg: ['RS256'],
+  // });
 
-    // if (!isValid) {
-    //   return {
-    //     isValid: false,
-    //     errorMsg: 'Token signature verification failed',
-    //   };
-    // }
+  // if (!isValid) {
+  //   return {
+  //     isValid: false,
+  //     errorMsg: 'Token signature verification failed',
+  //   };
+  // }
 
-    // // verify token has not expired
-    // let tokenPayload: TokenPayload = CognitoAuthenticationService.parseJWTPayload(token);
-    // if (Date.now() >= tokenPayload.exp * 1000) {
-    //   return { isValid: false, errorMsg: 'Token expired' };
-    // }
+  // // verify token has not expired
+  // let tokenPayload: TokenPayload = CognitoAuthenticationService.parseJWTPayload(token);
+  // if (Date.now() >= tokenPayload.exp * 1000) {
+  //   return { isValid: false, errorMsg: 'Token expired' };
+  // }
 
-    // // verify app_client_id
-    // let isAValidClient: boolean = cognitoAppClientIds.some(clientId => {
-    //   const strcmp: number = tokenPayload.client_id.localeCompare(clientId);
-    //   return strcmp === 0;
-    // });
+  // // verify app_client_id
+  // let isAValidClient: boolean = cognitoAppClientIds.some(clientId => {
+  //   const strcmp: number = tokenPayload.client_id.localeCompare(clientId);
+  //   return strcmp === 0;
+  // });
 
-    // if (!isAValidClient) {
-    //   return {
-    //     isValid: false,
-    //     errorMsg: 'Token was not issued for this audience',
-    //   };
-    // }
+  // if (!isAValidClient) {
+  //   return {
+  //     isValid: false,
+  //     errorMsg: 'Token was not issued for this audience',
+  //   };
+  // }
 
-    // return { isValid: true, errorMsg: '', tokenPayload: tokenPayload };
+  // return { isValid: true, errorMsg: '', tokenPayload: tokenPayload };
   // }
 
   // // Convert Payload from Base64-URL to JSON

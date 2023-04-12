@@ -4,5 +4,5 @@ export interface IAuthenticationService {
    * @param accessToken
    * @param apiKey
    */
-  getUserFromAccessToken(accessToken: string): Promise<string>;
+  getUserFromAccessToken(accessToken: string): Promise<string>
 }
