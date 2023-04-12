@@ -29,12 +29,15 @@
   "dependencies": {
     "@types/shelljs": "^0.8.11",
     "config": "^3.3.6",
+    "crypto": "^1.0.1",
     "db-migrate": "^0.11.13",
     "db-migrate-mysql": "^2.2.0",
     "express": "^4.17.1",
+    "express-validator": "^6.15.0",
     "helmet": "^4.6.0",
     "inversify": "^6.0.1",
     "inversify-express-utils": "^6.4.3",
+    "jsonwebtoken": "^9.0.0",
     "mysql": "^2.18.1"
   },
   "devDependencies": {
@@ -42,6 +45,7 @@
     "@types/chai-string": "^1.4.2",
     "@types/config": "0.0.38",
     "@types/express": "^4.17.12",
+    "@types/jsonwebtoken": "^9.0.1",
     "@types/mocha": "^9.1.0",
     "@types/mysql": "^2.15.18",
     "@types/node": "^13.13.52",
@@ -51,6 +55,7 @@
     "chai-iso8601": "^1.0.0",
     "chai-string": "^1.5.0",
     "chokidar": "^3.5.3",
+    "faker": "^6.6.6",
     "hygen": "^6.1.0",
     "mocha": "^8.4.0",
     "nyc": "^15.1.0",

@@ -15,7 +15,10 @@ exports.up = async function(db, callback) {
     CREATE TABLE users (
       id int(11) NOT NULL AUTO_INCREMENT COMMENT 'Primary Key',
       name TEXT NOT NULL,
+      email TEXT NOT NULL,
+      password TEXT NOT NULL,
       PRIMARY KEY (id)
+      -- TODO: unique email constraint, createdAt, updatedAt
     )
   `);
 };

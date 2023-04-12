@@ -1,14 +1,11 @@
 import { controller, httpGet } from 'inversify-express-utils';
-// import { contextLogger, flowLogger } from '../../../factory/logger';
 import { inject } from 'inversify';
-// import { Logger } from 'winston';
-import HealthRepository from './HealthRepository';
+import { HealthStorage } from './HealthStorage';
 
 @controller('/health')
 export class HealthController {
-  // readonly logger: Logger = contextLogger(flowLogger);
 
-  constructor(@inject('HealthRepository') private healthRepository: HealthRepository) {}
+  constructor(@inject('HealthStorage') private healthStorage: HealthStorage) {}
 
   /**
    * @apiVersion 1.0.0
@@ -28,13 +25,10 @@ export class HealthController {
     let db = false;
 
     try {
-      // this.logger.info('Get health status');
-      await this.healthRepository.health();
+      await this.healthStorage.health();
       db = true;
     } catch (e) {
-      // this.logger.error('Error getting health status: ', e);
       console.log('Error getting health status: ', e);
-      
       db = false;
     }
 

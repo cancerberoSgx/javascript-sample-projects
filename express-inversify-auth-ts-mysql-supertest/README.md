@@ -1,8 +1,13 @@
 Sample web server using express, jwt auth, typescript, inversify, mysql, docker
+
 code architecture structured in Repository, Service and Controller layers.
 
+other techs:
+ * mocha, chai
+ * apidocs
+ * 
 
-### Useful commands
+# Useful commands
 
 ```sh
 
@@ -24,9 +29,13 @@ npm run test-watch -- test/grid/batch_distanceBasedOnHomeLocation.test.ts
 # clean up database - run migrations again
 make test-reset-db
 
-# load remote DB dump to local DB
-mysqldump --hex-blob --column-statistics=0 --host 127.0.0.1 --port 3306 --user projectSeba -pSECRET qa_projectSeba_db > $HOME/Downloads/motto-qa-12-20-2021.sql
-docker cp $HOME/Downloads/motto-qa-12-20-2021.sql projectSeba-mysql:/tmp/motto-qa-12-20-2021.sql && 
-docker exec -it projectSeba-mysql bash -c 'mysql --default-character-set=utf8mb4 -u root -p1234 projectSeba < /tmp/motto-qa-12-20-2021.sql'
 ```
 
+
+# TODO
+
+ * auth: remove cognito stuff and use post /users and jwt
+ * add user resource & endpoint using auth middleware
+ * logging
+ * implement a simple HTML UI in a separate project
+ * MySQLRepository _doTransactQueries

@@ -1,8 +1,6 @@
 import * as config from 'config';
 import * as mysql from 'mysql';
-/**
- * @returns {Pool}
- */
+
 export const getConnectionPool = () => {
   return mysql.createPool({
     host: config.get('database.host'),
@@ -20,6 +18,6 @@ export const getConnectionPool = () => {
 /**
  * @param {Pool} mysqlConn
  */
-export const closeConnection = mysqlConn => {
+export const closeConnection = (mysqlConn: mysql.Pool) => {
   mysqlConn.end();
 };

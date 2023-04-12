@@ -6,7 +6,7 @@ import * as helmet from 'helmet';
 import { Container } from 'inversify';
 import { InversifyExpressServer } from 'inversify-express-utils';
 import { cpus } from 'os';
-import { bindSharedModuleDependencies } from './appModuleDependencies';
+import { bindAppModuleDependencies } from './appModuleDependencies';
 import { errorHandler, notFoundHandler } from './errorHandler';
 
 const numCPUs = cpus().length;
@@ -17,7 +17,7 @@ export const container = new Container();
 
 let server = new InversifyExpressServer(container);
 
-bindSharedModuleDependencies(container);
+bindAppModuleDependencies(container);
 
 const port = process.env.PORT || 3000;
 
@@ -54,9 +54,12 @@ if (clusterModeEnabled && cluster.isMaster) {
   });
 } else {
   app.listen(port, () => {
+    console.log(`Application: Server is up on port ${port}`);
+    
     // logger.info(`Application: Server is up on port ${port}`);
   });
   // logger.info(`Application: Worker ${process.pid} started`);
+  console.log(`Application: Worker ${process.pid} started`);
 }
 
 if (cluster.isMaster) {

@@ -1,20 +1,8 @@
-import 'reflect-metadata';
-import { Pool, PoolConnection, MysqlError } from 'mysql';
 import { injectable } from 'inversify';
-import { printSQLQuery } from './helpers/Util';
+import { Pool, PoolConnection } from 'mysql';
+import 'reflect-metadata';
 import { formatQuery } from './helpers/FormattedQuery';
-// import { Logger } from 'winston';
-// import { contextLogger, dbLogger } from '../../../factory/logger';
-// import * as cuid from 'cuid';
-
-// export type QueryDef = [string, any[]?]; // [query, optional params]
-// export type QueryProvider = (queries: QueryDef[]) => void;
-// export type QueryExecutor = (query: string, params?: any[]) => Promise<any[]>;
-// export type QueryExecutorCallback<T> = (doQuery: QueryExecutor) => T;
-
-// function queryLogger(id: string = cuid()): Logger {
-//   return contextLogger(dbLogger, id, 2); // 2 = add calling context
-// }
+import { printSQLQuery } from './helpers/Util';
 
 type QueryParams = { [key: string]: any };
 @injectable()

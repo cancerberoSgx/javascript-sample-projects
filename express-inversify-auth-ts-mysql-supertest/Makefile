@@ -60,6 +60,7 @@ start-mysql: stop-mysql ## Start MySql docker instance
 		-p 3306:3306 \
 		-e MYSQL_ROOT_PASSWORD=1234 \
 		-e MYSQL_DATABASE=projectDB \
+		--platform linux/amd64 \
 		--health-cmd='mysqladmin ping -h localhost' \
 		mysql:5.7 \
 		--sql-mode='' 
