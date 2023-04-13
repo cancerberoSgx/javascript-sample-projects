@@ -1,12 +1,13 @@
+# doest work
 # result of asking the following question to chat-gpt
 # can you provide code snippet in python that uses langchain to create a chat with memory?
 
 import langchain
 import random
-
 memory = {}
 
 def chat_with_memory(input_text):
+    langchain.cha
     # Check if there's a memory for this user
     user_memory = memory.get(langchain.get_user_id(input_text))
 
