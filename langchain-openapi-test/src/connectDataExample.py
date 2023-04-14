@@ -1,8 +1,8 @@
 # works - consumes txt from url or disk
-# https://docs.beam.cloud/getting-started/langchain
 # install and run instructions
 # pip3.11 install langchain openai tiktoken bs4 faiss-cpu promptlayer
 # python3.11 src/connectDataExample.py
+# adapted from https://docs.beam.cloud/getting-started/langchain
 
 
 import os
@@ -24,7 +24,7 @@ from langchain.llms.openai import OpenAI
 openai_api_key = os.environ["OPENAI_API_KEY"]
 
 # We'll save our headlines to this path
-file_path = Path("tmp_transcript.txt")
+file_path = Path("assets/transcript.txt")
 
 # Download headlines from NYT
 def download_headlines():
