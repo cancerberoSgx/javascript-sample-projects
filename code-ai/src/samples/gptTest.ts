@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Define the API endpoint and API key
 const OPENAI_API_ENDPOINT = 'https://api.openai.com/v1/chat/completions';
-const OPENAI_API_KEY = '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';
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
 // Define the type for the message
 interface ChatMessage {
