@@ -1,10 +1,16 @@
-export function extractCodeSnippets(input: string) {
-  const codeSnippetRegex = /```[\s\S]*?```/g;
-  const matches = input.match(codeSnippetRegex);
+interface CodeSnippet {
+  language: string
+  text: string
+}
 
-  if (matches) {
-    return matches.map(snippet => snippet.replace(/```/g, '').trim());
-  } else {
-    return [];
-  }
+export function extractCodeSnippets(input: string): CodeSnippet[] {
+  const codeSnippetRegex = /```([a-z]*)\n([\s\S]*?)```/g;
+  const matches = [...input.matchAll(codeSnippetRegex)];
+  const result : CodeSnippet[] = []
+  matches.forEach(match => {
+    result.push({language: match[1], text: match[2]})
+    // console.log(`Found match: ${match[0]}`);
+    // console.log(`language: ${match[1]}, code: ${match[2]}`);
+  });
+  return result
 }
