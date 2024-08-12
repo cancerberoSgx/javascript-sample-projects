@@ -1,16 +1,13 @@
-interface CodeSnippet {
-  language: string
-  text: string
-}
+import { CodeSnippet } from './types';
 
 export function extractCodeSnippets(input: string): CodeSnippet[] {
   const codeSnippetRegex = /```([a-z]*)\n([\s\S]*?)```/g;
   const matches = [...input.matchAll(codeSnippetRegex)];
-  const result : CodeSnippet[] = []
+  const result: CodeSnippet[] = [];
   matches.forEach(match => {
-    result.push({language: match[1], text: match[2]})
+    result.push({ language: match[1], text: match[2] });
     // console.log(`Found match: ${match[0]}`);
     // console.log(`language: ${match[1]}, code: ${match[2]}`);
   });
-  return result
+  return result;
 }

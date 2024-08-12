@@ -1,2 +1,2 @@
-// js API exports 
-export function api(){}
+// js API exports
+export function main() {}

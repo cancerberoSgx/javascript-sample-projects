@@ -1,7 +1,7 @@
-import { extractCodeSnippets } from '../src/parsingTools';
+import { extractAnnotationInfo } from '../src/tool/executeTool';
+import { extractCodeSnippets } from '../src/tool/parsingTools';
 
 test('extractCodeSnippets', () => {
-
   const s = `
   Assistant: Here is the corrected version of your given code.
   
@@ -40,23 +40,30 @@ test('extractCodeSnippets', () => {
     `;
   // console.log(extractCodeSnippets(s));
 
-  const results = extractCodeSnippets(s)
+  const results = extractCodeSnippets(s);
   expect(results).toEqual([
     {
       language: 'typescript',
-      text: '  const a = 1;\n' +
-        '  \n' +
-        '  function f(b: number) {\n' +
-        '    b = 1;\n' +
-        '    return b;\n' +
-        '  }\n' +
-        '  '
+      text: '  const a = 1;\n' + '  \n' + '  function f(b: number) {\n' + '    b = 1;\n' + '    return b;\n' + '  }\n' + '  ',
     },
     { language: '', text: '  snippet without language\n  ' },
     {
       language: 'typescript',
-      text: '  const a = 1;\n  function f(b: number) {\n    b = 1;\n    return b;\n  }\n  '
-    }
-  ])
-  
+      text: '  const a = 1;\n  function f(b: number) {\n    b = 1;\n    return b;\n  }\n  ',
+    },
+  ]);
 });
+
+test('extractAnnotationInfo', () => {
+  const text = `
+  before content
+  // @code-ai foo bar
+  after content
+  `;
+  const result = extractAnnotationInfo( {fileContents: text})
+  expect(result).toEqual({
+    code: text, 
+    toolName: 'foo', 
+    prompt: 'bar'
+  })
+})

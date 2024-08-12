@@ -17,18 +17,19 @@ use cases:
  * know how
     just ask chat to provide steps by steps guides on how to add X to current project. For example: "step by step gide to add jest to this project"
 
+other ideas: 
+ * create a folders and files and execute commands, examples: 
+    * generate a lerna mono repo from scratch called "foo" with two sub projects foo-js and foo-cli. foo-cli depends on foo-js
+        this should generate folders/files and execute commands like npm i
 
 # project information inferense
-need to implement info extraction from code projects, like feed llm with info like
- * infer project type
+we should implement project metadata tool to feed gpt - extracted from code projects, like:
+ * infer project language (python, js)
+ * infer more data: node.js, react-native, web
  * libraries present
  * imported/available APIs
  * current function/method context
-
- basically we need a tool that, given a folder, says things like:
-   * language: typescript
-   * libraries: axios, reactjs, material-ui
-   
+Also user should be able to correct or feed more info somehow.   
 
 
 # interfaces
@@ -47,6 +48,43 @@ examples:
 
  * js api: no so important, but could be nice to use API from vscode extension instead spawning proccess
 
+## in-file interaface
+
+syntax: 
+
+```
+// @code-ai $TOOL_NAME $PROMPT
+```
+this will trigger a tool with inFile: {content} assigning file contents to `code` var and $PROMPT to `prompt` var
+
+# tools
+
+## configuration and user customization
+
+Each command will have a prompt snippet. These should be modeled and configurable by user. User can add their own commands and snippets.
+
+each tool is dynmaically defined in files, for example: 
+
+tools {
+  reviewFile: {
+    tags: [review],
+    prompt: you are a developer assistant working in a project $PROJECT_INFO. Please make a code review of the following file only highlighting critical errors and please only print one big snippet with all the changes. Code: $CODE
+  },
+  create: {
+    tags: [create]
+    prompt: you are a developer assistant working in a project $PROJECT_INFO. Please write the code that implement the following requirement: $USER_INPUT
+  }
+}
+
+## tool output
+
+interface ToolOutput {
+  raw: string
+}
+
+
+# other
+
 
 ## requirements
 
@@ -54,6 +92,7 @@ from API we need to reference:
 
  * "this file on this line and column index"
  * the next expression or statement
+ the expression/statement named "ABC"
  * code between X and Y indexes
 
 ## important decisions: 
@@ -112,8 +151,15 @@ code-ai --file fo.js
 --write : write in file / line the code
    if not just print to stdout only the snippet.
 
+# docs
 
+about coding prompts:
+ * https://www.learnprompt.org/chat-gpt-prompts-for-coding/#google_vignette
+ * https://github.com/eriknomitch/CoderGPT
+# TODO
 
-## TODO
-
+* ollama llm
  * test https://ollama.com/library/codellama
+
+
+
