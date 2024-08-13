@@ -1,9 +1,9 @@
-import { handleCli } from "."
+import { handleCli } from '.';
 
-(async ()=>{
+(async () => {
   try {
-    await handleCli()
+    await handleCli();
   } catch (error) {
     console.log('ERROR', error);
   }
-})()
+})();

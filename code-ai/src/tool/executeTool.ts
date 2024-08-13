@@ -18,7 +18,7 @@ export async function executeTool(tool: Tool, args: ToolRunArgs): Promise<ToolOu
       snippets: extractCodeSnippets(response),
       llmTime: new Date().getTime() - t0,
       prompt,
-      output: ''
+      output: '',
     };
 
     let out = '';
@@ -33,16 +33,15 @@ export async function executeTool(tool: Tool, args: ToolRunArgs): Promise<ToolOu
 
     if (args.output.destination === ToolOutputDestination.stdout) {
       console.log(out);
-    } if (args.output.destination === ToolOutputDestination.none) {
+    }
+    if (args.output.destination === ToolOutputDestination.none) {
       // console.log(out);
     } else {
       throw new Error('not implemented args.output.destination=' + args.output.destination);
     }
-    output.output = out
+    output.output = out;
     return output;
   } else {
     throw new Error('ollama not implemented');
   }
 }
-
-

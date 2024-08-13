@@ -41,8 +41,6 @@ function f(b) {
   await executeTool(tool_review1, args);
 }
 
-
-
 (async () => {
   try {
     await review1Test();

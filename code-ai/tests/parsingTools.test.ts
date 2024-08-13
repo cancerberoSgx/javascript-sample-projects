@@ -61,14 +61,14 @@ test('extractAnnotationInfo', () => {
   // @code-ai foo lorem {} 1.23 ipsum
   after content
   `;
-  const result = extractAnnotationInfo( {fileContents: text})
+  const result = extractAnnotationInfo({ fileContents: text });
   expect(result).toEqual({
-    code: text, 
-    toolName: 'foo', 
+    code: text,
+    toolName: 'foo',
     prompt: 'lorem {} 1.23 ipsum',
-    lineNumber: 2
-  })
-})
+    lineNumber: 2,
+  });
+});
 
 test('tool review test1', async () => {
   const text = `
@@ -98,10 +98,10 @@ function c(){C++}
     },
   };
   const args: ToolRunArgs = {
-    vars: { 
-      code: text, 
+    vars: {
+      code: text,
       prompt: 'Review only function `a`',
-      environment: 'javascript node.js project'
+      environment: 'javascript node.js project',
     },
     output: {
       destination: ToolOutputDestination.none,
@@ -111,9 +111,9 @@ function c(){C++}
   };
   // this should stdout corrected code
   const r = await executeTool(tool_review2, args);
-}, 20000)
+}, 20000);
 
-test.only('inFile test1', async () => {  
+test.only('inFile test1', async () => {
   const tool_create1: Tool = {
     metadata: {
       name: 'create1',
@@ -134,7 +134,7 @@ test.only('inFile test1', async () => {
     `,
     },
   };
-  registerTool(tool_create1)
+  registerTool(tool_create1);
 
   const file = `
   function a(){ return b()=true}
@@ -144,12 +144,12 @@ test.only('inFile test1', async () => {
   function c(){C++}
   `;
 
-  const r = await executeInFile({fileContents: file})
+  const r = await executeInFile({ fileContents: file });
   console.log('SEBA', r.inFileResult);
-  
+
   // const args: ToolRunArgs = {
-  //   vars: { 
-  //     // code: file, 
+  //   vars: {
+  //     // code: file,
   //     // prompt: 'Function that calculates fibonacci series',
   //     environment: 'javascript node.js project'
   //   },
@@ -165,5 +165,4 @@ test.only('inFile test1', async () => {
   // this should stdout corrected code
   // const r = await executeTool(tool_review2, args);
   // console.log(r);
-  
-}, 20000)
+}, 20000);

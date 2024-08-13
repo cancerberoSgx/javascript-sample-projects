@@ -10,7 +10,7 @@
     "test": "jest tests",
     "test-watch": "jest --watch",
     "build": "tsc",
-    "prettier": "prettier --write src\"**/*.ts\" tests\"**/*.ts\""
+    "prettier": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\""
   },
   "keywords": [],
   "author": "",

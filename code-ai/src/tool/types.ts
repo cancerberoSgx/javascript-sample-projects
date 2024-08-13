@@ -24,7 +24,7 @@ export enum ToolOutputDestination {
   newFile = 'newFile',
   /** writes in current file given line number */
   currentFile = 'currentFile',
-  none = "none",
+  none = 'none',
 }
 
 export interface ToolConfig {
@@ -64,14 +64,14 @@ export interface ToolRunArgs {
   /** this is for in-file annotations */
   // inFile?: ToolRunInFileArgs
   /** just print final prompt, don't hit llm (testing) */
-  dryRun?: boolean
+  dryRun?: boolean;
 }
 
 export interface ToolRunInFileArgs {
-  fileContents: string
-  annotationRegex?: string
+  fileContents: string;
+  annotationRegex?: string;
   /** base prompt vars, like `environment` */
-  vars?: {[k:string]:string}
+  vars?: { [k: string]: string };
 }
 
 export interface CodeSnippet {
@@ -83,10 +83,10 @@ export interface ToolOutput {
   /** final extracted output, could be code snippet */
   output: string;
   /** in-file replacement, this is the original given code plus inserted llm answer */
-  inFileResult?: string
+  inFileResult?: string;
   raw: string;
   snippets: CodeSnippet[];
   llmTime: number;
   /** final prompt given to LLM */
-  prompt: string
+  prompt: string;
 }

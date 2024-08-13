@@ -1,6 +1,6 @@
-import { executeTool } from "./executeTool";
-import { getTool } from "./registerTool";
-import { ToolRunInFileArgs, ToolRunArgs, ToolOutputDestination, ToolOutputFormat } from "./types";
+import { executeTool } from './executeTool';
+import { getTool } from './registerTool';
+import { ToolRunInFileArgs, ToolRunArgs, ToolOutputDestination, ToolOutputFormat } from './types';
 
 export async function executeInFile(args: ToolRunInFileArgs) {
   const inFileData = extractAnnotationInfo(args);
@@ -13,7 +13,7 @@ export async function executeInFile(args: ToolRunInFileArgs) {
   }
   const runArgs: ToolRunArgs = {
     vars: {
-      ...args.vars||{},
+      ...(args.vars || {}),
       code: args.fileContents,
       prompt: inFileData.prompt,
       // environment: 'javascript node.js project'
@@ -37,7 +37,7 @@ interface InFileData {
 /** returns InFileData if sucessful parse or string on error */
 
 export function extractAnnotationInfo(args: ToolRunInFileArgs): InFileData | string {
-  const defaultRegex = "@code-ai\\s*([0-9a-zA-Z]+)\\s*(.+)";
+  const defaultRegex = '@code-ai\\s*([0-9a-zA-Z]+)\\s*(.+)';
   const regexp = new RegExp(args.annotationRegex || defaultRegex);
   const match = args.fileContents.match(regexp);
   if (!match) {
@@ -54,7 +54,7 @@ export function extractAnnotationInfo(args: ToolRunInFileArgs): InFileData | str
     // matchLine,
     toolName,
     prompt,
-    matchInfo: getMatchInfo(args.fileContents, regexp)
+    matchInfo: getMatchInfo(args.fileContents, regexp),
   };
 }
 
@@ -84,6 +84,8 @@ function getMatchInfo(text: string, regex: RegExp): MatchInfo {
     // matchText
   }
   return {
-    prefix, suffix, lineNumber
+    prefix,
+    suffix,
+    lineNumber,
   };
 }

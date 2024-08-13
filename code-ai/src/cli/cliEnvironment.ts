@@ -1,19 +1,18 @@
-import { extname } from "path"
-import { CliArgs } from "."
+import { extname } from 'path';
+import { CliArgs } from '.';
 
-let env = ''
+let env = '';
 /** takes care of basic environment guessing for CLI . */
 export function setEnvironment(args: CliArgs) {
-  const ext = extname(args.input)
+  const ext = extname(args.input);
   if (ext === '.js') {
-    env = 'JavaScript'
-
+    env = 'JavaScript';
   } else if (ext === '.ts') {
-    env = 'TypeScript'
+    env = 'TypeScript';
   } else if (ext === '.py') {
-    env = 'python'
+    env = 'python';
   }
 }
 export function getEnvironment() {
-  return env
+  return env;
 }
