@@ -3,7 +3,7 @@ import { extractCodeSnippets } from '../tool/parsingTools';
 
 async function testReview1() {
   const messages: ChatMessage[] = [
-    { role: 'system', content: 'You are an expert typescript developer' },
+    { role: 'system', content: 'You are an expert developer' },
     {
       role: 'user',
       content: `

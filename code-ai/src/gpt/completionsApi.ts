@@ -43,7 +43,7 @@ export interface OpenAIResponse {
 }
 
 /** Function to call OpenAI Chat Completion API */
-export async function getChatCompletion(messages: ChatMessage[], config: { model: string } = { model: 'gpt-4' }): Promise<ChatMessage> {
+export async function getChatCompletion(messages: ChatMessage[], config: { model: string } = { model: 'gpt-4o' }): Promise<ChatMessage> {
   try {
     const response = await axios.post<OpenAIResponse>(
       OPENAI_API_ENDPOINT,

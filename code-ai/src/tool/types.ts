@@ -24,6 +24,7 @@ export enum ToolOutputDestination {
   newFile = 'newFile',
   /** writes in current file given line number */
   currentFile = 'currentFile',
+  none = "none",
 }
 
 export interface ToolConfig {
@@ -61,7 +62,9 @@ export interface ToolRunArgs {
     newFile?: string;
   };
   /** this is for in-file annotations */
-  inFile?: ToolRunInFileArgs
+  // inFile?: ToolRunInFileArgs
+  /** just print final prompt, don't hit llm (testing) */
+  dryRun?: boolean
 }
 
 export interface ToolRunInFileArgs {
@@ -75,7 +78,10 @@ export interface CodeSnippet {
 }
 
 export interface ToolOutput {
+  answer: string;
   raw: string;
   snippets: CodeSnippet[];
   llmTime: number;
+  /** final prompt given to LLM */
+  prompt: string
 }
