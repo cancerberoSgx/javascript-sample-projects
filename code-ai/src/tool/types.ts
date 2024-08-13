@@ -70,6 +70,8 @@ export interface ToolRunArgs {
 export interface ToolRunInFileArgs {
   fileContents: string
   annotationRegex?: string
+  /** base prompt vars, like `environment` */
+  vars?: {[k:string]:string}
 }
 
 export interface CodeSnippet {
@@ -78,7 +80,10 @@ export interface CodeSnippet {
 }
 
 export interface ToolOutput {
-  answer: string;
+  /** final extracted output, could be code snippet */
+  output: string;
+  /** in-file replacement, this is the original given code plus inserted llm answer */
+  inFileResult?: string
   raw: string;
   snippets: CodeSnippet[];
   llmTime: number;

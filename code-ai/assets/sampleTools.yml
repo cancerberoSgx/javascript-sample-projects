@@ -1,0 +1,34 @@
+create: 
+  metadata:
+    tags:
+    - create
+    description: creates code
+  config: 
+    llm: gpt
+    model: gpt-4o
+    prompt: |
+      You are a software developer working on this environment: {{environment}}
+      Print a code snippet with the following requirements. 
+      Don't print any examples or comments or any other given code parts.
+      Requirements: {{prompt}}
+      Code:
+      \`\`\`
+      {{code}}
+      \`\`\`
+
+review:
+  metadata: 
+    tags: 
+    - review
+    description: simple code review
+  config: 
+    llm: gpt
+    model: gpt-4o
+    prompt: |
+      You are a software developer in this environment: {{environment}}
+      Please print only one code snippet with your corrections of the entire given file.
+      {{prompt}}
+      Code:
+      \`\`\`
+      {{code}}
+      \`\`\`

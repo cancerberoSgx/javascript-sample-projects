@@ -1,4 +1,5 @@
-import { executeInFile, executeTool, extractAnnotationInfo } from '../src/tool/executeTool';
+import { executeTool } from '../src/tool/executeTool';
+import { executeInFile, extractAnnotationInfo } from '../src/tool/executeInFile';
 import { extractCodeSnippets } from '../src/tool/parsingTools';
 import { registerTool } from '../src/tool/registerTool';
 import { Tool, ToolOutputDestination, ToolOutputFormat, ToolRunArgs } from '../src/tool/types';
@@ -40,8 +41,6 @@ test('extractCodeSnippets', () => {
 
   just other snippet
     `;
-  // console.log(extractCodeSnippets(s));
-
   const results = extractCodeSnippets(s);
   expect(results).toEqual([
     {
@@ -59,14 +58,15 @@ test('extractCodeSnippets', () => {
 test('extractAnnotationInfo', () => {
   const text = `
   before content
-  // @code-ai foo bar
+  // @code-ai foo lorem {} 1.23 ipsum
   after content
   `;
   const result = extractAnnotationInfo( {fileContents: text})
   expect(result).toEqual({
     code: text, 
     toolName: 'foo', 
-    prompt: 'bar'
+    prompt: 'lorem {} 1.23 ipsum',
+    lineNumber: 2
   })
 })
 
@@ -145,7 +145,7 @@ test.only('inFile test1', async () => {
   `;
 
   const r = await executeInFile({fileContents: file})
-  // console.log('SEBA', r);
+  console.log('SEBA', r.inFileResult);
   
   // const args: ToolRunArgs = {
   //   vars: { 

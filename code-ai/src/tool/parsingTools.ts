@@ -6,8 +6,6 @@ export function extractCodeSnippets(input: string): CodeSnippet[] {
   const result: CodeSnippet[] = [];
   matches.forEach(match => {
     result.push({ language: match[1], text: match[2] });
-    // console.log(`Found match: ${match[0]}`);
-    // console.log(`language: ${match[1]}, code: ${match[2]}`);
   });
   return result;
 }

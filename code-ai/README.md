@@ -156,10 +156,23 @@ code-ai --file fo.js
 about coding prompts:
  * https://www.learnprompt.org/chat-gpt-prompts-for-coding/#google_vignette
  * https://github.com/eriknomitch/CoderGPT
+
+
 # TODO
 
 * ollama llm
  * test https://ollama.com/library/codellama
 
+* mock llm for tests
+* tools definition from file in $HOME/.code-ai or from current folder .code-ai or from --config arg
+
+* in-line mode vs replace file
+  in-file will just add code next to prompt, this wont work when we want to replace the whole file, we need a --inFileReplaceAll flag
+   
+
+* bug: if we have comments (invalid anotations) that describe some code creation instructions, currently the llm will also perform those, example: 
+  @code-ai task 1
+  @ invalid task 2
 
 
+* logs --printPrompt and --printAnswer to debug both prompt and gpt raw answer
