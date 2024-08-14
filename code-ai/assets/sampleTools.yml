@@ -8,9 +8,12 @@ create:
     model: gpt-4o
     prompt: |
       You are a software developer working on this environment: {{environment}}
-      Print a code snippet with the following requirements. 
-      Don't print any examples or comments or any other given code parts.
-      Requirements: {{prompt}}
+      Print a code snippet with the following implementation requirements. 
+      Don't print any part of existing code, only what was asked to generate.
+      
+      Implementation requirements: 
+      {{prompt}}
+
       Code:
       \`\`\`
       {{code}}

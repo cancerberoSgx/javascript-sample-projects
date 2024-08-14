@@ -160,6 +160,8 @@ about coding prompts:
 
 # TODO
 
+* better environment info extraction
+
 * ollama llm
  * test https://ollama.com/library/codellama
 
@@ -171,8 +173,25 @@ about coding prompts:
    
 
 * bug: if we have comments (invalid anotations) that describe some code creation instructions, currently the llm will also perform those, example: 
-  @code-ai task 1
-  @ invalid task 2
+  @code-ai create edscription..
+  @ invalid review foo-bar
+
+ * realtime / watch: 
+  AC: as a user I just save a file and you run the tool for it automatically
+   * support input globs & folders --input
+   * CLI to watch glob file changes
+      * on change rerun tool 
 
 
+## DONE
 * logs --printPrompt and --printAnswer to debug both prompt and gpt raw answer
+
+
+# working examples:
+
+// @code-ai create typescript interface for object o
+const o = {a: 1, b: ['s'], c: [{j: 9}]}
+
+// @code-ai create function that returns the average of given numbers
+
+// @code-ai review function f

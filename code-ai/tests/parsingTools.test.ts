@@ -1,5 +1,5 @@
 import { executeTool } from '../src/tool/executeTool';
-import { executeInFile, extractAnnotationInfo } from '../src/tool/executeInFile';
+import { executeInFile, extractAnnotationInfo_test } from '../src/tool/executeInFile';
 import { extractCodeSnippets } from '../src/tool/parsingTools';
 import { registerTool } from '../src/tool/registerTool';
 import { Tool, ToolOutputDestination, ToolOutputFormat, ToolRunArgs } from '../src/tool/types';
@@ -55,13 +55,13 @@ test('extractCodeSnippets', () => {
   ]);
 });
 
-test('extractAnnotationInfo', () => {
+test('extractAnnotationInfo_test', () => {
   const text = `
   before content
   // @code-ai foo lorem {} 1.23 ipsum
   after content
   `;
-  const result = extractAnnotationInfo({ fileContents: text });
+  const result = extractAnnotationInfo_test({ fileContents: text });
   expect(result).toEqual({
     code: text,
     toolName: 'foo',

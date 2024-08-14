@@ -34,9 +34,9 @@ interface InFileData {
   prompt: string;
   matchInfo: MatchInfo;
 }
-/** returns InFileData if sucessful parse or string on error */
 
-export function extractAnnotationInfo(args: ToolRunInFileArgs): InFileData | string {
+/** returns InFileData if sucessful parse or string on error */
+function extractAnnotationInfo(args: ToolRunInFileArgs): InFileData | string {
   const defaultRegex = '@code-ai\\s*([0-9a-zA-Z]+)\\s*(.+)';
   const regexp = new RegExp(args.annotationRegex || defaultRegex);
   const match = args.fileContents.match(regexp);
@@ -57,6 +57,8 @@ export function extractAnnotationInfo(args: ToolRunInFileArgs): InFileData | str
     matchInfo: getMatchInfo(args.fileContents, regexp),
   };
 }
+/** for tests */
+export const extractAnnotationInfo_test = extractAnnotationInfo;
 
 interface MatchInfo {
   prefix: string;

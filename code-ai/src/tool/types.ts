@@ -4,6 +4,7 @@ export interface ToolMetadata {
   description: string;
 }
 
+/** tool defines model and prompt template which is feed by ToolRunArgs's vars and actions to produce output */
 export interface Tool {
   metadata: ToolMetadata;
   config: ToolConfig;
@@ -14,8 +15,8 @@ export interface Tool {
 export enum ToolOutputFormat {
   raw = 'raw',
   firstSnippet = 'firstSnippet',
-  /** if raw response is "yes" then it exits process with status 0, otherwhise with 1 */
-  yesNoExitStatus = 'yesNoExitStatus',
+  // /** if raw response is "yes" then it exits process with status 0, otherwhise with 1 */
+  // yesNoExitStatus = 'yesNoExitStatus',
 }
 
 /** how the tool will action. For example, print all in stdout, or first snippet, or create a new file or modify in-file */
@@ -61,10 +62,11 @@ export interface ToolRunArgs {
     /** name of new file for destination.newFile */
     newFile?: string;
   };
-  /** this is for in-file annotations */
-  // inFile?: ToolRunInFileArgs
   /** just print final prompt, don't hit llm (testing) */
   dryRun?: boolean;
+
+  // /** this is for in-file annotations */
+  // inFile?: ToolRunInFileArgs
 }
 
 export interface ToolRunInFileArgs {

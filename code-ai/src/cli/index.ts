@@ -6,6 +6,7 @@ export interface CliArgs {
   config: any;
   input: string;
   // command: Command;
+  /** Output file, if not given it will re-write input file in place */
   output?: string;
 
   printPrompt?: boolean;
