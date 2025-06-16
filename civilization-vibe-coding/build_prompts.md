@@ -140,7 +140,6 @@ in controls component, there's an apply button, I can make changes some controls
 on medium maps, when I scroll or zoom out rendering is very slow. Can you render the whole map when app starts and then reuse it so it's not keep re-rendered on these map actions?
 
 
-
 # TODO: 
 
  * we want gold, iron and others to spawn more in hills and mountains than in flat land

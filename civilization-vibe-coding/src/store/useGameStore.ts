@@ -73,11 +73,11 @@ export const useGameStore = create<GameState>((set, get) => {
     cellSize: 32,
     zoomIn: () =>
       set((state) => ({
-        cellSize: Math.min(Math.round(state.cellSize * 1.2), 128),
+        cellSize: Math.min(Math.round(state.cellSize * 1.2), 196),
       })),
     zoomOut: () =>
       set((state) => ({
-        cellSize: Math.max(Math.round(state.cellSize / 1.2), 8),
+        cellSize: Math.max(Math.round(state.cellSize / 1.2), 4),
       })),
     terrainMap,
     accidentMap,

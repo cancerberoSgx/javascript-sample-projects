@@ -19,7 +19,7 @@ const Map: React.FC = () => {
   const [selected, setSelected] = useState<{ x: number; y: number } | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const baseCellSizeRef = useRef(cellSize);
+  // const baseCellSizeRef = useRef(cellSize);
 
   // Draw the entire map once (or when map data/dimensions change), reuse on scroll/zoom
   useEffect(() => {
@@ -27,7 +27,8 @@ const Map: React.FC = () => {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    const base = baseCellSizeRef.current;
+    // const base = baseCellSizeRef.current;
+    const base = cellSize
     canvas.width = mapWidth * base;
     canvas.height = mapHeight * base;
 
@@ -42,6 +43,8 @@ const Map: React.FC = () => {
       }
     }
     const iconsSize = base * 0.8;
+    console.log('iconSize', iconsSize, base);
+    
     // render accidents, resources, units, cities
     Object.entries(accidentMap).forEach(([i, arr]) => {
       if (!arr.length) return;
@@ -84,10 +87,24 @@ const Map: React.FC = () => {
     });
   }, [mapWidth, mapHeight, terrainMap, accidentMap, resourceMap, units, cities]);
 
+  const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!canvasRef.current) return;
+    const rect = canvasRef.current.getBoundingClientRect();
+    const tileWidth = rect.width / mapWidth;
+    const tileHeight = rect.height / mapHeight;
+    const x = Math.floor((e.clientX - rect.left) / tileWidth);
+    const y = Math.floor((e.clientY - rect.top) / tileHeight);
+    setSelected({ x, y });
+  };
+
   return (
     <>
       <div className="map-container">
-        <canvas ref={canvasRef} style={{ width: mapWidth * cellSize, height: mapHeight * cellSize }} />
+        <canvas
+          ref={canvasRef}
+          onClick={handleClick}
+          style={{ width: mapWidth * cellSize, height: mapHeight * cellSize, cursor: 'pointer' }}
+        />
       </div>
       {selected && (
         <div className="modal-overlay" onClick={() => setSelected(null)}>
