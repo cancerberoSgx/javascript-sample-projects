@@ -70,7 +70,7 @@ export const useGameStore = create<GameState>((set, get) => {
         currentTurn: 1,
       });
     },
-    cellSize: 32,
+    cellSize: 128,
     zoomIn: () =>
       set((state) => ({
         cellSize: Math.min(Math.round(state.cellSize * 1.2), 196),
