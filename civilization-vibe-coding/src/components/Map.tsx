@@ -48,7 +48,7 @@ const Map: React.FC = () => {
     players.forEach((player) => {
       ctx.fillStyle = player.color;
       const prevAlpha = ctx.globalAlpha;
-      ctx.globalAlpha = 0.2;
+      ctx.globalAlpha = 0.6;
       Object.values(cities)
         .filter((c) => c.owner === player.id)
         .forEach((c) => ctx.fillRect(c.x * base, c.y * base, base, base));

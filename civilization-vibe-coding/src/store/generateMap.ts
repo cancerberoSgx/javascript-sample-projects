@@ -480,7 +480,8 @@ export function generateMap(params: GenerateMapParams) {
   // initialize players
   const players: Player[] = [];
   const defaultColors = [
-    '#e6194b', '#3cb44b', '#ffe119', '#0082c8', '#f582e1',
+    'red', 'green', 'blue', 'orange', 'violet',
+    // '#e6194b', '#3cb44b', '#ffe119', '#0082c8', '#f582e1',
     // '#911eb4', '#46f0f0', '#f032e6', '#d2f53c', '#fabebe',
   ];
   for (let i = 0; i < playersCount; i++) {
@@ -498,44 +499,87 @@ export function generateMap(params: GenerateMapParams) {
   const cities: Record<string, CityInstance> = {};
   let unitCounter = 0;
   let cityCounter = 0;
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const idx = y * width + x;
-      const terrain = terrainMap[idx];
-      if (Math.random() < GLOBAL_UNIT_PROB) {
-        const candidates = unitConfigs
-          .map((u) => ({ id: u.id, weight: u.spawnChance[terrain] || 0 }))
-          .filter((c) => c.weight > 0);
-        const totalWeight = candidates.reduce((sum, c) => sum + c.weight, 0);
-        if (totalWeight > 0) {
-          let r = Math.random() * totalWeight;
-          const chosen = candidates.find((c) => {
-            r -= c.weight;
-            return r <= 0;
-          });
-          if (chosen) {
-            const id = `unit-${unitCounter++}`;
-            units[id] = {
-              id,
-              type: chosen.id,
-              x,
-              y,
-              owner: (Math.floor(Math.random() * playersCount) + 1) as PlayerId,
-            };
-          }
-        }
+  // for (let y = 0; y < height; y++) {
+  //   for (let x = 0; x < width; x++) {
+  //     const idx = y * width + x;
+  //     const terrain = terrainMap[idx];
+  //     if (Math.random() < GLOBAL_UNIT_PROB) {
+  //       const candidates = unitConfigs
+  //         .map((u) => ({ id: u.id, weight: u.spawnChance[terrain] || 0 }))
+  //         .filter((c) => c.weight > 0);
+  //       const totalWeight = candidates.reduce((sum, c) => sum + c.weight, 0);
+  //       if (totalWeight > 0) {
+  //         let r = Math.random() * totalWeight;
+  //         const chosen = candidates.find((c) => {
+  //           r -= c.weight;
+  //           return r <= 0;
+  //         });
+  //         if (chosen) {
+  //           const id = `unit-${unitCounter++}`;
+  //           units[id] = {
+  //             id,
+  //             type: chosen.id,
+  //             x,
+  //             y,
+  //             owner: (Math.floor(Math.random() * playersCount) + 1) as PlayerId,
+  //           };
+  //         }
+  //       }
+  //     }
+  //     if (Math.random() < GLOBAL_CITY_PROB) {
+  //       const id = `city-${cityCounter++}`;
+  //       cities[id] = {
+  //         id,
+  //         name: `City${cityCounter}`,
+  //         x,
+  //         y,
+  //         owner: (Math.floor(Math.random() * playersCount) + 1) as PlayerId,
+  //       };
+  //     }
+  //   }
+  // }
+  // initial starting positions for each player
+  const validLand: number[] = [];
+  terrainMap.forEach((tid, idx) => {
+    if (tid === 'grassland' || tid === 'plains') validLand.push(idx);
+  });
+  players.forEach((player, pIndex) => {
+    const idealX = Math.floor((pIndex + 0.5) * width / players.length);
+    const idealY = Math.floor(height / 2);
+    let bestIdx = validLand[0];
+    let bestDist = Infinity;
+    validLand.forEach((idx) => {
+      const y0 = Math.floor(idx / width);
+      const x0 = idx % width;
+      const d2 = (x0 - idealX) ** 2 + (y0 - idealY) ** 2;
+      if (d2 < bestDist) {
+        bestDist = d2;
+        bestIdx = idx;
       }
-      if (Math.random() < GLOBAL_CITY_PROB) {
-        const id = `city-${cityCounter++}`;
-        cities[id] = {
-          id,
-          name: `City${cityCounter}`,
-          x,
-          y,
-          owner: (Math.floor(Math.random() * playersCount) + 1) as PlayerId,
-        };
-      }
-    }
-  }
+    });
+    const sx = bestIdx % width;
+    const sy = Math.floor(bestIdx / width);
+    // clear any existing units/cities on start tile
+    Object.keys(units).forEach((uid) => {
+      if (units[uid].x === sx && units[uid].y === sy) delete units[uid];
+    });
+    Object.keys(cities).forEach((cid) => {
+      if (cities[cid].x === sx && cities[cid].y === sy) delete cities[cid];
+    });
+    // place starting city
+    const startCityId = `city-${cityCounter++}`;
+    cities[startCityId] = {
+      id: startCityId,
+      name: `City${cityCounter}`,
+      x: sx,
+      y: sy,
+      owner: player.id,
+    };
+    // place initial units: Settler, Worker, Warrior
+    ['Settler', 'Worker', 'Warrior'].forEach((ut) => {
+      const uid = `unit-${unitCounter++}`;
+      units[uid] = { id: uid, type: ut, x: sx, y: sy, owner: player.id };
+    });
+  });
   return { terrainMap, accidentMap, resourceMap, units, cities, players };
 }

@@ -143,7 +143,6 @@ on medium maps, when I scroll or zoom out rendering is very slow. Can you render
 when I click a tab there's a modal that details terrain, accidents, resources and units on that tile with icons and text
 
 ## game players
-
 in the game, there are N players which are represented with:
 {
   id: number
@@ -154,6 +153,18 @@ in the game, there are N players which are represented with:
 * All Units and cities belong to one of the players.
 * if a tile contains an unit or city, paint that tile with player's color with transparency 0.2
 * create a map with 5 players by default, but let user change the number with controls
+
+## player initial tile:
+When game begins, each player starts in a location of the map. This location must be on a land tile which is grassland or plains. Separate each player initial location from each other equivalently.
+On each player initial tile, there must be:
+a city, and the units settler, worker and warrior
+
+
+
+
+
+
+
 
 # TODO: 
 
