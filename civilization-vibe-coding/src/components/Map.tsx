@@ -11,10 +11,12 @@ const Map: React.FC = () => {
   const mapWidth = useGameStore((state) => state.mapWidth);
   const mapHeight = useGameStore((state) => state.mapHeight);
   const terrainMap = useGameStore((state) => state.terrainMap);
+  const setZoom = useGameStore((state) => state.setZoom);
   const accidentMap = useGameStore((state) => state.accidentMap);
   const resourceMap = useGameStore((state) => state.resourceMap);
   const units = useGameStore((state) => state.units);
   const cities = useGameStore((state) => state.cities);
+  const players = useGameStore((state) => state.players);
   const cellSize = useGameStore((state) => state.cellSize);
   const [selected, setSelected] = useState<{ x: number; y: number } | null>(null);
 
@@ -42,8 +44,20 @@ const Map: React.FC = () => {
         ctx.fillRect(x * base, y * base, base, base);
       }
     }
+    // highlight tiles occupied by a city or unit
+    players.forEach((player) => {
+      ctx.fillStyle = player.color;
+      const prevAlpha = ctx.globalAlpha;
+      ctx.globalAlpha = 0.2;
+      Object.values(cities)
+        .filter((c) => c.owner === player.id)
+        .forEach((c) => ctx.fillRect(c.x * base, c.y * base, base, base));
+      Object.values(units)
+        .filter((u) => u.owner === player.id)
+        .forEach((u) => ctx.fillRect(u.x * base, u.y * base, base, base));
+      ctx.globalAlpha = prevAlpha;
+    });
     const iconsSize = base * 0.8;
-    console.log('iconSize', iconsSize, base);
     
     // render accidents, resources, units, cities
     Object.entries(accidentMap).forEach(([i, arr]) => {
@@ -85,6 +99,10 @@ const Map: React.FC = () => {
       ctx.font = `${base * 0.5}px sans-serif`;
       ctx.fillText(c.name.charAt(0), c.x * base + base * 0.25, c.y * base + base * 0.75);
     });
+
+    // setTimeout(() => {
+      setZoom(30)
+    // }, 1000);
   }, [mapWidth, mapHeight, terrainMap, accidentMap, resourceMap, units, cities]);
 
   const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {

@@ -1,7 +1,16 @@
 import { resources } from '../config/resources';
 import { terrains } from '../config/terrains';
 import { units as unitConfigs } from '../config/units';
-import { TerrainId, TerrainLayout, AccidentId, ResourceId, UnitInstance, CityInstance } from '../models/types';
+import {
+  TerrainId,
+  TerrainLayout,
+  AccidentId,
+  ResourceId,
+  UnitInstance,
+  CityInstance,
+  Player,
+  PlayerId,
+} from '../models/types';
 
 const GLOBAL_RESOURCE_PROB = 0.1;
 const GLOBAL_UNIT_PROB = 0.05;
@@ -464,9 +473,24 @@ export interface GenerateMapParams {
   width: number;
   height: number;
   layout: TerrainLayout;
+  playersCount: number;
 }
 export function generateMap(params: GenerateMapParams) {
-  const { width, height, layout: mapLayout } = params;
+  const { width, height, layout: mapLayout, playersCount } = params;
+  // initialize players
+  const players: Player[] = [];
+  const defaultColors = [
+    '#e6194b', '#3cb44b', '#ffe119', '#0082c8', '#f582e1',
+    // '#911eb4', '#46f0f0', '#f032e6', '#d2f53c', '#fabebe',
+  ];
+  for (let i = 0; i < playersCount; i++) {
+    players.push({
+      id: i + 1 as PlayerId,
+      civilizationId: i + 1,
+      name: `Player ${i + 1}`,
+      color: defaultColors[i % defaultColors.length],
+    });
+  }
   const terrainMap = createTerrainMap(mapLayout, width, height);
   const accidentMap = createInitialAccidentMap(width, height, terrainMap);
   const resourceMap = createInitialResourceMap(width, height, terrainMap);
@@ -491,15 +515,27 @@ export function generateMap(params: GenerateMapParams) {
           });
           if (chosen) {
             const id = `unit-${unitCounter++}`;
-            units[id] = { id, type: chosen.id, x, y, owner: 1 };
+            units[id] = {
+              id,
+              type: chosen.id,
+              x,
+              y,
+              owner: (Math.floor(Math.random() * playersCount) + 1) as PlayerId,
+            };
           }
         }
       }
       if (Math.random() < GLOBAL_CITY_PROB) {
         const id = `city-${cityCounter++}`;
-        cities[id] = { id, name: `City${cityCounter}`, x, y, owner: 1 };
+        cities[id] = {
+          id,
+          name: `City${cityCounter}`,
+          x,
+          y,
+          owner: (Math.floor(Math.random() * playersCount) + 1) as PlayerId,
+        };
       }
     }
   }
-  return { terrainMap, accidentMap, resourceMap, units, cities };
+  return { terrainMap, accidentMap, resourceMap, units, cities, players };
 }

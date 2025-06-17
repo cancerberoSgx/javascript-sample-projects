@@ -5,6 +5,13 @@ export type AccidentId = string;
 export type ResourceId = string;
 export type PlayerId = number;
 
+export interface Player {
+  id: PlayerId;
+  civilizationId: number;
+  name: string;
+  color: string;
+}
+
 export interface UnitInstance {
   id: UnitId;
   type: string;
@@ -36,6 +43,7 @@ export interface GameState {
   cellSize: number;
   zoomIn: () => void;
   zoomOut: () => void;
+  setZoom: (cellSize: number)=>void
   setMapLayout: (layout: TerrainLayout) => void;
   setMapWidth: (width: number) => void;
   setMapHeight: (height: number) => void;
@@ -45,6 +53,9 @@ export interface GameState {
   resourceMap: (ResourceId | null)[];
   units: Record<UnitId, UnitInstance>;
   cities: Record<CityId, CityInstance>;
+  playersCount: number;
+  setPlayersCount: (count: number) => void;
+  players: Player[];
   currentTurn: PlayerId;
   nextTurn: () => void;
   moveUnit: (unitId: UnitId, x: number, y: number) => void;

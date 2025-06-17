@@ -139,6 +139,21 @@ in controls component, there's an apply button, I can make changes some controls
 
 on medium maps, when I scroll or zoom out rendering is very slow. Can you render the whole map when app starts and then reuse it so it's not keep re-rendered on these map actions?
 
+## tile click debug 2
+when I click a tab there's a modal that details terrain, accidents, resources and units on that tile with icons and text
+
+## game players
+
+in the game, there are N players which are represented with:
+{
+  id: number
+  civilizationId: number
+  name: string
+  color: string
+}
+* All Units and cities belong to one of the players.
+* if a tile contains an unit or city, paint that tile with player's color with transparency 0.2
+* create a map with 5 players by default, but let user change the number with controls
 
 # TODO: 
 
