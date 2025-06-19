@@ -160,8 +160,8 @@ On each player initial tile, there must be:
 a city, and the units settler, worker and warrior
 
 
-
-
+## zoom with wheel
+A user can move mouse to a tile and use mouse wheel to zoom in and out. Current tile must be keep on the same place
 
 
 
@@ -171,17 +171,12 @@ a city, and the units settler, worker and warrior
  * we want gold, iron and others to spawn more in hills and mountains than in flat land
  * round map:, ie, i can go from 0 to the left and appear on max-width tile
 
-## map interaction
-when user clicks a tile, this tile get's selected. We need to:
- * display a selection UI feedback in the map's tile so user knows which tile is selected
- * when a tile is selected we display a sidebar info which display:
-   * terrain / acciden
 
+## player turns
+in a civilization game, each player is able to move its units and change some settings like city production, science, etc.
+ * ai player vs human players
+ * build all ai player and tech basic rules to move/produce units - test endturns
 
-
-rules for accidents and resources
-
- * 
 
 ## tile production
 each tile produces zero or more units of the following resources: food, gold, production (shields)
@@ -192,11 +187,3 @@ each tile produces zero or more units of the following resources: food, gold, pr
 
 # tings that didn't work:
 
-## map viewport performance issues
-in this map implementation, when I scroll or zoom-out it takes some time to render new viewport tiles. Can you optimize this and render the whole map so scrolling and zoom-out render the tiles right away ?
-
-This worked fine, but zoom takes LOTS of time
-
-
-
-T

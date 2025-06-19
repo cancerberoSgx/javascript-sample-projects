@@ -21,6 +21,7 @@ const Map: React.FC = () => {
   const [selected, setSelected] = useState<{ x: number; y: number } | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   // const baseCellSizeRef = useRef(cellSize);
 
   // Draw the entire map once (or when map data/dimensions change), reuse on scroll/zoom
@@ -42,6 +43,27 @@ const Map: React.FC = () => {
     // }, 1000);
   }, [mapWidth, mapHeight, terrainMap, accidentMap, resourceMap, units, cities]);
 
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    if (!containerRef.current) return;
+    const container = containerRef.current;
+    const rect = container.getBoundingClientRect();
+    const pointerX = e.clientX - rect.left;
+    const pointerY = e.clientY - rect.top;
+    const oldSize = cellSize;
+    const factor = e.deltaY < 0 ? 1.2 : 1 / 1.2;
+    let newSize = Math.round(oldSize * factor);
+    newSize = Math.max(Math.min(newSize, 196), 4);
+    if (newSize === oldSize) return;
+    const prevContentX = container.scrollLeft + pointerX;
+    const prevContentY = container.scrollTop + pointerY;
+    setZoom(newSize);
+    requestAnimationFrame(() => {
+      const scale = newSize / oldSize;
+      container.scrollLeft = prevContentX * scale - pointerX;
+      container.scrollTop = prevContentY * scale - pointerY;
+    });
+  };
   const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!canvasRef.current) return;
     const rect = canvasRef.current.getBoundingClientRect();
@@ -54,8 +76,12 @@ const Map: React.FC = () => {
 
   return (
     <>
-      <div className="map-container">
-        <canvas ref={canvasRef} onClick={handleClick} style={{ width: mapWidth * cellSize, height: mapHeight * cellSize, cursor: 'pointer' }} />
+      <div className="map-container" ref={containerRef} onWheel={handleWheel}>
+        <canvas
+          ref={canvasRef}
+          onClick={handleClick}
+          style={{ width: mapWidth * cellSize, height: mapHeight * cellSize, cursor: 'pointer' }}
+        />
       </div>
       {selected && (
         <div className="modal-overlay" onClick={() => setSelected(null)}>
