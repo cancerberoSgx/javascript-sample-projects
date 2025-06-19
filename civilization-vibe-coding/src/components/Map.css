@@ -3,6 +3,10 @@
   height: 90vh;
   overflow: auto;
   background-color: #000;
+  cursor: grab;
+}
+.map-container:active {
+  cursor: grabbing;
 }
 
 .cell {

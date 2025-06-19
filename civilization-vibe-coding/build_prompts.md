@@ -163,7 +163,8 @@ a city, and the units settler, worker and warrior
 ## zoom with wheel
 A user can move mouse to a tile and use mouse wheel to zoom in and out. Current tile must be keep on the same place
 
-
+## scroll drag
+a user can scroll up&down the map by drag and drop on top of it
 
 
 # TODO: 

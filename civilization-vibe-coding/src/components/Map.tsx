@@ -22,6 +22,9 @@ const Map: React.FC = () => {
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
+  const dragStart = useRef({ x: 0, y: 0 });
+  const scrollStart = useRef({ left: 0, top: 0 });
   // const baseCellSizeRef = useRef(cellSize);
 
   // Draw the entire map once (or when map data/dimensions change), reuse on scroll/zoom
@@ -66,6 +69,16 @@ const Map: React.FC = () => {
   };
   const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!canvasRef.current) return;
+    if(lastEndDrag &&  Date.now()- lastEndDrag < 100) {
+      console.log(Date.now()- lastEndDrag, Date.now(), lastEndDrag);
+      
+      return;
+    }
+    // if (isDragging.current) {
+    //   // If dragging, ignore click
+    //   isDragging.current = false;
+    //   return;
+    // }
     const rect = canvasRef.current.getBoundingClientRect();
     const tileWidth = rect.width / mapWidth;
     const tileHeight = rect.height / mapHeight;
@@ -74,9 +87,41 @@ const Map: React.FC = () => {
     setSelected({ x, y });
   };
 
+  let lastEndDrag=0
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!containerRef.current) return;
+    isDragging.current = true;
+    dragStart.current = { x: e.clientX, y: e.clientY };
+    scrollStart.current = {
+      left: containerRef.current.scrollLeft,
+      top: containerRef.current.scrollTop,
+    };
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    lastEndDrag=Date.now()
+    if (!isDragging.current || !containerRef.current) return;
+    const dx = e.clientX - dragStart.current.x;
+    const dy = e.clientY - dragStart.current.y;
+    containerRef.current.scrollLeft = scrollStart.current.left - dx;
+    containerRef.current.scrollTop = scrollStart.current.top - dy;
+  };
+
+  const endDrag = () => {
+    isDragging.current = false;
+  };
+
   return (
     <>
-      <div className="map-container" ref={containerRef} onWheel={handleWheel}>
+      <div
+        className="map-container"
+        ref={containerRef}
+        onWheel={handleWheel}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={endDrag}
+        onMouseLeave={endDrag}
+      >
         <canvas
           ref={canvasRef}
           onClick={handleClick}
