@@ -7,14 +7,7 @@ export const useGameStore = create<GameState>((set, get) => {
   const initialHeight = 30;
   const initialLayout: TerrainLayout = 'continents';
   const initialPlayersCount = 5;
-  const {
-    terrainMap,
-    accidentMap,
-    resourceMap,
-    units,
-    cities,
-    players,
-  } = generateMap({
+  const { terrainMap, accidentMap, resourceMap, units, cities, players } = generateMap({
     width: initialWidth,
     height: initialHeight,
     layout: initialLayout,
@@ -107,28 +100,21 @@ export const useGameStore = create<GameState>((set, get) => {
     },
     cellSize: 128,
     zoomIn: () =>
-      set((state) => ({
+      set(state => ({
         cellSize: Math.min(Math.round(state.cellSize * 1.2), 196),
       })),
     zoomOut: () =>
-      set((state) => ({
+      set(state => ({
         cellSize: Math.max(Math.round(state.cellSize / 1.2), 4),
       })),
-    setZoom: (cellSize: number)=>{
-      set((state) => ({
-        cellSize
-      }))
+    setZoom: (cellSize: number) => {
+      set(state => ({
+        cellSize,
+      }));
     },
     setPlayersCount: (newCount: number) => {
       const { mapWidth, mapHeight, mapLayout } = get();
-      const {
-        terrainMap: newTerrainMap,
-        accidentMap: newAccidentMap,
-        resourceMap: newResourceMap,
-        units: newUnits,
-        cities: newCities,
-        players: newPlayers,
-      } = generateMap({ width: mapWidth, height: mapHeight, layout: mapLayout, playersCount: newCount });
+      const { terrainMap: newTerrainMap, accidentMap: newAccidentMap, resourceMap: newResourceMap, units: newUnits, cities: newCities, players: newPlayers } = generateMap({ width: mapWidth, height: mapHeight, layout: mapLayout, playersCount: newCount });
       set({
         playersCount: newCount,
         players: newPlayers,
@@ -148,7 +134,7 @@ export const useGameStore = create<GameState>((set, get) => {
     currentTurn: 1,
     nextTurn: () => set({ currentTurn: get().currentTurn + 1 }),
     moveUnit: (unitId, x, y) =>
-      set((state) => ({
+      set(state => ({
         units: {
           ...state.units,
           [unitId]: { ...state.units[unitId], x, y },

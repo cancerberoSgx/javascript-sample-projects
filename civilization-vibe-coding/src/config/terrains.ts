@@ -12,5 +12,5 @@ export const terrains: TerrainConfig[] = [
   { id: 'desert', name: 'Desert', color: '#ffdb00' },
   { id: 'tundra', name: 'Tundra', color: '#bbbbaa' },
   { id: 'snow', name: 'Snow', color: '#ffffff' },
-  { id: 'ocean', name: 'Ocean', color: '#3f5df7' }
+  { id: 'ocean', name: 'Ocean', color: '#3f5df7' },
 ];

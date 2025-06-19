@@ -1,16 +1,7 @@
 import { resources } from '../config/resources';
 import { terrains } from '../config/terrains';
 import { units as unitConfigs } from '../config/units';
-import {
-  TerrainId,
-  TerrainLayout,
-  AccidentId,
-  ResourceId,
-  UnitInstance,
-  CityInstance,
-  Player,
-  PlayerId,
-} from '../models/types';
+import { TerrainId, TerrainLayout, AccidentId, ResourceId, UnitInstance, CityInstance, Player, PlayerId } from '../models/types';
 
 const GLOBAL_RESOURCE_PROB = 0.1;
 const GLOBAL_UNIT_PROB = 0.05;
@@ -30,7 +21,7 @@ function chooseTerrainByLatitude(x: number, y: number, width: number, height: nu
   return 'snow';
 }
 function createRandomTerrainMap(width: number, height: number): TerrainId[] {
-  const terrainIds = terrains.map((t) => t.id);
+  const terrainIds = terrains.map(t => t.id);
   const map: TerrainId[] = [];
   for (let i = 0; i < width * height; i++) {
     map[i] = terrainIds[Math.floor(Math.random() * terrainIds.length)];
@@ -62,9 +53,7 @@ function createContinentsTerrainMap(width: number, height: number): TerrainId[] 
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const idx = y * width + x;
-      map[idx] = landMask[idx]
-        ? chooseTerrainByLatitude(x, y, width, height)
-        : 'ocean';
+      map[idx] = landMask[idx] ? chooseTerrainByLatitude(x, y, width, height) : 'ocean';
     }
   }
   return map;
@@ -92,9 +81,7 @@ function createIslandsTerrainMap(width: number, height: number): TerrainId[] {
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const idx = y * width + x;
-      map[idx] = landMask[idx]
-        ? chooseTerrainByLatitude(x, y, width, height)
-        : 'ocean';
+      map[idx] = landMask[idx] ? chooseTerrainByLatitude(x, y, width, height) : 'ocean';
     }
   }
   return map;
@@ -119,9 +106,7 @@ function createPanageaTerrainMap(width: number, height: number): TerrainId[] {
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const idx = y * width + x;
-      map[idx] = landMask[idx]
-        ? chooseTerrainByLatitude(x, y, width, height)
-        : 'ocean';
+      map[idx] = landMask[idx] ? chooseTerrainByLatitude(x, y, width, height) : 'ocean';
     }
   }
   return map;
@@ -146,9 +131,7 @@ function createInlandSeaTerrainMap(width: number, height: number): TerrainId[] {
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const idx = y * width + x;
-      map[idx] = seaMask[idx]
-        ? 'ocean'
-        : chooseTerrainByLatitude(x, y, width, height);
+      map[idx] = seaMask[idx] ? 'ocean' : chooseTerrainByLatitude(x, y, width, height);
     }
   }
   return map;
@@ -176,18 +159,12 @@ function createLakesTerrainMap(width: number, height: number): TerrainId[] {
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const idx = y * width + x;
-      map[idx] = lakeMask[idx]
-        ? 'ocean'
-        : chooseTerrainByLatitude(x, y, width, height);
+      map[idx] = lakeMask[idx] ? 'ocean' : chooseTerrainByLatitude(x, y, width, height);
     }
   }
   return map;
 }
-function createTerrainMap(
-  layout: TerrainLayout,
-  width: number,
-  height: number
-): TerrainId[] {
+function createTerrainMap(layout: TerrainLayout, width: number, height: number): TerrainId[] {
   switch (layout) {
     case 'continents':
       return createContinentsTerrainMap(width, height);
@@ -212,28 +189,18 @@ interface Region {
 function getIndex(x: number, y: number, width: number): number {
   return y * width + x;
 }
-function getXY(index: number, width: number): { x: number; y: number; } {
+function getXY(index: number, width: number): { x: number; y: number } {
   return { x: index % width, y: Math.floor(index / width) };
 }
-function getNeighbors(x: number, y: number, width: number, height: number): { x: number; y: number; }[] {
-  const neighbors: { x: number; y: number; }[] = [];
+function getNeighbors(x: number, y: number, width: number, height: number): { x: number; y: number }[] {
+  const neighbors: { x: number; y: number }[] = [];
   if (x > 0) neighbors.push({ x: x - 1, y });
   if (x < width - 1) neighbors.push({ x: x + 1, y });
   if (y > 0) neighbors.push({ x, y: y - 1 });
   if (y < height - 1) neighbors.push({ x, y: y + 1 });
   return neighbors;
 }
-function generateClusters(
-  map: AccidentId[][],
-  width: number,
-  height: number,
-  terrainMap: TerrainId[],
-  allowedTerrains: TerrainId[],
-  accidentId: AccidentId,
-  clusterCount: number,
-  clusterSizeRange: [number, number],
-  region?: Region
-): void {
+function generateClusters(map: AccidentId[][], width: number, height: number, terrainMap: TerrainId[], allowedTerrains: TerrainId[], accidentId: AccidentId, clusterCount: number, clusterSizeRange: [number, number], region?: Region): void {
   const minRow = region ? Math.floor(region.minY * (height - 1)) : 0;
   const maxRow = region ? Math.floor(region.maxY * (height - 1)) : height - 1;
   for (let i = 0; i < clusterCount; i++) {
@@ -242,10 +209,7 @@ function generateClusters(
       const x = Math.floor(Math.random() * width);
       const y = Math.floor(Math.random() * height);
       const idx = getIndex(x, y, width);
-      if (allowedTerrains.includes(terrainMap[idx]) &&
-        map[idx].length === 0 &&
-        y >= minRow &&
-        y <= maxRow) {
+      if (allowedTerrains.includes(terrainMap[idx]) && map[idx].length === 0 && y >= minRow && y <= maxRow) {
         seedIndex = idx;
         break;
       }
@@ -260,12 +224,7 @@ function generateClusters(
       const { x, y } = getXY(current, width);
       const neighbors = getNeighbors(x, y, width, height)
         .map(({ x, y }) => getIndex(x, y, width))
-        .filter(
-          (n) => allowedTerrains.includes(terrainMap[n]) &&
-            map[n].length === 0 &&
-            n >= getIndex(0, minRow, width) &&
-            n <= getIndex(width - 1, maxRow, width)
-        );
+        .filter(n => allowedTerrains.includes(terrainMap[n]) && map[n].length === 0 && n >= getIndex(0, minRow, width) && n <= getIndex(width - 1, maxRow, width));
       if (neighbors.length === 0) break;
       const next = neighbors[Math.floor(Math.random() * neighbors.length)];
       if (!map[next].includes(accidentId)) map[next].push(accidentId);
@@ -273,12 +232,7 @@ function generateClusters(
     }
   }
 }
-function generateCoast(
-  map: AccidentId[][],
-  width: number,
-  height: number,
-  terrainMap: TerrainId[]
-): void {
+function generateCoast(map: AccidentId[][], width: number, height: number, terrainMap: TerrainId[]): void {
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const idx = getIndex(x, y, width);
@@ -355,12 +309,7 @@ function generateCoast(
 //     }
 //   }
 // }
-function generateHills(
-  map: AccidentId[][],
-  width: number,
-  height: number,
-  terrainMap: TerrainId[]
-): void {
+function generateHills(map: AccidentId[][], width: number, height: number, terrainMap: TerrainId[]): void {
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const idx = getIndex(x, y, width);
@@ -375,18 +324,9 @@ function generateHills(
     }
   }
 }
-function generateRivers(
-  map: AccidentId[][],
-  width: number,
-  height: number,
-  terrainMap: TerrainId[]
-): void {
-  const mountains = map
-    .map((v, idx) => (v.includes('mountain') ? idx : -1))
-    .filter((idx) => idx >= 0);
-  const coasts = terrainMap
-    .map((t, idx) => (t === 'ocean' && map[idx].includes('coast') ? idx : -1))
-    .filter((idx) => idx >= 0);
+function generateRivers(map: AccidentId[][], width: number, height: number, terrainMap: TerrainId[]): void {
+  const mountains = map.map((v, idx) => (v.includes('mountain') ? idx : -1)).filter(idx => idx >= 0);
+  const coasts = terrainMap.map((t, idx) => (t === 'ocean' && map[idx].includes('coast') ? idx : -1)).filter(idx => idx >= 0);
 
   const riverCount = Math.max(1, Math.floor(mountains.length / 2));
   for (let i = 0; i < riverCount; i++) {
@@ -411,11 +351,7 @@ function generateRivers(
     }
   }
 }
-function createInitialAccidentMap(
-  width: number,
-  height: number,
-  terrainMap: TerrainId[]
-): AccidentId[][] {
+function createInitialAccidentMap(width: number, height: number, terrainMap: TerrainId[]): AccidentId[][] {
   const map: AccidentId[][] = new Array(width * height).fill(null).map(() => []);
   generateCoast(map, width, height, terrainMap);
   // Jungle: medium clusters on grassland near equator
@@ -438,27 +374,20 @@ function createInitialAccidentMap(
   generateClusters(map, width, height, terrainMap, ['plains'], 'mountain', Math.floor(Math.random() * 5) + 4, [3, 7]);
   generateClusters(map, width, height, terrainMap, ['snow'], 'mountain', Math.floor(Math.random() * 5) + 4, [3, 7]);
 
-
   // generateMountains(map, width, height, terrainMap);
   generateHills(map, width, height, terrainMap);
   generateRivers(map, width, height, terrainMap);
   return map;
 }
-function createInitialResourceMap(
-  width: number,
-  height: number,
-  terrainMap: TerrainId[]
-): (ResourceId | null)[] {
+function createInitialResourceMap(width: number, height: number, terrainMap: TerrainId[]): (ResourceId | null)[] {
   const map: (ResourceId | null)[] = [];
   for (let i = 0; i < width * height; i++) {
     const terrain = terrainMap[i];
-    const candidates = resources
-      .map((r) => ({ id: r.id, weight: r.spawnChance[terrain] || 0 }))
-      .filter((c) => c.weight > 0);
+    const candidates = resources.map(r => ({ id: r.id, weight: r.spawnChance[terrain] || 0 })).filter(c => c.weight > 0);
     const totalWeight = candidates.reduce((sum, c) => sum + c.weight, 0);
     if (totalWeight > 0 && Math.random() < GLOBAL_RESOURCE_PROB) {
       let r = Math.random() * totalWeight;
-      const chosen = candidates.find((c) => {
+      const chosen = candidates.find(c => {
         r -= c.weight;
         return r <= 0;
       });
@@ -480,13 +409,17 @@ export function generateMap(params: GenerateMapParams) {
   // initialize players
   const players: Player[] = [];
   const defaultColors = [
-    'red', 'green', 'blue', 'orange', 'violet',
+    'red',
+    'green',
+    'blue',
+    'orange',
+    'violet',
     // '#e6194b', '#3cb44b', '#ffe119', '#0082c8', '#f582e1',
     // '#911eb4', '#46f0f0', '#f032e6', '#d2f53c', '#fabebe',
   ];
   for (let i = 0; i < playersCount; i++) {
     players.push({
-      id: i + 1 as PlayerId,
+      id: (i + 1) as PlayerId,
       civilizationId: i + 1,
       name: `Player ${i + 1}`,
       color: defaultColors[i % defaultColors.length],
@@ -544,11 +477,11 @@ export function generateMap(params: GenerateMapParams) {
     if (tid === 'grassland' || tid === 'plains') validLand.push(idx);
   });
   players.forEach((player, pIndex) => {
-    const idealX = Math.floor((pIndex + 0.5) * width / players.length);
+    const idealX = Math.floor(((pIndex + 0.5) * width) / players.length);
     const idealY = Math.floor(height / 2);
     let bestIdx = validLand[0];
     let bestDist = Infinity;
-    validLand.forEach((idx) => {
+    validLand.forEach(idx => {
       const y0 = Math.floor(idx / width);
       const x0 = idx % width;
       const d2 = (x0 - idealX) ** 2 + (y0 - idealY) ** 2;
@@ -560,10 +493,10 @@ export function generateMap(params: GenerateMapParams) {
     const sx = bestIdx % width;
     const sy = Math.floor(bestIdx / width);
     // clear any existing units/cities on start tile
-    Object.keys(units).forEach((uid) => {
+    Object.keys(units).forEach(uid => {
       if (units[uid].x === sx && units[uid].y === sy) delete units[uid];
     });
-    Object.keys(cities).forEach((cid) => {
+    Object.keys(cities).forEach(cid => {
       if (cities[cid].x === sx && cities[cid].y === sy) delete cities[cid];
     });
     // place starting city
@@ -576,7 +509,7 @@ export function generateMap(params: GenerateMapParams) {
       owner: player.id,
     };
     // place initial units: Settler, Worker, Warrior
-    ['Settler', 'Worker', 'Warrior'].forEach((ut) => {
+    ['Settler', 'Worker', 'Warrior'].forEach(ut => {
       const uid = `unit-${unitCounter++}`;
       units[uid] = { id: uid, type: ut, x: sx, y: sy, owner: player.id };
     });

@@ -28,13 +28,7 @@ export interface CityInstance {
   owner: PlayerId;
 }
 
-export type TerrainLayout =
-  | 'random'
-  | 'continents'
-  | 'islands'
-  | 'panagea'
-  | 'inlandSea'
-  | 'lakes';
+export type TerrainLayout = 'random' | 'continents' | 'islands' | 'panagea' | 'inlandSea' | 'lakes';
 
 export interface GameState {
   mapWidth: number;
@@ -43,7 +37,7 @@ export interface GameState {
   cellSize: number;
   zoomIn: () => void;
   zoomOut: () => void;
-  setZoom: (cellSize: number)=>void
+  setZoom: (cellSize: number) => void;
   setMapLayout: (layout: TerrainLayout) => void;
   setMapWidth: (width: number) => void;
   setMapHeight: (height: number) => void;

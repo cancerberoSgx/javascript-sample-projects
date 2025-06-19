@@ -4,6 +4,4 @@ export interface TechConfig {
   description: string;
 }
 
-export const techs: TechConfig[] = [
-  { id: 'wheel', name: 'Wheel', description: 'Enables horses and carts.' }
-];
+export const techs: TechConfig[] = [{ id: 'wheel', name: 'Wheel', description: 'Enables horses and carts.' }];
