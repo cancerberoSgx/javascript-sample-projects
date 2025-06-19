@@ -166,6 +166,10 @@ A user can move mouse to a tile and use mouse wheel to zoom in and out. Current 
 ## scroll drag
 a user can scroll up&down the map by drag and drop on top of it
 
+## map 100% screen
+the map should occupy 100% of screen controls are on top of it position absolute with 0.8 opacity.
+Theres a control toggle "fullscreen" that implements html DOM fullscreen API on and off
+
 
 # TODO: 
 

@@ -21,6 +21,13 @@ const Controls: React.FC = () => {
   const [localPlayers, setLocalPlayers] = useState(playersCount);
   const [localLayout, setLocalLayout] = useState(mapLayout);
 
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(!!document.fullscreenElement);
+  useEffect(() => {
+    const onFsChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', onFsChange);
+    return () => document.removeEventListener('fullscreenchange', onFsChange);
+  }, []);
+
   useEffect(() => setLocalWidth(mapWidth), [mapWidth]);
   useEffect(() => setLocalHeight(mapHeight), [mapHeight]);
   useEffect(() => setLocalPlayers(playersCount), [playersCount]);
@@ -32,8 +39,29 @@ const Controls: React.FC = () => {
     setPlayersCount(localPlayers);
     setMapLayout(localLayout);
   };
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen();
+    } else if (document.exitFullscreen) {
+      document.exitFullscreen();
+    }
+  };
+
   return (
-    <div style={{ padding: 10, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+    <div
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        padding: 10,
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.5rem',
+        opacity: 0.8,
+        zIndex: 1000,
+      }}
+    >
       <button onClick={nextTurn}>End Turn</button>
       <span>Current Turn: {currentTurn}</span>
       <button onClick={zoomOut}>-</button>
@@ -55,6 +83,9 @@ const Controls: React.FC = () => {
         <option value="lakes">Lakes</option>
       </select>
       <button onClick={applyChanges}>Apply</button>
+      <button onClick={toggleFullscreen}>
+        {isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+      </button>
     </div>
   );
 };
