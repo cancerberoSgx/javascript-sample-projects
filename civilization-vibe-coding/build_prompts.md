@@ -179,9 +179,12 @@ Theres a control toggle "fullscreen" that implements html DOM fullscreen API on 
 
 ## player turns
 in a civilization game, each player is able to move its units and change some settings like city production, science, etc.
- * ai player vs human players
- * build all ai player and tech basic rules to move/produce units - test endturns
-
+There are two main types of players: human which are operated by human player and AI player which automatically moves their turn. 
+So, when game turns starts, we go to the players list and for each:
+ * if it's a human player do nothing
+ * if it's a AI player do:
+   * move each unit "moves" tiles to any land tile
+   
 
 ## tile production
 each tile produces zero or more units of the following resources: food, gold, production (shields)

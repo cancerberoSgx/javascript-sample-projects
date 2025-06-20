@@ -5,11 +5,16 @@ export type AccidentId = string;
 export type ResourceId = string;
 export type PlayerId = number;
 
+export enum PlayerType{
+  human = 'human',
+  ai = 'ai',
+}
 export interface Player {
   id: PlayerId;
   civilizationId: number;
   name: string;
   color: string;
+  type: PlayerType
 }
 
 export interface UnitInstance {

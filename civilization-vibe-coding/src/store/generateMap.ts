@@ -1,7 +1,7 @@
 import { resources } from '../config/resources';
 import { terrains } from '../config/terrains';
 import { units as unitConfigs } from '../config/units';
-import { TerrainId, TerrainLayout, AccidentId, ResourceId, UnitInstance, CityInstance, Player, PlayerId } from '../models/types';
+import { TerrainId, TerrainLayout, AccidentId, ResourceId, UnitInstance, CityInstance, Player, PlayerId, PlayerType } from '../models/types';
 
 const GLOBAL_RESOURCE_PROB = 0.1;
 const GLOBAL_UNIT_PROB = 0.05;
@@ -423,6 +423,7 @@ export function generateMap(params: GenerateMapParams) {
       civilizationId: i + 1,
       name: `Player ${i + 1}`,
       color: defaultColors[i % defaultColors.length],
+      type: i===0 ? PlayerType.human : PlayerType.ai, // first player is human, others are
     });
   }
   const terrainMap = createTerrainMap(mapLayout, width, height);

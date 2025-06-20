@@ -1,5 +1,12 @@
 import { UnitId, TerrainId } from '../models/types';
 
+interface UnitInfo {
+  name: string;
+  type: string;
+  moves: number;
+  health: number;
+  description: string;
+}
 export interface UnitDefinition extends UnitInfo {
   id: UnitId;
   /** Letter to use when rendering this unit on the map */
@@ -14,17 +21,10 @@ function build(info: UnitInfo): UnitDefinition {
     id: info.name,
     name: info.name,
     letter: info.name.substring(0, 1),
-    image: `/icons/units/${info.name}.svg`,
+    image: `icons/units/${info.name}.svg`,
     spawnChance: { plains: 0.4, grassland: 0.4, desert: 0.4, tundra: 0.4, snow: 0.4 },
   };
   return r;
-}
-interface UnitInfo {
-  name: string;
-  type: string;
-  moves: number;
-  health: number;
-  description: string;
 }
 const info = [
   {
