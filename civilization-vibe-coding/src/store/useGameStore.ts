@@ -1,12 +1,12 @@
 import create from 'zustand';
-import { GameState, TerrainLayout } from '../models/types';
-import { GenerateMapParams, generateMap } from './generateMap';
+import { GameState, TerrainLayout, PlayerType } from '../models/types';
+import { GenerateMapParams, generateMap } from './map/generateMap';
+import { units as unitTypes } from '../config/units';
+import { initialHeight, initialPlayersCount, initialWidth } from './constants';
 
 export const useGameStore = create<GameState>((set, get) => {
-  const initialWidth = 60;
-  const initialHeight = 30;
+
   const initialLayout: TerrainLayout = 'continents';
-  const initialPlayersCount = 5;
   const { terrainMap, accidentMap, resourceMap, units, cities, players } = generateMap({
     width: initialWidth,
     height: initialHeight,
@@ -98,7 +98,7 @@ export const useGameStore = create<GameState>((set, get) => {
         currentTurn: 1,
       });
     },
-    cellSize: 128,
+    cellSize: 196,
     zoomIn: () =>
       set(state => ({
         cellSize: Math.min(Math.round(state.cellSize * 1.2), 196),
@@ -132,7 +132,48 @@ export const useGameStore = create<GameState>((set, get) => {
     units,
     cities,
     currentTurn: 1,
-    nextTurn: () => set({ currentTurn: get().currentTurn + 1 }),
+    nextTurn: () =>
+      set(state => {
+        let newCurrent = state.currentTurn;
+        const { players, terrainMap, mapWidth, mapHeight } = state;
+        const newUnits = { ...state.units };
+
+        while (true) {
+          newCurrent = (newCurrent % players.length) + 1;
+          const player = players.find(p => p.id === newCurrent);
+          if (!player || player.type !== PlayerType.ai) {
+            break;
+          }
+          Object.values(newUnits).forEach(u => {
+            if (u.owner === newCurrent) {
+              const def = unitTypes.find(t => t.id === u.type);
+              const moves = def?.moves ?? 0;
+              if (moves > 0) {
+                const candidates: { x: number; y: number }[] = [];
+                for (let dx = -moves; dx <= moves; dx++) {
+                  const maxDy = moves - Math.abs(dx);
+                  for (let dy = -maxDy; dy <= maxDy; dy++) {
+                    const nx = u.x + dx;
+                    const ny = u.y + dy;
+                    if (nx >= 0 && nx < mapWidth && ny >= 0 && ny < mapHeight) {
+                      const terrain = terrainMap[ny * mapWidth + nx];
+                      if (terrain !== 'ocean') {
+                        candidates.push({ x: nx, y: ny });
+                      }
+                    }
+                  }
+                }
+                if (candidates.length > 0) {
+                  const choice = candidates[Math.floor(Math.random() * candidates.length)];
+                  newUnits[u.id] = { ...u, x: choice.x, y: choice.y };
+                }
+              }
+            }
+          });
+        }
+
+        return { currentTurn: newCurrent, units: newUnits };
+      }),
     moveUnit: (unitId, x, y) =>
       set(state => ({
         units: {

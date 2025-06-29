@@ -42,7 +42,7 @@ const Map: React.FC = () => {
     renderMap({ mapHeight, mapWidth, terrainMap, ctx, base, players, cities, units, accidentMap, resourceMap });
 
     // setTimeout(() => {
-    setZoom(30);
+    // setZoom(30);
     // }, 1000);
   }, [mapWidth, mapHeight, terrainMap, accidentMap, resourceMap, units, cities]);
 
