@@ -1,5 +1,5 @@
 {
-  "name": "tauri-test",
+  "name": "my-sql-client",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "app-build": "NO_STRIP=true npm run tauri build",
+    "app-exec-appImage": "chmod a+x src-tauri/target/release/bundle/appimage/my-sql-client_0.1.0_amd64.AppImage; ./src-tauri/target/release/bundle/appimage/my-sql-client_0.1.0_amd64.AppImage"
   },
   "dependencies": {
     "react": "^18.3.1",
