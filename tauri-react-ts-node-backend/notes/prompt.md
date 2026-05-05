@@ -215,6 +215,7 @@ the script screen consist on :
 in frontend, in listings like table -> data or script -> results, if there are too many columns, the window viewport must be respected. Don't force the user to scroll the viewport itself, add the scroll to the data table instead. 
 Rememeber this is a desktop app displayed in a window of arbitrary size, the content scrolling shouolnd't be on the viewport but on overlying children, like the tables with many columns
 
+# scripts data table resize
 in frontend, in connection -> scripts user can resize vertically the data-table at the bottom 
 
 
