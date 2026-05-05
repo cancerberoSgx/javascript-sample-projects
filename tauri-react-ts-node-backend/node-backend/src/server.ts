@@ -1,8 +1,11 @@
 import express, { Request, Response, NextFunction } from 'express';
 import * as http from 'http';
 import * as crypto from 'crypto';
+import { initDb } from './db';
 
 const SESSION_TOKEN = crypto.randomBytes(16).toString('hex');
+
+initDb();
 
 const app = express();
 
