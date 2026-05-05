@@ -71,3 +71,6 @@ implement the connections api middleware in src/api/connections.ts which will ca
 
 
 
+# tauri dev in browser
+
+is it possible to debug this tauri app (react frontend) using the browser directly talking with node-backend ? I need to implement lots of features, apis, etc and ideally I would like to use the browser to test each. Can we pass backend host port and auth token by url parameter or something and make the react app not fail in the browser? 

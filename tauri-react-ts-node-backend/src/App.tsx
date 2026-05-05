@@ -1,11 +1,6 @@
 import { useState, useEffect } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { getBackendInfo, apiUrl, authHeaders } from "./lib/backend";
 import "./App.css";
-
-interface BackendInfo {
-  port: number;
-  token: string;
-}
 
 interface HealthResponse {
   success: boolean;
@@ -16,11 +11,12 @@ function App() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function checkHealth() {
+    async function init() {
       try {
-        const info = await invoke<BackendInfo>("get_backend_info");
-        const res = await fetch(`http://127.0.0.1:${info.port}/api/health`, {
-          headers: { "x-session-token": info.token },
+        const info = await getBackendInfo();
+
+        const res = await fetch(apiUrl("/api/health", info), {
+          headers: authHeaders(info),
         });
         const data: HealthResponse = await res.json();
         setHealth(data);
@@ -28,7 +24,7 @@ function App() {
         setError(String(e));
       }
     }
-    checkHealth();
+    init();
   }, []);
 
   return (
@@ -37,7 +33,7 @@ function App() {
       <section>
         <h2>Backend health</h2>
         {!health && !error && <p>Checking...</p>}
-        {error && <p style={{ color: "red" }}>Error: {error}</p>}
+        {error && <p style={{ color: "red" }}>{error}</p>}
         {health && <pre>{JSON.stringify(health, null, 2)}</pre>}
       </section>
     </main>

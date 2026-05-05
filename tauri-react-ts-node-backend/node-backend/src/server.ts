@@ -40,15 +40,18 @@ app.use('/api/connections', connectionsRouter);
 
 const server = http.createServer(app);
 
-// Port 0 lets the OS pick a free port
-server.listen(0, '127.0.0.1', () => {
+// PORT env var pins the port for browser dev (avoids updating the URL on every restart).
+// Omit it (or set to 0) to let the OS pick a free port — used by the Tauri launcher.
+const listenPort = Number(process.env.PORT ?? 0);
+
+server.listen(listenPort, '127.0.0.1', () => {
   const addr = server.address();
   if (!addr || typeof addr === 'string') {
     console.error('Failed to get server address');
     process.exit(1);
   }
-  // console.log(addr);
-  
-  // Parent process reads this line to learn the port and session token
+  // stdout: Tauri's Rust side reads this line to learn the port and token
   console.log(`READY:${addr.port}:${SESSION_TOKEN}`);
+  // stderr: developer hint — visible in the terminal but ignored by the Rust parser
+  console.error(`[server] Browser dev URL: http://localhost:1420?port=${addr.port}&token=${SESSION_TOKEN}`);
 });
