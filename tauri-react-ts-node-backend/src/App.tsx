@@ -1,42 +1,61 @@
-import { useState, useEffect } from "react";
-import { getBackendInfo, apiUrl, authHeaders } from "./lib/backend";
-import "./App.css";
+import { useEffect, useState } from 'react';
+import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
+import { AppSidebar } from '@/components/AppSidebar';
+import { ConnectionForm } from '@/components/ConnectionForm';
+import { WelcomeScreen } from '@/components/WelcomeScreen';
+import { getBackendInfo } from '@/lib/backend';
+import { useAppStore } from '@/store';
 
-interface HealthResponse {
-  success: boolean;
+function MainContent() {
+  const view = useAppStore((s) => s.view);
+  if (view.type === 'welcome') return <WelcomeScreen />;
+  const key =
+    view.type === 'new-connection'
+      ? `new-${view.profileId}`
+      : `edit-${view.connection.id}`;
+  return <ConnectionForm key={key} />;
 }
 
 function App() {
-  const [health, setHealth] = useState<HealthResponse | null>(null);
+  const setBackendInfo = useAppStore((s) => s.setBackendInfo);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function init() {
-      try {
-        const info = await getBackendInfo();
-
-        const res = await fetch(apiUrl("/api/health", info), {
-          headers: authHeaders(info),
-        });
-        const data: HealthResponse = await res.json();
-        setHealth(data);
-      } catch (e) {
+    getBackendInfo()
+      .then((info) => {
+        setBackendInfo(info);
+        setLoading(false);
+      })
+      .catch((e: unknown) => {
         setError(String(e));
-      }
-    }
-    init();
-  }, []);
+        setLoading(false);
+      });
+  }, [setBackendInfo]);
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center text-muted-foreground text-sm">
+        Connecting to backend…
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <p className="text-destructive text-sm max-w-sm text-center">{error}</p>
+      </div>
+    );
+  }
 
   return (
-    <main className="container">
-      <h1>SQL Inspector</h1>
-      <section>
-        <h2>Backend health</h2>
-        {!health && !error && <p>Checking...</p>}
-        {error && <p style={{ color: "red" }}>{error}</p>}
-        {health && <pre>{JSON.stringify(health, null, 2)}</pre>}
-      </section>
-    </main>
+    <SidebarProvider>
+      <AppSidebar />
+      <SidebarInset>
+        <MainContent />
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
 

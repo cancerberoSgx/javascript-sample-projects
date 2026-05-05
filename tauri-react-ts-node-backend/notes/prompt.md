@@ -90,5 +90,52 @@ tasks:
    create endpoints /api/profiles with CRUD operations for profiles
    update current connections API to be /api/profile/{profileId}/connections
 
+# frontend UI libraries
+
+UI Library                                                                                                                                                                          
+                                               
+  shadcn/ui is the best fit here, not raw Radix UI alone. Here's why:                                                                                                                 
+   
+  - shadcn/ui is built on top of Radix primitives — you get all the accessibility and composability of Radix, but with ready-made styled components (sidebar, menus, dialogs, form    
+  controls, dropdowns, tabs, etc.)                                
+  - Components are copied into your project (not a black-box dependency), so you own the code and can customize freely                                                                
+  - Theming via CSS variables is excellent — light/dark mode is trivial, and you can create custom themes                                                                             
+  - First-class TypeScript                                                                                                                                                            
+  - The Sidebar component added recently is production-quality and exactly what a SQL client needs                                                                                    
+                                                                                                                                                                                      
+  The main trade-off: it requires Tailwind CSS. That's a small setup cost but Tailwind pairs very well with Tauri apps since there's no stylesheet delivery concern.                  
+                                                                                                                                                                                      
+  If you want zero Tailwind, Mantine is the runner-up — it's fully self-contained, has more built-in components (rich tables, date pickers, notifications), and excellent theming.    
+  Slightly heavier and more opinionated in look.                  
+                                                                                                                                                                                      
+  Recommendation: shadcn/ui + Tailwind.                           
+
+  ---
+  State Management
+                  
+  Yes, Zustand is the right call. For a SQL client specifically, you'll likely have:
+  - Active/open connections                                                                                                                                                           
+  - Open query tabs with their SQL text and results                                                                                                                                   
+  - UI state (selected sidebar item, panel sizes, etc.)                                                                                                                               
+                                                                                                                                                                                      
+  Zustand's flat store model fits this naturally — no boilerplate, great TypeScript inference, and you can slice it into separate stores per concern.
+                                                                                                                                                                                      
+  Pair it with TanStack Query for server state (your Node API calls). Zustand handles client/UI state; TanStack Query handles fetching, caching, and invalidating API responses. They 
+  compose cleanly and avoid you having to manually manage loading/error states in Zustand.                                                                                            
+                                                                                                                                                                                      
+  Recommendation: Zustand + TanStack Query. 
+
+
+
+
+p2:
+
+implement the suggested libraries in the frontend and adapt current source code to use them
+
+delete current UI
+add a sidebar the left with options "profile", "connections", "queries", "settings" currently to-be-implemented. The sidebar must be collapsible.
+In the sidebar there'a last item "debug" which calls endpoint /api/health and display response.
+
+
 
 in the frontend app (root package json and /scr folder) , 
