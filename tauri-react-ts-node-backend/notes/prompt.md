@@ -36,3 +36,38 @@ p2:
 when executing "npm run tauri dev" the app opens and but I'm seeing Error: Type error: Load failed. If I enter with the browser I see "Error: TypeError: Cannot read properties of undefined (reading 'invoke')"
 I'm not seeing any logs on the server startup in the console
 I've verified that running the server manually works fine and is printing the port and auth token correctly (npm install executed correctly automatically)
+
+p3
+when the app 
+
+
+# backend-db
+
+The backend will use a sqlite db to store user's data between sections
+the schema will be defined in migrations and we will always write pure sql both for migrations and for queries
+migrations wil be run on startup so I can modify the schema and these changes will be applied on next execution.
+the sqlite db file must be created and read from $HOME/.my_db_inspector/data
+Make sure to use a pure JavaScript library to access sqlite - we don't want to assume user must have python or other build tools to install dependencies, only node.js 
+Create a first migration that creates a table connections with following columns:
+ * id int PK
+ * name text
+ * db_host text
+ * db_port int
+ * db_name text
+ * db_user text
+ * db_password text
+
+
+# connection endpoints
+
+the backend has the following endpoints
+
+GET /api/connections (list all connections)
+POST /api/connections create new connection
+PUT /api/connections/{id}  edit a connection
+
+Implement data layer in src/repository/connectionRepository.ts which uses pure sql
+implement the connections api middleware in src/api/connections.ts which will call the repository to access the data
+
+
+

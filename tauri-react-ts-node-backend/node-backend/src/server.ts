@@ -2,6 +2,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import * as http from 'http';
 import * as crypto from 'crypto';
 import { initDb } from './db';
+import connectionsRouter from './api/connections';
 
 const SESSION_TOKEN = crypto.randomBytes(16).toString('hex');
 
@@ -34,6 +35,8 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 app.get('/api/health', (_req: Request, res: Response) => {
   res.json({ success: true });
 });
+
+app.use('/api/connections', connectionsRouter);
 
 const server = http.createServer(app);
 
