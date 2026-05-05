@@ -166,7 +166,8 @@ get /api/connectoins/{connectionId}/tables/{tableName}/fields  get given db tabl
 you must implement this using strategy pattern with one "connector" implementation per each connection type, currently only implement it for postgres. The method signatures should be generic enough to support other databases in the future such as mysql, sqlite, etc
 
 p2:
-in the backend, implement a new endpoint POST /api/connections/{connectionId}/query body {query: string} which allows to execute queries.
+in the backend, implement a new endpoint
+POST /api/connections/{connectionId}/query body {query: string} which allows to execute queries.
 Model different query types such as select, create, update, etc with generic response types so they can be used on other db implementations such as mysql, sqlite, etc
 
 p3
@@ -193,11 +194,45 @@ create a scriptRepository to access this data
 create endpoints 
 
 get /api/connections/{connectionId}/scripts to return the list of connection's scripts
+post /api/connections/{connectionId}/scripts create a new script
+put /api/connections/{connectionId}/scripts/{id} updates script
+delete /api/connections/{connectionId}/scripts/{id} updates a new script
 
 
-p4
-in the frontend, when connection is selected, there's a third tab "Script"
+p2 future <--- last 
 
+in the frontend, when connection is selected, there's a third tab "Script" which list connection scripts in sub-sub tabs using script name as tab name
+if connection don't have any script it creates a new tab "script 1" with empty content
+the script screen consist on :
+  * a text area with script content
+  * an "execute" button which executes the script using api POST /api/connections/{connectionId}/query 
+  * a "save" button which allows to save the script
+  * a delete button which deletes the script
+
+
+
+# table data
+
+in the backend, there's a new endpoint 
+get /api/connections/{connectionId}/tables/{tableName}/data
+which allow to query a table records (use select, where, limit, offset, order by etc)
+supports 
+ * return columns (default return all columns)
+ * column sorting asc desc
+ * column filtering (exact value, lower than, greater than, %like expressions) - can apply multiple filters
+ * pagination (limit, offset)
+
+
+p2 
+in the frontend, when a table is selected display two tabs:
+ * "fields" -> display table fields just as we are now doing
+ * "data" -> display a table of records
+   * allows to order by column
+   * allows to apply filters on each field
+   * allows to select which columns want to see (default all)
+
+
+the endpoint not only returns the result records, but also a "total" field counting total records complying with filters if any.
 
 
 

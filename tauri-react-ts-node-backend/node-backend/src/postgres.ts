@@ -23,7 +23,7 @@ function buildConfig(conn: Connection): PoolConfig {
 }
 
 export function getPool(conn: Connection): Pool {
-  console.log('GET POOL ', conn);
+  // console.log('GET POOL ', conn);
   
   const existing = pools.get(conn.id);
   if (existing) return existing;

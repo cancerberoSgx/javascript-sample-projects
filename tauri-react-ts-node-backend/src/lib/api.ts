@@ -22,8 +22,14 @@ export type ConnectionInput = Omit<Connection, 'id' | 'profile_id'>;
 async function request<T>(url: string, init: RequestInit, info: BackendInfo): Promise<T> {
   const res = await fetch(url, { ...init, headers: authHeaders(info) });
   if (!res.ok) {
-    const text = await res.text().catch(() => res.statusText);
-    throw new Error(`${res.status}: ${text}`);
+    let message: string;
+    try {
+      const body = await res.json() as { error?: string };
+      message = body.error ?? JSON.stringify(body);
+    } catch {
+      message = await res.text().catch(() => res.statusText);
+    }
+    throw new Error(message);
   }
   if (res.status === 204) return undefined as T;
   const data: unknown = await res.json();
@@ -145,4 +151,67 @@ export const tablesApi = {
     const url = params.toString() ? `${base}?${params}` : base;
     return request<TableDataResult>(url, {}, info);
   },
+};
+
+// ── Scripts ───────────────────────────────────────────────────────────────────
+
+export interface Script {
+  id: number;
+  connection_id: number;
+  name: string;
+  content: string;
+}
+
+export type ScriptInput = Pick<Script, 'name' | 'content'>;
+
+export const scriptsApi = {
+  list: (connectionId: number, info: BackendInfo) =>
+    request<Script[]>(apiUrl(`/api/connections/${connectionId}/scripts`, info), {}, info),
+
+  create: (connectionId: number, input: ScriptInput, info: BackendInfo) =>
+    request<Script>(apiUrl(`/api/connections/${connectionId}/scripts`, info), {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }, info),
+
+  update: (connectionId: number, id: number, input: ScriptInput, info: BackendInfo) =>
+    request<Script>(apiUrl(`/api/connections/${connectionId}/scripts/${id}`, info), {
+      method: 'PUT',
+      body: JSON.stringify(input),
+    }, info),
+
+  delete: (connectionId: number, id: number, info: BackendInfo) =>
+    request<void>(apiUrl(`/api/connections/${connectionId}/scripts/${id}`, info), {
+      method: 'DELETE',
+    }, info),
+};
+
+// ── Query execution ───────────────────────────────────────────────────────────
+
+export interface SelectQueryResult {
+  type: 'select';
+  fields: { name: string; data_type_id?: number }[];
+  rows: Record<string, unknown>[];
+  row_count: number;
+}
+
+export interface MutationQueryResult {
+  type: 'mutation';
+  command: string;
+  affected_rows: number;
+}
+
+export interface DDLQueryResult {
+  type: 'ddl';
+  command: string;
+}
+
+export type QueryExecutionResult = SelectQueryResult | MutationQueryResult | DDLQueryResult;
+
+export const queryApi = {
+  execute: (connectionId: number, query: string, info: BackendInfo) =>
+    request<QueryExecutionResult>(apiUrl(`/api/connections/${connectionId}/query`, info), {
+      method: 'POST',
+      body: JSON.stringify({ query }),
+    }, info),
 };

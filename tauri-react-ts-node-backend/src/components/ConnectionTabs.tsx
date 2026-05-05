@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, ChevronDown, ChevronUp, ChevronsUpDown, Loader2, Table2 } from 'lucide-react';
+import { AlertCircle, ChevronDown, ChevronUp, ChevronsUpDown, Loader2, SlidersHorizontal, Table2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTableData, useTableFields, useTables } from '@/hooks/useTables';
@@ -8,6 +16,7 @@ import { FilterClause, SortClause, TableInfo } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/store';
 import { ConnectionForm } from './ConnectionForm';
+import { ScriptsPanel } from './ScriptsPanel';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -118,8 +127,13 @@ function TableDataPanel({
   const [sort, setSort] = useState<SortClause | undefined>();
   const [filterInputs, setFilterInputs] = useState<Record<string, string>>({});
   const [appliedFilters, setAppliedFilters] = useState<Record<string, string>>({});
+  const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(50);
+
+  // Fields info gives us the full column list immediately (cached from Fields tab)
+  const { data: fields } = useTableFields(connectionId, table.name, table.schema);
+  const fieldColumns = useMemo(() => fields?.map((f) => f.name) ?? [], [fields]);
 
   // Debounce filter inputs by 400 ms
   useEffect(() => {
@@ -139,6 +153,10 @@ function TableDataPanel({
     offset: page * pageSize,
   });
 
+  // Prefer columns from the live query result; fall back to field metadata
+  const allColumns = data?.columns ?? fieldColumns;
+  const visibleColumns = allColumns.filter((c) => !hiddenColumns.has(c));
+
   function handleSort(col: string) {
     setSort((prev) => {
       if (prev?.column !== col) return { column: col, direction: 'asc' };
@@ -148,7 +166,21 @@ function TableDataPanel({
     setPage(0);
   }
 
-  const columns = data?.columns ?? [];
+  function toggleColumn(col: string) {
+    setHiddenColumns((prev) => {
+      const next = new Set(prev);
+      if (next.has(col)) {
+        next.delete(col);
+      } else {
+        next.add(col);
+        // clear any filter for a column being hidden
+        setFilterInputs((f) => { const n = { ...f }; delete n[col]; return n; });
+        setAppliedFilters((f) => { const n = { ...f }; delete n[col]; return n; });
+      }
+      return next;
+    });
+  }
+
   const rows = data?.rows ?? [];
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -164,6 +196,41 @@ function TableDataPanel({
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
+      {/* Toolbar */}
+      <div className="shrink-0 px-3 py-1.5 border-b flex items-center gap-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5">
+              <SlidersHorizontal className="h-3 w-3" />
+              Columns
+              {hiddenColumns.size > 0 && (
+                <span className="ml-0.5 rounded-full bg-primary px-1.5 py-px text-[10px] font-medium text-primary-foreground">
+                  {allColumns.length - hiddenColumns.size}/{allColumns.length}
+                </span>
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="max-h-72 overflow-y-auto min-w-[160px]">
+            <DropdownMenuLabel className="text-xs">Toggle columns</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {allColumns.length === 0 ? (
+              <p className="px-2 py-1.5 text-xs text-muted-foreground">Loading…</p>
+            ) : (
+              allColumns.map((col) => (
+                <DropdownMenuCheckboxItem
+                  key={col}
+                  checked={!hiddenColumns.has(col)}
+                  onCheckedChange={() => toggleColumn(col)}
+                  className="font-mono text-xs"
+                >
+                  {col}
+                </DropdownMenuCheckboxItem>
+              ))
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
       {/* Scrollable table area */}
       <div className="flex-1 overflow-auto relative">
         {isLoading && (
@@ -174,7 +241,7 @@ function TableDataPanel({
         <table className="w-full text-sm border-collapse">
           <thead className="sticky top-0 z-10 bg-background">
             <tr className="border-b">
-              {columns.map((col) => (
+              {visibleColumns.map((col) => (
                 <th
                   key={col}
                   onClick={() => handleSort(col)}
@@ -187,9 +254,9 @@ function TableDataPanel({
                 </th>
               ))}
             </tr>
-            {columns.length > 0 && (
+            {visibleColumns.length > 0 && (
               <tr className="border-b bg-muted/20">
-                {columns.map((col) => (
+                {visibleColumns.map((col) => (
                   <td key={col} className="px-2 py-1">
                     <input
                       type="text"
@@ -208,13 +275,13 @@ function TableDataPanel({
           <tbody>
             {rows.map((row, i) => (
               <tr key={i} className="border-b last:border-0 hover:bg-muted/30">
-                {columns.map((col) => (
+                {visibleColumns.map((col) => (
                   <td
                     key={col}
                     className="px-3 py-1.5 font-mono text-xs whitespace-nowrap max-w-[280px] overflow-hidden text-ellipsis"
                   >
                     {row[col] === null || row[col] === undefined ? (
-                      <span className="text-muted-foreground/40 italic not-italic">null</span>
+                      <span className="text-muted-foreground/40 italic">null</span>
                     ) : (
                       String(row[col])
                     )}
@@ -225,7 +292,7 @@ function TableDataPanel({
             {!isLoading && rows.length === 0 && (
               <tr>
                 <td
-                  colSpan={Math.max(columns.length, 1)}
+                  colSpan={Math.max(visibleColumns.length, 1)}
                   className="px-3 py-8 text-center text-muted-foreground text-sm"
                 >
                   No records found
@@ -393,8 +460,11 @@ export function ConnectionTabs() {
           <TabsTrigger value="config" className="rounded-none px-0 pb-3 mr-5 text-sm">
             Config
           </TabsTrigger>
-          <TabsTrigger value="tables" className="rounded-none px-0 pb-3 text-sm">
+          <TabsTrigger value="tables" className="rounded-none px-0 pb-3 mr-5 text-sm">
             Tables
+          </TabsTrigger>
+          <TabsTrigger value="scripts" className="rounded-none px-0 pb-3 text-sm">
+            Scripts
           </TabsTrigger>
         </TabsList>
       </div>
@@ -405,6 +475,10 @@ export function ConnectionTabs() {
 
       <TabsContent value="tables" className="flex-1 overflow-hidden mt-0">
         <TablesPanel connectionId={connection.id} />
+      </TabsContent>
+
+      <TabsContent value="scripts" className="flex-1 overflow-hidden mt-0">
+        <ScriptsPanel connectionId={connection.id} />
       </TabsContent>
     </Tabs>
   );
