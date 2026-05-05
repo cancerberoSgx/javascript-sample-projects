@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { ConnectionForm } from '@/components/ConnectionForm';
+import { ConnectionTabs } from '@/components/ConnectionTabs';
 import { WelcomeScreen } from '@/components/WelcomeScreen';
 import { getBackendInfo } from '@/lib/backend';
 import { useAppStore } from '@/store';
@@ -9,11 +10,8 @@ import { useAppStore } from '@/store';
 function MainContent() {
   const view = useAppStore((s) => s.view);
   if (view.type === 'welcome') return <WelcomeScreen />;
-  const key =
-    view.type === 'new-connection'
-      ? `new-${view.profileId}`
-      : `edit-${view.connection.id}`;
-  return <ConnectionForm key={key} />;
+  if (view.type === 'new-connection') return <ConnectionForm key={`new-${view.profileId}`} />;
+  return <ConnectionTabs key={`edit-${view.connection.id}`} />;
 }
 
 function App() {

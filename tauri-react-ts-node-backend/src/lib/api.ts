@@ -50,6 +50,25 @@ export const profilesApi = {
     request<unknown>(apiUrl(`/api/profiles/${id}`, info), { method: 'DELETE' }, info),
 };
 
+export interface TableInfo {
+  schema: string;
+  name: string;
+  type: string;
+}
+
+export interface FieldInfo {
+  name: string;
+  ordinal_position: number;
+  data_type: string;
+  native_type?: string;
+  nullable: boolean;
+  default_value: string | null;
+  max_length: number | null;
+  numeric_precision: number | null;
+  numeric_scale: number | null;
+  is_primary_key: boolean;
+}
+
 export const connectionsApi = {
   list: (profileId: number, info: BackendInfo) =>
     request<Connection[]>(apiUrl(`/api/profiles/${profileId}/connections`, info), {}, info),
@@ -67,4 +86,15 @@ export const connectionsApi = {
       { method: 'PUT', body: JSON.stringify(input) },
       info,
     ),
+};
+
+export const tablesApi = {
+  list: (connectionId: number, info: BackendInfo) =>
+    request<TableInfo[]>(apiUrl(`/api/connections/${connectionId}/tables`, info), {}, info),
+
+  getFields: (connectionId: number, tableName: string, schema: string | undefined, info: BackendInfo) => {
+    const base = apiUrl(`/api/connections/${connectionId}/tables/${encodeURIComponent(tableName)}/fields`, info);
+    const url = schema ? `${base}?schema=${encodeURIComponent(schema)}` : base;
+    return request<FieldInfo[]>(url, {}, info);
+  },
 };

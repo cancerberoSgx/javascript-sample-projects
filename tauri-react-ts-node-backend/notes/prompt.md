@@ -153,6 +153,60 @@ Note: this is for the sql client app to allow users to query their dbs, has noth
 in db connections table, add column "type text not null". Update repository and endpoints
 in frontend connections form, add the "type" field now returned by API, dropdown with options "postgres" (default) and "mysql". Allow user to read and write/edit
 
+# db connect
+context:
+we want to implement a facade for certain operations on a connection, such as execute queries, query tables, query table fields and indexes, etc
+Currently we will be only supporting postgres db connection type, but in the future there will be other "connectors" implementations such as mysql, sqllite, etc
+
+tasks:
+in the backend, there are two new endpoints to list tables and table fields in connections:
+get /api/connections/{connectionId}/tables  get the db tables and any metadata
+get /api/connectoins/{connectionId}/tables/{tableName}/fields  get given db table fields (with all their metadata)
+
+you must implement this using strategy pattern with one "connector" implementation per each connection type, currently only implement it for postgres. The method signatures should be generic enough to support other databases in the future such as mysql, sqlite, etc
+
+p2:
+in the backend, implement a new endpoint POST /api/connections/{connectionId}/query body {query: string} which allows to execute queries.
+Model different query types such as select, create, update, etc with generic response types so they can be used on other db implementations such as mysql, sqlite, etc
+
+p3
+in the frontend, when a connection is selected, there are two tabs: "Config", "Tables" 
+  * "tables" display the tables or an error msg if connection failed - uses api get /api/connections/{connectionId}/tables 
+     * if a table is selected it display its fields - uses api get /api/connectoins/{connectionId}/tables/{tableName}/fields
+  * settings: displays current ConnectionForm.tsx component
+
+
+
+future
+
+# connection scripts
+
+in the backend:
+
+create a new db table scripts with columns: 
+  id (PK)
+  connectionId int (FK)
+  name text not null
+  content text not null.
+
+create a scriptRepository to access this data
+create endpoints 
+
+get /api/connections/{connectionId}/scripts to return the list of connection's scripts
+
+
+p4
+in the frontend, when connection is selected, there's a third tab "Script"
+
+
+
+
+as a user, 
+context:
+As a user, I can "connect" to a database using the UI connection.
+tasks:
+In the backend there's an endpoint to 
+
 
 
 # FUTURE: 
