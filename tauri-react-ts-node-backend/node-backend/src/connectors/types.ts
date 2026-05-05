@@ -17,6 +17,42 @@ export interface FieldInfo {
   is_primary_key: boolean;
 }
 
+// ── Query result types ────────────────────────────────────────────────────────
+
+/** Metadata for a single column as returned from the wire protocol. */
+export interface ColumnMeta {
+  name: string;
+  /** Wire-protocol type code — Postgres OID, MySQL field type, etc. Optional so
+   *  connectors without a meaningful equivalent can omit it. */
+  data_type_id?: number;
+}
+
+/** Result of a SELECT / EXPLAIN / SHOW statement — carries rows and column metadata. */
+export interface SelectResult {
+  type: 'select';
+  fields: ColumnMeta[];
+  rows: Record<string, unknown>[];
+  row_count: number;
+}
+
+/** Result of a data-mutation statement: INSERT, UPDATE, DELETE, MERGE. */
+export interface MutationResult {
+  type: 'mutation';
+  command: string;
+  affected_rows: number;
+}
+
+/** Result of a DDL or control statement: CREATE, DROP, ALTER, TRUNCATE,
+ *  BEGIN, COMMIT, ROLLBACK, … */
+export interface DDLResult {
+  type: 'ddl';
+  command: string;
+}
+
+export type QueryResult = SelectResult | MutationResult | DDLResult;
+
+// ── Connector interface ───────────────────────────────────────────────────────
+
 /**
  * Generic interface every connector must implement.
  * Each connection type (postgres, mysql, sqlite, …) has its own class
@@ -33,4 +69,10 @@ export interface IConnector {
    *                   default when omitted (e.g. 'public' for Postgres).
    */
   getTableFields(tableName: string, schema?: string): Promise<FieldInfo[]>;
+
+  /**
+   * Execute an arbitrary SQL statement and return a typed result that reflects
+   * what kind of command was run (SELECT, mutation, DDL, …).
+   */
+  executeQuery(sql: string): Promise<QueryResult>;
 }

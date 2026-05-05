@@ -5,6 +5,7 @@ import { initDb } from './db';
 import profilesRouter from './api/profiles';
 import connectionsRouter from './api/connections';
 import connectionTablesRouter from './api/connectionTables';
+import connectionQueryRouter from './api/connectionQuery';
 
 const SESSION_TOKEN = crypto.randomBytes(16).toString('hex');
 
@@ -41,6 +42,7 @@ app.get('/api/health', (_req: Request, res: Response) => {
 app.use('/api/profiles', profilesRouter);
 app.use('/api/profiles/:profileId/connections', connectionsRouter);
 app.use('/api/connections', connectionTablesRouter);
+app.use('/api/connections', connectionQueryRouter);
 
 const server = http.createServer(app);
 

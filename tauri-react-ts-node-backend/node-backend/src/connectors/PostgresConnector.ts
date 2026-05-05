@@ -1,7 +1,27 @@
 import { Pool } from 'pg';
 import { getPool } from '../postgres';
 import { Connection } from '../repository/connectionRepository';
-import { FieldInfo, IConnector, TableInfo } from './types';
+import {
+  ColumnMeta,
+  DDLResult,
+  FieldInfo,
+  IConnector,
+  MutationResult,
+  QueryResult,
+  SelectResult,
+  TableInfo,
+} from './types';
+
+/**
+ * Classify a PostgreSQL command tag into the three broad categories used by
+ * QueryResult.  The tag may include extra words (e.g. "CREATE TABLE",
+ * "INSERT 0 5") so we test with startsWith rather than strict equality.
+ */
+function classifyCommand(tag: string): 'select' | 'mutation' | 'ddl' {
+  if (['SELECT', 'EXPLAIN', 'SHOW'].some((p) => tag.startsWith(p))) return 'select';
+  if (['INSERT', 'UPDATE', 'DELETE', 'MERGE'].some((p) => tag.startsWith(p))) return 'mutation';
+  return 'ddl';
+}
 
 export class PostgresConnector implements IConnector {
   private readonly pool: Pool;
@@ -54,5 +74,35 @@ export class PostgresConnector implements IConnector {
       ORDER BY c.ordinal_position
     `, [schema, tableName]);
     return rows;
+  }
+
+  async executeQuery(sql: string): Promise<QueryResult> {
+    const result = await this.pool.query(sql);
+    const command = (result.command ?? '').toUpperCase();
+
+    switch (classifyCommand(command)) {
+      case 'select': {
+        const fields: ColumnMeta[] = result.fields.map((f) => ({
+          name: f.name,
+          data_type_id: f.dataTypeID,
+        }));
+        return {
+          type: 'select',
+          fields,
+          rows: result.rows as Record<string, unknown>[],
+          row_count: result.rows.length,
+        } satisfies SelectResult;
+      }
+
+      case 'mutation':
+        return {
+          type: 'mutation',
+          command,
+          affected_rows: result.rowCount ?? 0,
+        } satisfies MutationResult;
+
+      default:
+        return { type: 'ddl', command } satisfies DDLResult;
+    }
   }
 }
