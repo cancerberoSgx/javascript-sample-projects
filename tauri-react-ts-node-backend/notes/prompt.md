@@ -137,5 +137,11 @@ add a sidebar the left with options "profile", "connections", "queries", "settin
 In the sidebar there'a last item "debug" which calls endpoint /api/health and display response.
 
 
+p3
+in the frontend, On "new connection" (ConnectionForm), I'm getting a validation errors on all fields when clicking "Save connection". error "Invalid input: expected string, received undefined"
 
-in the frontend app (root package json and /scr folder) , 
+
+
+
+FUTURE: 
+when invalid token, make a frontend with error 
