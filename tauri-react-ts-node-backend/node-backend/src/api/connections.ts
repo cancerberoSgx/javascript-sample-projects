@@ -6,27 +6,33 @@ import {
   ConnectionInput,
 } from '../repository/connectionRepository';
 
-const router = Router();
+// mergeParams makes :profileId from the parent route available as req.params.profileId
+const router = Router({ mergeParams: true });
 
-router.get('/', (_req: Request, res: Response): void => {
-  res.json(listConnections());
+router.get('/', (req: Request, res: Response): void => {
+  const profileId = parseId(req.params.profileId);
+  if (profileId === null) { res.status(400).json({ error: 'Invalid profileId' }); return; }
+
+  res.json(listConnections(profileId));
 });
 
 router.post('/', (req: Request, res: Response): void => {
+  const profileId = parseId(req.params.profileId);
+  if (profileId === null) { res.status(400).json({ error: 'Invalid profileId' }); return; }
+
   const input = parseInput(req.body);
   if (!input) {
     res.status(400).json({ error: 'name, db_host, db_port, db_name, db_user, db_password are all required' });
     return;
   }
-  res.status(201).json(createConnection(input));
+
+  res.status(201).json(createConnection(profileId, input));
 });
 
 router.put('/:id', (req: Request, res: Response): void => {
-  const id = Number(req.params.id);
-  if (!Number.isInteger(id) || id <= 0) {
-    res.status(400).json({ error: 'Invalid id' });
-    return;
-  }
+  const profileId = parseId(req.params.profileId);
+  const id = parseId(req.params.id);
+  if (profileId === null || id === null) { res.status(400).json({ error: 'Invalid id' }); return; }
 
   const input = parseInput(req.body);
   if (!input) {
@@ -34,14 +40,16 @@ router.put('/:id', (req: Request, res: Response): void => {
     return;
   }
 
-  const updated = updateConnection(id, input);
-  if (!updated) {
-    res.status(404).json({ error: 'Connection not found' });
-    return;
-  }
+  const updated = updateConnection(id, profileId, input);
+  if (!updated) { res.status(404).json({ error: 'Connection not found' }); return; }
 
   res.json(updated);
 });
+
+function parseId(raw: string): number | null {
+  const id = Number(raw);
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
 
 function parseInput(body: Record<string, unknown>): ConnectionInput | null {
   const { name, db_host, db_port, db_name, db_user, db_password } = body;

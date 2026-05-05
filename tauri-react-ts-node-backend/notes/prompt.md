@@ -74,3 +74,21 @@ implement the connections api middleware in src/api/connections.ts which will ca
 # tauri dev in browser
 
 is it possible to debug this tauri app (react frontend) using the browser directly talking with node-backend ? I need to implement lots of features, apis, etc and ideally I would like to use the browser to test each. Can we pass backend host port and auth token by url parameter or something and make the react app not fail in the browser? 
+
+
+# profiles
+
+context:
+end user users the app from a profile. At the beggining user is asked to create a profile by giving a name.
+All their connections, views, queries, etc are associated to a profile
+
+tasks:
+ * in backend:
+   create profiles db table id, name
+   add migration to add column connections.profileId FK profiles.id on delete cascade. update ConnectionsRepository to support new profileId field
+   create profileRepository with CRUD operations
+   create endpoints /api/profiles with CRUD operations for profiles
+   update current connections API to be /api/profile/{profileId}/connections
+
+
+in the frontend app (root package json and /scr folder) , 
