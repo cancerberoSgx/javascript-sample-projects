@@ -88,6 +88,33 @@ export const connectionsApi = {
     ),
 };
 
+export type FilterOp = 'eq' | 'lt' | 'gt' | 'lte' | 'gte' | 'like' | 'ilike';
+
+export interface FilterClause {
+  column: string;
+  op: FilterOp;
+  value: string;
+}
+
+export interface SortClause {
+  column: string;
+  direction: 'asc' | 'desc';
+}
+
+export interface TableDataOptions {
+  schema?: string;
+  filters?: FilterClause[];
+  sort?: SortClause;
+  limit?: number;
+  offset?: number;
+}
+
+export interface TableDataResult {
+  rows: Record<string, unknown>[];
+  total: number;
+  columns: string[];
+}
+
 export const tablesApi = {
   list: (connectionId: number, info: BackendInfo) =>
     request<TableInfo[]>(apiUrl(`/api/connections/${connectionId}/tables`, info), {}, info),
@@ -96,5 +123,26 @@ export const tablesApi = {
     const base = apiUrl(`/api/connections/${connectionId}/tables/${encodeURIComponent(tableName)}/fields`, info);
     const url = schema ? `${base}?schema=${encodeURIComponent(schema)}` : base;
     return request<FieldInfo[]>(url, {}, info);
+  },
+
+  getData: (connectionId: number, tableName: string, options: TableDataOptions = {}, info: BackendInfo) => {
+    const base = apiUrl(`/api/connections/${connectionId}/tables/${encodeURIComponent(tableName)}/data`, info);
+    const params = new URLSearchParams();
+    if (options.schema) params.set('schema', options.schema);
+    if (options.sort) {
+      params.set('sort_col', options.sort.column);
+      params.set('sort_dir', options.sort.direction);
+    }
+    if (options.filters?.length) {
+      options.filters.forEach((f) => {
+        params.append('filter_col', f.column);
+        params.append('filter_op', f.op);
+        params.append('filter_val', f.value);
+      });
+    }
+    if (options.limit !== undefined) params.set('limit', String(options.limit));
+    if (options.offset !== undefined) params.set('offset', String(options.offset));
+    const url = params.toString() ? `${base}?${params}` : base;
+    return request<TableDataResult>(url, {}, info);
   },
 };

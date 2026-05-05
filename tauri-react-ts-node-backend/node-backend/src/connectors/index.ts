@@ -2,7 +2,7 @@ import { Connection } from '../repository/connectionRepository';
 import { PostgresConnector } from './PostgresConnector';
 import { IConnector } from './types';
 
-export { IConnector, TableInfo, FieldInfo } from './types';
+export { IConnector, TableInfo, FieldInfo, FilterClause, FilterOp, SortClause, TableDataOptions, TableDataResult } from './types';
 
 export function getConnector(conn: Connection): IConnector {
   switch (conn.type) {

@@ -51,6 +51,36 @@ export interface DDLResult {
 
 export type QueryResult = SelectResult | MutationResult | DDLResult;
 
+// ── Table data types ──────────────────────────────────────────────────────────
+
+export type FilterOp = 'eq' | 'lt' | 'gt' | 'lte' | 'gte' | 'like' | 'ilike';
+
+export interface FilterClause {
+  column: string;
+  op: FilterOp;
+  value: string;
+}
+
+export interface SortClause {
+  column: string;
+  direction: 'asc' | 'desc';
+}
+
+export interface TableDataOptions {
+  schema?: string;
+  columns?: string[];
+  filters?: FilterClause[];
+  sort?: SortClause;
+  limit?: number;
+  offset?: number;
+}
+
+export interface TableDataResult {
+  rows: Record<string, unknown>[];
+  total: number;
+  columns: string[];
+}
+
 // ── Connector interface ───────────────────────────────────────────────────────
 
 /**
@@ -75,4 +105,7 @@ export interface IConnector {
    * what kind of command was run (SELECT, mutation, DDL, …).
    */
   executeQuery(sql: string): Promise<QueryResult>;
+
+  /** Query table rows with optional filtering, sorting, and pagination. */
+  getTableData(tableName: string, options?: TableDataOptions): Promise<TableDataResult>;
 }

@@ -6,6 +6,7 @@ import profilesRouter from './api/profiles';
 import connectionsRouter from './api/connections';
 import connectionTablesRouter from './api/connectionTables';
 import connectionQueryRouter from './api/connectionQuery';
+import connectionScriptsRouter from './api/connectionScripts';
 
 const SESSION_TOKEN = crypto.randomBytes(16).toString('hex');
 
@@ -43,6 +44,7 @@ app.use('/api/profiles', profilesRouter);
 app.use('/api/profiles/:profileId/connections', connectionsRouter);
 app.use('/api/connections', connectionTablesRouter);
 app.use('/api/connections', connectionQueryRouter);
+app.use('/api/connections', connectionScriptsRouter);
 
 const server = http.createServer(app);
 

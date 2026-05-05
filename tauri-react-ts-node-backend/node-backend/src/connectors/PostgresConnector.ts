@@ -5,12 +5,25 @@ import {
   ColumnMeta,
   DDLResult,
   FieldInfo,
+  FilterClause,
+  FilterOp,
   IConnector,
   MutationResult,
   QueryResult,
   SelectResult,
+  SortClause,
+  TableDataOptions,
+  TableDataResult,
   TableInfo,
 } from './types';
+
+function quoteIdent(name: string): string {
+  return '"' + name.replace(/"/g, '""') + '"';
+}
+
+const OP_SQL: Record<FilterOp, string> = {
+  eq: '=', lt: '<', gt: '>', lte: '<=', gte: '>=', like: 'LIKE', ilike: 'ILIKE',
+};
 
 /**
  * Classify a PostgreSQL command tag into the three broad categories used by
@@ -74,6 +87,46 @@ export class PostgresConnector implements IConnector {
       ORDER BY c.ordinal_position
     `, [schema, tableName]);
     return rows;
+  }
+
+  async getTableData(tableName: string, options: TableDataOptions = {}): Promise<TableDataResult> {
+    const { schema = 'public', columns, filters = [], sort, limit = 50, offset = 0 } = options;
+
+    const table = `${quoteIdent(schema)}.${quoteIdent(tableName)}`;
+    const selectCols = columns?.length ? columns.map(quoteIdent).join(', ') : '*';
+
+    // Build parameterized WHERE clause
+    const filterParams: unknown[] = [];
+    let whereClause = '';
+    if (filters.length) {
+      const conditions = filters.map((f: FilterClause) => {
+        filterParams.push(f.value);
+        return `${quoteIdent(f.column)} ${OP_SQL[f.op]} $${filterParams.length}`;
+      });
+      whereClause = `WHERE ${conditions.join(' AND ')}`;
+    }
+
+    const orderClause: string = (sort as SortClause | undefined)
+      ? `ORDER BY ${quoteIdent((sort as SortClause).column)} ${(sort as SortClause).direction === 'desc' ? 'DESC' : 'ASC'}`
+      : '';
+
+    const n = filterParams.length;
+    const [countRes, dataRes] = await Promise.all([
+      this.pool.query(
+        `SELECT COUNT(*) AS cnt FROM ${table} ${whereClause}`,
+        filterParams as never[],
+      ),
+      this.pool.query(
+        `SELECT ${selectCols} FROM ${table} ${whereClause} ${orderClause} LIMIT $${n + 1} OFFSET $${n + 2}`,
+        [...filterParams, limit, offset] as never[],
+      ),
+    ]);
+
+    return {
+      rows: dataRes.rows,
+      total: Number(countRes.rows[0].cnt),
+      columns: dataRes.fields.map((f) => f.name),
+    };
   }
 
   async executeQuery(sql: string): Promise<QueryResult> {
