@@ -4,6 +4,7 @@ import * as crypto from 'crypto';
 import { initDb } from './db';
 import profilesRouter from './api/profiles';
 import connectionsRouter from './api/connections';
+import connectionTablesRouter from './api/connectionTables';
 
 const SESSION_TOKEN = crypto.randomBytes(16).toString('hex');
 
@@ -39,6 +40,7 @@ app.get('/api/health', (_req: Request, res: Response) => {
 
 app.use('/api/profiles', profilesRouter);
 app.use('/api/profiles/:profileId/connections', connectionsRouter);
+app.use('/api/connections', connectionTablesRouter);
 
 const server = http.createServer(app);
 

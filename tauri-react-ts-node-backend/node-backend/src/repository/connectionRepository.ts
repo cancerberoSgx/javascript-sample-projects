@@ -14,6 +14,12 @@ export interface Connection {
 
 export type ConnectionInput = Omit<Connection, 'id' | 'profile_id'>;
 
+export function getConnection(id: number): Connection | null {
+  return getDb()
+    .prepare('SELECT * FROM connections WHERE id = ?')
+    .get(id) as unknown as Connection | null;
+}
+
 export function listConnections(profileId: number): Connection[] {
   return getDb()
     .prepare('SELECT * FROM connections WHERE profile_id = ? ORDER BY name')
