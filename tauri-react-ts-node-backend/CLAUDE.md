@@ -128,9 +128,11 @@ All request/response bodies are JSON. `db_port` must be sent as a JSON number.
 
 ## React Frontend Conventions
 
+- libraries: shadcn/ui, Tailwind, Zustand, and TanStack Query 
 - Use `getBackendInfo()` from `src/lib/backend.ts` — never call `invoke('get_backend_info')` directly
 - Use `apiUrl(path, info)` and `authHeaders(info)` for every fetch call
 - `BackendInfo` type is exported from `src/lib/backend.ts`
+
 
 ## Linux Setup (Manjaro/Arch)
 

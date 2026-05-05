@@ -22,7 +22,7 @@ router.post('/', (req: Request, res: Response): void => {
 
   const input = parseInput(req.body);
   if (!input) {
-    res.status(400).json({ error: 'name, db_host, db_port, db_name, db_user, db_password are all required' });
+    res.status(400).json({ error: 'type, name, db_host, db_port, db_name, db_user, db_password are all required' });
     return;
   }
 
@@ -36,7 +36,7 @@ router.put('/:id', (req: Request, res: Response): void => {
 
   const input = parseInput(req.body);
   if (!input) {
-    res.status(400).json({ error: 'name, db_host, db_port, db_name, db_user, db_password are all required' });
+    res.status(400).json({ error: 'type, name, db_host, db_port, db_name, db_user, db_password are all required' });
     return;
   }
 
@@ -52,20 +52,21 @@ function parseId(raw: string): number | null {
 }
 
 function parseInput(body: Record<string, unknown>): ConnectionInput | null {
-  const { name, db_host, db_port, db_name, db_user, db_password } = body;
+  const { type, name, db_host, db_port, db_name, db_user, db_password } = body;
 
   if (
+    typeof type !== 'string' || !type ||
     typeof name !== 'string' || !name ||
     typeof db_host !== 'string' || !db_host ||
     typeof db_port !== 'number' ||
     typeof db_name !== 'string' || !db_name ||
     typeof db_user !== 'string' || !db_user ||
-    typeof db_password !== 'string' || !db_password
+    typeof db_password !== 'string'
   ) {
     return null;
   }
 
-  return { name, db_host, db_port, db_name, db_user, db_password };
+  return { type, name, db_host, db_port, db_name, db_user, db_password };
 }
 
 export default router;

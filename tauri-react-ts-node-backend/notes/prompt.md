@@ -142,6 +142,18 @@ in the frontend, On "new connection" (ConnectionForm), I'm getting a validation 
 
 
 
+# postgres integration
 
-FUTURE: 
+in the backend, install a postgres client library which should be 100% javascript (user might not have python or dev tools to compile)
+create a postgres.ts file which given a Connection data object, it connects to db and using that conn allows to execute queries. Support connection pools and reuse of same connection for performance.
+Note: this is for the sql client app to allow users to query their dbs, has nothing to do with current sql lite local model db
+
+# db connection.type
+
+in db connections table, add column "type text not null". Update repository and endpoints
+in frontend connections form, add the "type" field now returned by API, dropdown with options "postgres" (default) and "mysql". Allow user to read and write/edit
+
+
+
+# FUTURE: 
 when invalid token, make a frontend with error 

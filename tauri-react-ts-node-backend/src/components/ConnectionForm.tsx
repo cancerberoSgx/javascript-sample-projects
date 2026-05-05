@@ -1,13 +1,26 @@
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useAppStore } from '@/store';
 import { useCreateConnection, useUpdateConnection } from '@/hooks/useConnections';
 
+const DB_TYPES = [
+  { value: 'postgres', label: 'PostgreSQL' },
+  { value: 'mysql',    label: 'MySQL' },
+] as const;
+
 const schema = z.object({
+  type: z.enum(['postgres', 'mysql']),
   name: z.string().min(1, 'Required'),
   db_host: z.string().min(1, 'Required'),
   db_port: z.number().int().min(1, 'Must be 1–65535').max(65535, 'Must be 1–65535'),
@@ -46,10 +59,11 @@ export function ConnectionForm() {
 
   const isEdit = view.type === 'edit-connection';
 
-  const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({
+  const { register, control, handleSubmit, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: isEdit
       ? {
+          type: (view.connection.type as FormValues['type']) ?? 'postgres',
           name: view.connection.name,
           db_host: view.connection.db_host,
           db_port: view.connection.db_port,
@@ -58,6 +72,7 @@ export function ConnectionForm() {
           db_password: view.connection.db_password,
         }
       : {
+          type: 'postgres',
           name: '',
           db_host: 'localhost',
           db_port: 5432,
@@ -96,6 +111,27 @@ export function ConnectionForm() {
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <Field id="type" label="Database type" error={errors.type?.message}>
+            <Controller
+              name="type"
+              control={control}
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger id="type">
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DB_TYPES.map((t) => (
+                      <SelectItem key={t.value} value={t.value}>
+                        {t.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          </Field>
+
           <Field id="name" label="Connection name" error={errors.name?.message}>
             <Input id="name" placeholder="Production DB" {...register('name')} />
           </Field>

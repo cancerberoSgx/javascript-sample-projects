@@ -8,6 +8,7 @@ export interface Profile {
 export interface Connection {
   id: number;
   profile_id: number;
+  type: string;
   name: string;
   db_host: string;
   db_port: number;
