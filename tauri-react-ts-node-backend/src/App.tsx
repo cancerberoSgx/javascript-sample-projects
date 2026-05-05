@@ -1,49 +1,45 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
+import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import "./App.css";
 
-function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
+interface BackendInfo {
+  port: number;
+  token: string;
+}
 
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
-  }
+interface HealthResponse {
+  success: boolean;
+}
+
+function App() {
+  const [health, setHealth] = useState<HealthResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function checkHealth() {
+      try {
+        const info = await invoke<BackendInfo>("get_backend_info");
+        const res = await fetch(`http://127.0.0.1:${info.port}/api/health`, {
+          headers: { "x-session-token": info.token },
+        });
+        const data: HealthResponse = await res.json();
+        setHealth(data);
+      } catch (e) {
+        setError(String(e));
+      }
+    }
+    checkHealth();
+  }, []);
 
   return (
     <main className="container">
-      <h1>Welcome to Tauri + React</h1>
-
-      <div className="row">
-        <a href="https://vitejs.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://reactjs.org" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
-
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
-        />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
+      <h1>SQL Inspector</h1>
+      <section>
+        <h2>Backend health</h2>
+        {!health && !error && <p>Checking...</p>}
+        {error && <p style={{ color: "red" }}>Error: {error}</p>}
+        {health && <pre>{JSON.stringify(health, null, 2)}</pre>}
+      </section>
     </main>
   );
 }
