@@ -5,7 +5,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { QueryExecutionResult, queryApi } from '@/lib/api';
 import { useCreateScript, useDeleteScript, useScripts, useUpdateScript } from '@/hooks/useScripts';
 import { useAppStore } from '@/store';
-import { cn } from '@/lib/utils';
 
 // ── Query result display ──────────────────────────────────────────────────────
 
@@ -74,6 +73,10 @@ function QueryResultView({ result }: { result: QueryExecutionResult }) {
 
 // ── Script editor ─────────────────────────────────────────────────────────────
 
+const RESULTS_MIN_H = 60;
+const RESULTS_MAX_H = 800;
+const RESULTS_DEFAULT_H = 220;
+
 function ScriptEditor({
   connectionId,
   name,
@@ -101,6 +104,10 @@ function ScriptEditor({
   const [isExecuting, setIsExecuting] = useState(false);
   const [execResult, setExecResult] = useState<QueryExecutionResult | null>(null);
   const [execError, setExecError] = useState<string | null>(null);
+  const [resultsHeight, setResultsHeight] = useState(RESULTS_DEFAULT_H);
+  const dragRef = useRef<{ startY: number; startHeight: number } | null>(null);
+
+  const hasResults = execResult !== null || execError !== null;
 
   async function handleExecute() {
     if (!backendInfo || !content.trim()) return;
@@ -115,6 +122,28 @@ function ScriptEditor({
     } finally {
       setIsExecuting(false);
     }
+  }
+
+  function onDragStart(e: React.MouseEvent) {
+    e.preventDefault();
+    dragRef.current = { startY: e.clientY, startHeight: resultsHeight };
+
+    function onMove(ev: MouseEvent) {
+      if (!dragRef.current) return;
+      const delta = dragRef.current.startY - ev.clientY; // drag up → bigger results
+      setResultsHeight(
+        Math.max(RESULTS_MIN_H, Math.min(RESULTS_MAX_H, dragRef.current.startHeight + delta)),
+      );
+    }
+
+    function onUp() {
+      dragRef.current = null;
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    }
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
   }
 
   return (
@@ -160,33 +189,40 @@ function ScriptEditor({
 
       {/* Editor + results */}
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-        {/* Textarea */}
+        {/* Textarea — flex-1 so it takes remaining space above results */}
         <textarea
           value={content}
           onChange={(e) => onContentChange(e.target.value)}
           spellCheck={false}
           placeholder="Write SQL here…"
-          className={cn(
-            'flex-1 min-h-0 w-full resize-none p-4 font-mono text-sm bg-transparent',
-            'border-0 outline-none focus:outline-none',
-            'placeholder:text-muted-foreground/40',
-            (execResult || execError) && 'border-b',
-          )}
+          className="flex-1 min-h-0 w-full resize-none p-4 font-mono text-sm bg-transparent border-0 outline-none focus:outline-none placeholder:text-muted-foreground/40"
         />
 
-        {/* Execution results */}
-        {execError && (
-          <div className="shrink-0 max-h-40 overflow-auto border-t bg-destructive/5">
-            <div className="flex items-start gap-2 px-4 py-3 text-sm text-destructive">
-              <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-              <pre className="whitespace-pre-wrap font-mono text-xs">{execError}</pre>
+        {/* Drag handle + resizable results pane */}
+        {hasResults && (
+          <>
+            {/* Drag handle */}
+            <div
+              onMouseDown={onDragStart}
+              className="shrink-0 h-2 border-t border-b cursor-row-resize select-none flex items-center justify-center group bg-muted/30 hover:bg-muted/60 transition-colors"
+            >
+              <div className="w-10 h-0.5 rounded-full bg-border group-hover:bg-muted-foreground/40 transition-colors" />
             </div>
-          </div>
-        )}
-        {execResult && (
-          <div className="shrink-0 max-h-56 min-h-0 overflow-hidden border-t flex flex-col">
-            <QueryResultView result={execResult} />
-          </div>
+
+            {/* Results pane — fixed height, user-resizable */}
+            <div
+              style={{ height: resultsHeight }}
+              className="shrink-0 overflow-auto flex flex-col"
+            >
+              {execError && (
+                <div className="flex items-start gap-2 px-4 py-3 text-sm text-destructive bg-destructive/5 h-full overflow-auto">
+                  <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                  <pre className="whitespace-pre-wrap font-mono text-xs">{execError}</pre>
+                </div>
+              )}
+              {execResult && <QueryResultView result={execResult} />}
+            </div>
+          </>
         )}
       </div>
     </div>
