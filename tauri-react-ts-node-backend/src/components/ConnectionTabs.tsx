@@ -75,7 +75,7 @@ function FieldsPanel({
   }
 
   return (
-    <div className="overflow-auto h-full">
+    <div className="overflow-auto h-full min-h-0">
       <table className="w-full text-sm border-collapse">
         <thead className="sticky top-0 bg-background z-10">
           <tr className="border-b">
@@ -232,7 +232,7 @@ function TableDataPanel({
       </div>
 
       {/* Scrollable table area */}
-      <div className="flex-1 overflow-auto relative">
+      <div className="flex-1 min-h-0 overflow-auto relative">
         {isLoading && (
           <div className="absolute inset-0 bg-background/60 flex items-center justify-center z-20">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -422,10 +422,10 @@ function TablesPanel({ connectionId }: { connectionId: number }) {
                 </TabsTrigger>
               </TabsList>
             </div>
-            <TabsContent value="fields" className="flex-1 overflow-hidden mt-0">
+            <TabsContent value="fields" className="flex-1 min-h-0 overflow-hidden mt-0">
               <FieldsPanel connectionId={connectionId} table={selected} />
             </TabsContent>
-            <TabsContent value="data" className="flex-1 overflow-hidden mt-0">
+            <TabsContent value="data" className="flex-1 min-h-0 overflow-hidden mt-0">
               <TableDataPanel connectionId={connectionId} table={selected} />
             </TabsContent>
           </Tabs>
@@ -469,15 +469,15 @@ export function ConnectionTabs() {
         </TabsList>
       </div>
 
-      <TabsContent value="config" className="flex-1 overflow-auto mt-0">
+      <TabsContent value="config" className="flex-1 min-h-0 overflow-auto mt-0">
         <ConnectionForm />
       </TabsContent>
 
-      <TabsContent value="tables" className="flex-1 overflow-hidden mt-0">
+      <TabsContent value="tables" className="flex-1 min-h-0 overflow-hidden mt-0">
         <TablesPanel connectionId={connection.id} />
       </TabsContent>
 
-      <TabsContent value="scripts" className="flex-1 overflow-hidden mt-0">
+      <TabsContent value="scripts" className="flex-1 min-h-0 overflow-hidden mt-0">
         <ScriptsPanel connectionId={connection.id} />
       </TabsContent>
     </Tabs>

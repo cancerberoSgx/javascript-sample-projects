@@ -128,3 +128,9 @@
     @apply font-sans;
     }
 }
+
+/* Lock the viewport so all scrolling happens inside child containers, not the page */
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+}

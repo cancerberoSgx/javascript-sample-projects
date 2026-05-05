@@ -159,7 +159,7 @@ function ScriptEditor({
       </div>
 
       {/* Editor + results */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
         {/* Textarea */}
         <textarea
           value={content}
@@ -184,7 +184,7 @@ function ScriptEditor({
           </div>
         )}
         {execResult && (
-          <div className="shrink-0 max-h-56 overflow-hidden border-t flex flex-col">
+          <div className="shrink-0 max-h-56 min-h-0 overflow-hidden border-t flex flex-col">
             <QueryResultView result={execResult} />
           </div>
         )}
@@ -373,7 +373,7 @@ export function ScriptsPanel({ connectionId }: { connectionId: number }) {
 
       {/* Tab contents */}
       {allTabs.map((tab) => (
-        <TabsContent key={tab.id} value={tab.id} className="flex-1 overflow-hidden mt-0">
+        <TabsContent key={tab.id} value={tab.id} className="flex-1 min-h-0 overflow-hidden mt-0">
           <ScriptEditor
             connectionId={connectionId}
             name={tab.name}

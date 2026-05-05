@@ -48,9 +48,9 @@ function App() {
   }
 
   return (
-    <SidebarProvider>
+    <SidebarProvider className="h-full overflow-hidden">
       <AppSidebar />
-      <SidebarInset>
+      <SidebarInset className="min-h-0 overflow-hidden">
         <MainContent />
       </SidebarInset>
     </SidebarProvider>
