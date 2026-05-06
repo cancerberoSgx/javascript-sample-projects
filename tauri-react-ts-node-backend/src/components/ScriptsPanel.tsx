@@ -5,6 +5,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { QueryExecutionResult, queryApi } from '@/lib/api';
 import { useCreateScript, useDeleteScript, useScripts, useUpdateScript } from '@/hooks/useScripts';
 import { useAppStore } from '@/store';
+import { isTauri } from '@/lib/utils';
+import { SaveCsvDialog } from './SaveCsvDialog';
 
 // ── Query result display ──────────────────────────────────────────────────────
 
@@ -103,6 +105,7 @@ function ScriptEditor({
   const backendInfo = useAppStore((s) => s.backendInfo);
   const [isExecuting, setIsExecuting] = useState(false);
   const [isDownloadingCsv, setIsDownloadingCsv] = useState(false);
+  const [csvDialogOpen, setCsvDialogOpen] = useState(false);
   const [execResult, setExecResult] = useState<QueryExecutionResult | null>(null);
   const [execError, setExecError] = useState<string | null>(null);
   const [resultsHeight, setResultsHeight] = useState(RESULTS_DEFAULT_H);
@@ -125,15 +128,23 @@ function ScriptEditor({
     }
   }
 
-  async function handleDownloadCsv() {
+  async function handleDownloadCsv(outputFilePath?: string) {
     if (!backendInfo || !content.trim()) return;
     setIsDownloadingCsv(true);
     try {
-      await queryApi.downloadCsv(connectionId, content, backendInfo);
+      await queryApi.downloadCsv(connectionId, content, backendInfo, outputFilePath);
     } catch (err) {
       console.error('CSV download failed:', err);
     } finally {
       setIsDownloadingCsv(false);
+    }
+  }
+
+  function onCsvButtonClick() {
+    if (isTauri()) {
+      setCsvDialogOpen(true);
+    } else {
+      handleDownloadCsv();
     }
   }
 
@@ -161,6 +172,12 @@ function ScriptEditor({
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
+      <SaveCsvDialog
+        open={csvDialogOpen}
+        defaultFilename="query_result.csv"
+        onSave={(path) => { setCsvDialogOpen(false); handleDownloadCsv(path); }}
+        onCancel={() => setCsvDialogOpen(false)}
+      />
       {/* Toolbar */}
       <div className="shrink-0 px-4 py-2 border-b flex items-center gap-2">
         <input
@@ -192,7 +209,7 @@ function ScriptEditor({
         <Button
           size="sm"
           variant="outline"
-          onClick={handleDownloadCsv}
+          onClick={onCsvButtonClick}
           disabled={isDownloadingCsv || !execResult || execResult.type !== 'select'}
           className="h-7 gap-1.5 text-xs"
         >

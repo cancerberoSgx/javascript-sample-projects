@@ -1,3 +1,4 @@
+import { createWriteStream } from 'fs';
 import { Router, Request, Response } from 'express';
 import { stringify } from 'csv-stringify';
 import { getConnection } from '../repository/connectionRepository';
@@ -19,7 +20,9 @@ router.post('/:connectionId/query', async (req: Request, res: Response): Promise
   }
 
   const body = req.body as Record<string, unknown>;
-  const { query, format } = body;
+  const { query, format, outputFilePath: rawOutputFilePath } = body;
+  const outputFilePath = typeof rawOutputFilePath === 'string' && rawOutputFilePath.trim()
+    ? rawOutputFilePath.trim() : null;
   if (typeof query !== 'string' || !query.trim()) {
     res.status(400).json({ error: '`query` must be a non-empty string' });
     return;
@@ -34,9 +37,30 @@ router.post('/:connectionId/query', async (req: Request, res: Response): Promise
         return;
       }
       const columns = result.fields.map((f) => f.name);
+      const stringifier = stringify({ header: true, columns });
+
+      if (outputFilePath) {
+        try {
+          const fileStream = createWriteStream(outputFilePath);
+          stringifier.pipe(fileStream);
+          for (const row of result.rows) {
+            stringifier.write(row);
+          }
+          await new Promise<void>((resolve, reject) => {
+            fileStream.on('finish', resolve);
+            fileStream.on('error', reject);
+            stringifier.on('error', reject);
+            stringifier.end();
+          });
+          res.json({ success: true, path: outputFilePath });
+        } catch (fileErr) {
+          res.status(500).json({ error: fileErr instanceof Error ? fileErr.message : 'Failed to write file' });
+        }
+        return;
+      }
+
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
       res.setHeader('Content-Disposition', 'attachment; filename="query_result.csv"');
-      const stringifier = stringify({ header: true, columns });
       stringifier.pipe(res);
       for (const row of result.rows) {
         stringifier.write(row);

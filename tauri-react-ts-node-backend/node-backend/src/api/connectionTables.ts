@@ -1,3 +1,4 @@
+import { createWriteStream } from 'fs';
 import { Router, Request, Response } from 'express';
 import { stringify } from 'csv-stringify';
 import { getConnection } from '../repository/connectionRepository';
@@ -101,21 +102,44 @@ router.get('/:connectionId/tables/:tableName/data', async (req: Request, res: Re
   const format = q.format === 'csv' ? 'csv' : 'json';
 
   if (format === 'csv') {
+    const outputFilePath = typeof q.outputFilePath === 'string' && q.outputFilePath.trim()
+      ? q.outputFilePath.trim() : null;
+
     try {
       const csvResult = await getConnector(conn).streamTableData(tableName, { schema, columns, filters, sort });
-      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-      res.setHeader('Content-Disposition', `attachment; filename="${tableName}.csv"`);
       const stringifier = stringify({ header: true, columns: csvResult.columns });
-      stringifier.pipe(res);
-      for await (const row of csvResult.rows) {
-        if (!stringifier.write(row)) {
-          await new Promise<void>((resolve) => stringifier.once('drain', resolve));
+
+      if (outputFilePath) {
+        const fileStream = createWriteStream(outputFilePath);
+        stringifier.pipe(fileStream);
+        for await (const row of csvResult.rows) {
+          if (!stringifier.write(row)) {
+            await new Promise<void>((r) => stringifier.once('drain', r));
+          }
         }
+        await new Promise<void>((resolve, reject) => {
+          fileStream.on('finish', resolve);
+          fileStream.on('error', reject);
+          stringifier.on('error', reject);
+          stringifier.end();
+        });
+        res.json({ success: true, path: outputFilePath });
+      } else {
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="${tableName}.csv"`);
+        stringifier.pipe(res);
+        for await (const row of csvResult.rows) {
+          if (!stringifier.write(row)) {
+            await new Promise<void>((r) => stringifier.once('drain', r));
+          }
+        }
+        stringifier.end();
       }
-      stringifier.end();
     } catch (err) {
       if (!res.headersSent) {
-        res.status(502).json({ error: err instanceof Error ? err.message : 'Failed to export CSV' });
+        res.status(outputFilePath ? 500 : 502).json({
+          error: err instanceof Error ? err.message : 'Failed to export CSV',
+        });
       } else {
         res.destroy(err instanceof Error ? err : new Error('CSV stream error'));
       }

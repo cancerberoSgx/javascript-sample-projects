@@ -13,8 +13,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTableData, useTableFields, useTables } from '@/hooks/useTables';
 import { FilterClause, SortClause, TableInfo, tablesApi } from '@/lib/api';
-import { cn } from '@/lib/utils';
+import { cn, isTauri } from '@/lib/utils';
 import { useAppStore } from '@/store';
+import { SaveCsvDialog } from './SaveCsvDialog';
 import { ConnectionForm } from './ConnectionForm';
 import { ScriptsPanel } from './ScriptsPanel';
 
@@ -132,6 +133,7 @@ function TableDataPanel({
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(50);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [csvDialogOpen, setCsvDialogOpen] = useState(false);
 
   // Fields info gives us the full column list immediately (cached from Fields tab)
   const { data: fields } = useTableFields(connectionId, table.name, table.schema);
@@ -187,7 +189,7 @@ function TableDataPanel({
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-  async function handleDownloadCsv() {
+  async function handleDownloadCsv(outputFilePath?: string) {
     if (!backendInfo) return;
     setIsDownloading(true);
     try {
@@ -196,11 +198,19 @@ function TableDataPanel({
         filters,
         sort,
         columns: visibleColumns.length > 0 ? visibleColumns : undefined,
-      }, backendInfo);
+      }, backendInfo, outputFilePath);
     } catch (err) {
       console.error('CSV download failed:', err);
     } finally {
       setIsDownloading(false);
+    }
+  }
+
+  function onCsvButtonClick() {
+    if (isTauri()) {
+      setCsvDialogOpen(true);
+    } else {
+      handleDownloadCsv();
     }
   }
 
@@ -251,7 +261,7 @@ function TableDataPanel({
         <Button
           variant="outline"
           size="sm"
-          onClick={handleDownloadCsv}
+          onClick={onCsvButtonClick}
           disabled={isDownloading}
           className="h-7 text-xs gap-1.5"
         >
@@ -261,6 +271,12 @@ function TableDataPanel({
           Download CSV
         </Button>
       </div>
+      <SaveCsvDialog
+        open={csvDialogOpen}
+        defaultFilename={`${table.name}.csv`}
+        onSave={(path) => { setCsvDialogOpen(false); handleDownloadCsv(path); }}
+        onCancel={() => setCsvDialogOpen(false)}
+      />
 
       {/* Scrollable table area */}
       <div className="flex-1 min-h-0 overflow-auto relative">

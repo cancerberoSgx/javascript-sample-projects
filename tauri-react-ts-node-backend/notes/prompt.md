@@ -244,11 +244,40 @@ the endpoint not only returns the result records, but also a "total" field count
 
 
 
-as a user, 
+
+# csv
+
 context:
-As a user, I can "connect" to a database using the UI connection.
+users must be able to download the table's data or script query results into csv file
+
 tasks:
-In the backend there's an endpoint to 
+ * in the backend:
+    * add a csv generator library written 100% in javascript (no binaries) which can generate ++1 millon rows csv performant
+    * in the api POST /api/connections/{connectionId}/query , add an optional parameter format?: 'csv'. If given the endpoint will generate a csv file and stream it so it can be easily downloaded by the frontend    
+    * in the api get /api/connections/{connectionId}/tables/{tableName}/data add an optional query param format?: 'csv'. If given the endpoint will generate a csv file and stream it so it can be easily downloaded by the frontend    
+
+ * in the frontend:
+    * in table -> data screen, add a "download csv" button next to "columns". it will call get /api/connections/{connectionId}/tables/{tableName}/data with format=csv and it will download response file
+    * in scripts, add a "download csv" button next to "Save" button. It is enable if there are query results and will call api POST /api/connections/{connectionId}/query with format=csv and download response file
+
+
+p2: 
+context: 
+in tauri context, download and save csv from the frontend doesn't work. We need to tell the backend to save the file. in the browser download csv works OK.
+tasks: 
+ * in the backend, for csv apis POST /api/connections/{connectionId}/query and get /api/connections/{connectionId}/tables/{tableName}/data an optional parameter outputFilePath can be passed, if so, the backend itself will save the csv file on that path or return 500 error if the file path is invalid or there's an error writing file.
+ * in the frontend, if isTauri(), ask the user first in a modal for a file path (string absolute path) and pass it as parameter in the download api outputFilePath=
+
+
+
+
+p3:
+* in the frontend, when asking for csv file path, remember the previous one
+* in the backend, in all download csv operations, convert the timestamps (or any time/date field) to format YEAR-MONTH-DAY:HOUR:MINUTE:SECOND (the standard utc format)
+
+use toast 
+csv download success or failures
+
 
 
 

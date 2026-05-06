@@ -169,6 +169,7 @@ export const tablesApi = {
     tableName: string,
     options: TableDataOptions,
     info: BackendInfo,
+    outputFilePath?: string,
   ): Promise<void> => {
     const base = apiUrl(`/api/connections/${connectionId}/tables/${encodeURIComponent(tableName)}/data`, info);
     const params = new URLSearchParams({ format: 'csv' });
@@ -183,11 +184,13 @@ export const tablesApi = {
       params.append('filter_val', f.value);
     });
     options.columns?.forEach((c) => params.append('columns', c));
+    if (outputFilePath) params.set('outputFilePath', outputFilePath);
     const res = await fetch(`${base}?${params}`, { headers: authHeaders(info) });
     if (!res.ok) {
       const body = await res.json().catch(() => ({})) as { error?: string };
-      throw new Error(body.error ?? 'CSV download failed');
+      throw new Error(body.error ?? 'CSV export failed');
     }
+    if (outputFilePath) return;
     triggerDownload(await res.blob(), `${tableName}.csv`);
   },
 };
@@ -254,16 +257,17 @@ export const queryApi = {
       body: JSON.stringify({ query }),
     }, info),
 
-  downloadCsv: async (connectionId: number, query: string, info: BackendInfo): Promise<void> => {
+  downloadCsv: async (connectionId: number, query: string, info: BackendInfo, outputFilePath?: string): Promise<void> => {
     const res = await fetch(apiUrl(`/api/connections/${connectionId}/query`, info), {
       method: 'POST',
       headers: authHeaders(info),
-      body: JSON.stringify({ query, format: 'csv' }),
+      body: JSON.stringify({ query, format: 'csv', ...(outputFilePath ? { outputFilePath } : {}) }),
     });
     if (!res.ok) {
       const body = await res.json().catch(() => ({})) as { error?: string };
-      throw new Error(body.error ?? 'CSV download failed');
+      throw new Error(body.error ?? 'CSV export failed');
     }
+    if (outputFilePath) return;
     triggerDownload(await res.blob(), 'query_result.csv');
   },
 };
