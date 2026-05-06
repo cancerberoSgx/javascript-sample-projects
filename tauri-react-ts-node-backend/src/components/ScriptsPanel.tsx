@@ -123,8 +123,17 @@ function ScriptEditor({
     try {
       const result = await queryApi.execute(connectionId, content, backendInfo);
       setExecResult(result);
+      if (result.type === 'select') {
+        toast({ title: 'Query complete', description: `${result.row_count} row${result.row_count !== 1 ? 's' : ''} returned`, variant: 'success' });
+      } else if (result.type === 'mutation') {
+        toast({ title: 'Query complete', description: `${result.command} — ${result.affected_rows} row${result.affected_rows !== 1 ? 's' : ''} affected`, variant: 'success' });
+      } else {
+        toast({ title: 'Query complete', description: result.command, variant: 'success' });
+      }
     } catch (err) {
-      setExecError(err instanceof Error ? err.message : 'Execution failed');
+      const message = err instanceof Error ? err.message : 'Execution failed';
+      setExecError(message);
+      toast({ title: 'Query failed', description: message, variant: 'error' });
     } finally {
       setIsExecuting(false);
     }

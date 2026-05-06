@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertCircle, ChevronDown, ChevronUp, ChevronsUpDown, Download, Loader2, SlidersHorizontal, Table2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -51,7 +51,16 @@ function FieldsPanel({
   connectionId: number;
   table: Pick<TableInfo, 'name' | 'schema'>;
 }) {
+  const toast = useToast();
   const { data: fields, isLoading, error } = useTableFields(connectionId, table.name, table.schema);
+  const toastedError = useRef<unknown>(null);
+
+  useEffect(() => {
+    if (error && error !== toastedError.current) {
+      toastedError.current = error;
+      toast({ title: 'Failed to load fields', description: error instanceof Error ? error.message : 'Unknown error', variant: 'error' });
+    }
+  }, [error]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (isLoading) {
     return (
@@ -158,6 +167,14 @@ function TableDataPanel({
     limit: pageSize,
     offset: page * pageSize,
   });
+
+  const toastedDataError = useRef<unknown>(null);
+  useEffect(() => {
+    if (error && error !== toastedDataError.current) {
+      toastedDataError.current = error;
+      toast({ title: 'Failed to load data', description: error instanceof Error ? error.message : 'Unknown error', variant: 'error' });
+    }
+  }, [error]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Prefer columns from the live query result; fall back to field metadata
   const allColumns = data?.columns ?? fieldColumns;
