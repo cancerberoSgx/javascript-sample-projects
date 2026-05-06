@@ -129,6 +129,61 @@ export class PostgresConnector implements IConnector {
     };
   }
 
+  async streamTableData(
+    tableName: string,
+    options: Omit<TableDataOptions, 'limit' | 'offset'> = {},
+  ): Promise<{ columns: string[]; rows: AsyncGenerator<Record<string, unknown>> }> {
+    const { schema = 'public', columns, filters = [], sort } = options;
+
+    const table = `${quoteIdent(schema)}.${quoteIdent(tableName)}`;
+    const selectCols = columns?.length ? columns.map(quoteIdent).join(', ') : '*';
+
+    const filterParams: unknown[] = [];
+    let whereClause = '';
+    if (filters.length) {
+      const conditions = filters.map((f: FilterClause) => {
+        filterParams.push(f.value);
+        return `${quoteIdent(f.column)} ${OP_SQL[f.op]} $${filterParams.length}`;
+      });
+      whereClause = `WHERE ${conditions.join(' AND ')}`;
+    }
+
+    const orderClause: string = sort
+      ? `ORDER BY ${quoteIdent(sort.column)} ${sort.direction === 'desc' ? 'DESC' : 'ASC'}`
+      : '';
+
+    const n = filterParams.length;
+    const baseSql = `SELECT ${selectCols} FROM ${table} ${whereClause} ${orderClause}`;
+    const BATCH = 500;
+
+    const firstResult = await this.pool.query(
+      `${baseSql} LIMIT $${n + 1} OFFSET $${n + 2}`,
+      [...filterParams, BATCH, 0] as never[],
+    );
+
+    const columnNames = firstResult.fields.map((f) => f.name);
+    const firstRows = firstResult.rows as Record<string, unknown>[];
+
+    const pool = this.pool;
+    async function* rowGenerator(): AsyncGenerator<Record<string, unknown>> {
+      for (const row of firstRows) yield row;
+      if (firstRows.length === BATCH) {
+        let offset = BATCH;
+        while (true) {
+          const result = await pool.query(
+            `${baseSql} LIMIT $${n + 1} OFFSET $${n + 2}`,
+            [...filterParams, BATCH, offset] as never[],
+          );
+          for (const row of result.rows) yield row as Record<string, unknown>;
+          if (result.rows.length < BATCH) break;
+          offset += BATCH;
+        }
+      }
+    }
+
+    return { columns: columnNames, rows: rowGenerator() };
+  }
+
   async executeQuery(sql: string): Promise<QueryResult> {
     const result = await this.pool.query(sql);
     const command = (result.command ?? '').toUpperCase();

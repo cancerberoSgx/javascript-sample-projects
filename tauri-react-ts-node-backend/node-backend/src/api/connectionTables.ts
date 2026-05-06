@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { stringify } from 'csv-stringify';
 import { getConnection } from '../repository/connectionRepository';
 import { FilterClause, FilterOp, getConnector } from '../connectors';
 
@@ -95,6 +96,31 @@ router.get('/:connectionId/tables/:tableName/data', async (req: Request, res: Re
     const op = filterOps[i] ?? 'eq';
     if (!VALID_OPS.has(op)) continue;
     filters.push({ column: filterCols[i], op: op as FilterOp, value: filterVals[i] ?? '' });
+  }
+
+  const format = q.format === 'csv' ? 'csv' : 'json';
+
+  if (format === 'csv') {
+    try {
+      const csvResult = await getConnector(conn).streamTableData(tableName, { schema, columns, filters, sort });
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${tableName}.csv"`);
+      const stringifier = stringify({ header: true, columns: csvResult.columns });
+      stringifier.pipe(res);
+      for await (const row of csvResult.rows) {
+        if (!stringifier.write(row)) {
+          await new Promise<void>((resolve) => stringifier.once('drain', resolve));
+        }
+      }
+      stringifier.end();
+    } catch (err) {
+      if (!res.headersSent) {
+        res.status(502).json({ error: err instanceof Error ? err.message : 'Failed to export CSV' });
+      } else {
+        res.destroy(err instanceof Error ? err : new Error('CSV stream error'));
+      }
+    }
+    return;
   }
 
   const limit  = Math.min(Math.max(Number(q.limit)  || 50, 1), 1000);

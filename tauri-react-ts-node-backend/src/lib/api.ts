@@ -1,5 +1,16 @@
 import { apiUrl, authHeaders, BackendInfo } from './backend';
 
+function triggerDownload(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 export interface Profile {
   id: number;
   name: string;
@@ -109,6 +120,7 @@ export interface SortClause {
 
 export interface TableDataOptions {
   schema?: string;
+  columns?: string[];
   filters?: FilterClause[];
   sort?: SortClause;
   limit?: number;
@@ -150,6 +162,33 @@ export const tablesApi = {
     if (options.offset !== undefined) params.set('offset', String(options.offset));
     const url = params.toString() ? `${base}?${params}` : base;
     return request<TableDataResult>(url, {}, info);
+  },
+
+  downloadCsv: async (
+    connectionId: number,
+    tableName: string,
+    options: TableDataOptions,
+    info: BackendInfo,
+  ): Promise<void> => {
+    const base = apiUrl(`/api/connections/${connectionId}/tables/${encodeURIComponent(tableName)}/data`, info);
+    const params = new URLSearchParams({ format: 'csv' });
+    if (options.schema) params.set('schema', options.schema);
+    if (options.sort) {
+      params.set('sort_col', options.sort.column);
+      params.set('sort_dir', options.sort.direction);
+    }
+    options.filters?.forEach((f) => {
+      params.append('filter_col', f.column);
+      params.append('filter_op', f.op);
+      params.append('filter_val', f.value);
+    });
+    options.columns?.forEach((c) => params.append('columns', c));
+    const res = await fetch(`${base}?${params}`, { headers: authHeaders(info) });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({})) as { error?: string };
+      throw new Error(body.error ?? 'CSV download failed');
+    }
+    triggerDownload(await res.blob(), `${tableName}.csv`);
   },
 };
 
@@ -214,4 +253,17 @@ export const queryApi = {
       method: 'POST',
       body: JSON.stringify({ query }),
     }, info),
+
+  downloadCsv: async (connectionId: number, query: string, info: BackendInfo): Promise<void> => {
+    const res = await fetch(apiUrl(`/api/connections/${connectionId}/query`, info), {
+      method: 'POST',
+      headers: authHeaders(info),
+      body: JSON.stringify({ query, format: 'csv' }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({})) as { error?: string };
+      throw new Error(body.error ?? 'CSV download failed');
+    }
+    triggerDownload(await res.blob(), 'query_result.csv');
+  },
 };

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { AlertCircle, Loader2, Play, Plus, Save, Trash2 } from 'lucide-react';
+import { AlertCircle, Download, Loader2, Play, Plus, Save, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { QueryExecutionResult, queryApi } from '@/lib/api';
@@ -102,6 +102,7 @@ function ScriptEditor({
 }) {
   const backendInfo = useAppStore((s) => s.backendInfo);
   const [isExecuting, setIsExecuting] = useState(false);
+  const [isDownloadingCsv, setIsDownloadingCsv] = useState(false);
   const [execResult, setExecResult] = useState<QueryExecutionResult | null>(null);
   const [execError, setExecError] = useState<string | null>(null);
   const [resultsHeight, setResultsHeight] = useState(RESULTS_DEFAULT_H);
@@ -121,6 +122,18 @@ function ScriptEditor({
       setExecError(err instanceof Error ? err.message : 'Execution failed');
     } finally {
       setIsExecuting(false);
+    }
+  }
+
+  async function handleDownloadCsv() {
+    if (!backendInfo || !content.trim()) return;
+    setIsDownloadingCsv(true);
+    try {
+      await queryApi.downloadCsv(connectionId, content, backendInfo);
+    } catch (err) {
+      console.error('CSV download failed:', err);
+    } finally {
+      setIsDownloadingCsv(false);
     }
   }
 
@@ -175,6 +188,16 @@ function ScriptEditor({
         >
           {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
           Save
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={handleDownloadCsv}
+          disabled={isDownloadingCsv || !execResult || execResult.type !== 'select'}
+          className="h-7 gap-1.5 text-xs"
+        >
+          {isDownloadingCsv ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
+          Download CSV
         </Button>
         <Button
           size="sm"

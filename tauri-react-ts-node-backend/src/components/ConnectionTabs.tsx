@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, ChevronDown, ChevronUp, ChevronsUpDown, Loader2, SlidersHorizontal, Table2 } from 'lucide-react';
+import { AlertCircle, ChevronDown, ChevronUp, ChevronsUpDown, Download, Loader2, SlidersHorizontal, Table2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -12,7 +12,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTableData, useTableFields, useTables } from '@/hooks/useTables';
-import { FilterClause, SortClause, TableInfo } from '@/lib/api';
+import { FilterClause, SortClause, TableInfo, tablesApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/store';
 import { ConnectionForm } from './ConnectionForm';
@@ -124,12 +124,14 @@ function TableDataPanel({
   connectionId: number;
   table: Pick<TableInfo, 'name' | 'schema'>;
 }) {
+  const backendInfo = useAppStore((s) => s.backendInfo);
   const [sort, setSort] = useState<SortClause | undefined>();
   const [filterInputs, setFilterInputs] = useState<Record<string, string>>({});
   const [appliedFilters, setAppliedFilters] = useState<Record<string, string>>({});
   const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(50);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   // Fields info gives us the full column list immediately (cached from Fields tab)
   const { data: fields } = useTableFields(connectionId, table.name, table.schema);
@@ -185,6 +187,23 @@ function TableDataPanel({
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
+  async function handleDownloadCsv() {
+    if (!backendInfo) return;
+    setIsDownloading(true);
+    try {
+      await tablesApi.downloadCsv(connectionId, table.name, {
+        schema: table.schema,
+        filters,
+        sort,
+        columns: visibleColumns.length > 0 ? visibleColumns : undefined,
+      }, backendInfo);
+    } catch (err) {
+      console.error('CSV download failed:', err);
+    } finally {
+      setIsDownloading(false);
+    }
+  }
+
   if (error) {
     return (
       <div className="flex items-center gap-2 p-4 text-sm text-destructive">
@@ -229,6 +248,18 @@ function TableDataPanel({
             )}
           </DropdownMenuContent>
         </DropdownMenu>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleDownloadCsv}
+          disabled={isDownloading}
+          className="h-7 text-xs gap-1.5"
+        >
+          {isDownloading
+            ? <Loader2 className="h-3 w-3 animate-spin" />
+            : <Download className="h-3 w-3" />}
+          Download CSV
+        </Button>
       </div>
 
       {/* Scrollable table area */}

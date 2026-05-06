@@ -108,4 +108,14 @@ export interface IConnector {
 
   /** Query table rows with optional filtering, sorting, and pagination. */
   getTableData(tableName: string, options?: TableDataOptions): Promise<TableDataResult>;
+
+  /**
+   * Stream all matching rows for CSV export (no limit/offset).
+   * Returns the actual column names plus an async generator that yields rows
+   * in batches so memory usage stays bounded for large tables.
+   */
+  streamTableData(
+    tableName: string,
+    options?: Omit<TableDataOptions, 'limit' | 'offset'>,
+  ): Promise<{ columns: string[]; rows: AsyncGenerator<Record<string, unknown>> }>;
 }

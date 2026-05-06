@@ -1,13 +1,9 @@
 import { invoke } from '@tauri-apps/api/core';
+import { isTauri } from './utils';
 
 export interface BackendInfo {
   port: number;
   token: string;
-}
-
-// Tauri v2 sets this global in the webview
-function isTauri(): boolean {
-  return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 }
 
 /**

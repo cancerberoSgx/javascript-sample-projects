@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { stringify } from 'csv-stringify';
 import { getConnection } from '../repository/connectionRepository';
 import { getConnector } from '../connectors';
 
@@ -17,7 +18,8 @@ router.post('/:connectionId/query', async (req: Request, res: Response): Promise
     return;
   }
 
-  const { query } = req.body as Record<string, unknown>;
+  const body = req.body as Record<string, unknown>;
+  const { query, format } = body;
   if (typeof query !== 'string' || !query.trim()) {
     res.status(400).json({ error: '`query` must be a non-empty string' });
     return;
@@ -25,6 +27,24 @@ router.post('/:connectionId/query', async (req: Request, res: Response): Promise
 
   try {
     const result = await getConnector(conn).executeQuery(query);
+
+    if (format === 'csv') {
+      if (result.type !== 'select') {
+        res.status(400).json({ error: 'CSV export is only available for SELECT queries' });
+        return;
+      }
+      const columns = result.fields.map((f) => f.name);
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', 'attachment; filename="query_result.csv"');
+      const stringifier = stringify({ header: true, columns });
+      stringifier.pipe(res);
+      for (const row of result.rows) {
+        stringifier.write(row);
+      }
+      stringifier.end();
+      return;
+    }
+
     res.json(result);
   } catch (err) {
     // PostgreSQL (and most DB clients) attach a `severity` field to DB-level
