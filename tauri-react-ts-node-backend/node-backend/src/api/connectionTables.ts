@@ -3,6 +3,7 @@ import { Router, Request, Response } from 'express';
 import { stringify } from 'csv-stringify';
 import { getConnection } from '../repository/connectionRepository';
 import { FilterClause, FilterOp, getConnector } from '../connectors';
+import { transformRow } from '../csvUtils';
 
 const VALID_OPS = new Set<string>(['eq', 'lt', 'gt', 'lte', 'gte', 'like', 'ilike']);
 
@@ -113,7 +114,7 @@ router.get('/:connectionId/tables/:tableName/data', async (req: Request, res: Re
         const fileStream = createWriteStream(outputFilePath);
         stringifier.pipe(fileStream);
         for await (const row of csvResult.rows) {
-          if (!stringifier.write(row)) {
+          if (!stringifier.write(transformRow(row))) {
             await new Promise<void>((r) => stringifier.once('drain', r));
           }
         }
@@ -129,7 +130,7 @@ router.get('/:connectionId/tables/:tableName/data', async (req: Request, res: Re
         res.setHeader('Content-Disposition', `attachment; filename="${tableName}.csv"`);
         stringifier.pipe(res);
         for await (const row of csvResult.rows) {
-          if (!stringifier.write(row)) {
+          if (!stringifier.write(transformRow(row))) {
             await new Promise<void>((r) => stringifier.once('drain', r));
           }
         }

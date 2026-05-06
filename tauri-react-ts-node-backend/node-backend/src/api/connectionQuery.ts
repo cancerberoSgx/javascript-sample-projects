@@ -3,6 +3,7 @@ import { Router, Request, Response } from 'express';
 import { stringify } from 'csv-stringify';
 import { getConnection } from '../repository/connectionRepository';
 import { getConnector } from '../connectors';
+import { transformRow } from '../csvUtils';
 
 const router = Router();
 
@@ -44,7 +45,7 @@ router.post('/:connectionId/query', async (req: Request, res: Response): Promise
           const fileStream = createWriteStream(outputFilePath);
           stringifier.pipe(fileStream);
           for (const row of result.rows) {
-            stringifier.write(row);
+            stringifier.write(transformRow(row));
           }
           await new Promise<void>((resolve, reject) => {
             fileStream.on('finish', resolve);
@@ -63,7 +64,7 @@ router.post('/:connectionId/query', async (req: Request, res: Response): Promise
       res.setHeader('Content-Disposition', 'attachment; filename="query_result.csv"');
       stringifier.pipe(res);
       for (const row of result.rows) {
-        stringifier.write(row);
+        stringifier.write(transformRow(row));
       }
       stringifier.end();
       return;
