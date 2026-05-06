@@ -6,6 +6,7 @@ import { QueryExecutionResult, queryApi } from '@/lib/api';
 import { useCreateScript, useDeleteScript, useScripts, useUpdateScript } from '@/hooks/useScripts';
 import { useAppStore } from '@/store';
 import { isTauri } from '@/lib/utils';
+import { useToast } from '@/hooks/useToast';
 import { SaveCsvDialog } from './SaveCsvDialog';
 
 // ── Query result display ──────────────────────────────────────────────────────
@@ -103,6 +104,7 @@ function ScriptEditor({
   onDelete: () => void;
 }) {
   const backendInfo = useAppStore((s) => s.backendInfo);
+  const toast = useToast();
   const [isExecuting, setIsExecuting] = useState(false);
   const [isDownloadingCsv, setIsDownloadingCsv] = useState(false);
   const [csvDialogOpen, setCsvDialogOpen] = useState(false);
@@ -133,8 +135,17 @@ function ScriptEditor({
     setIsDownloadingCsv(true);
     try {
       await queryApi.downloadCsv(connectionId, content, backendInfo, outputFilePath);
+      if (outputFilePath) {
+        toast({ title: 'CSV saved', description: outputFilePath, variant: 'success' });
+      } else {
+        toast({ title: 'CSV downloaded', variant: 'success' });
+      }
     } catch (err) {
-      console.error('CSV download failed:', err);
+      toast({
+        title: 'Export failed',
+        description: err instanceof Error ? err.message : 'CSV export failed',
+        variant: 'error',
+      });
     } finally {
       setIsDownloadingCsv(false);
     }

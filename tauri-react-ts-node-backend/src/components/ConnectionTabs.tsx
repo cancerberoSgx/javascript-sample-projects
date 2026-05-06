@@ -15,6 +15,7 @@ import { useTableData, useTableFields, useTables } from '@/hooks/useTables';
 import { FilterClause, SortClause, TableInfo, tablesApi } from '@/lib/api';
 import { cn, isTauri } from '@/lib/utils';
 import { useAppStore } from '@/store';
+import { useToast } from '@/hooks/useToast';
 import { SaveCsvDialog } from './SaveCsvDialog';
 import { ConnectionForm } from './ConnectionForm';
 import { ScriptsPanel } from './ScriptsPanel';
@@ -126,6 +127,7 @@ function TableDataPanel({
   table: Pick<TableInfo, 'name' | 'schema'>;
 }) {
   const backendInfo = useAppStore((s) => s.backendInfo);
+  const toast = useToast();
   const [sort, setSort] = useState<SortClause | undefined>();
   const [filterInputs, setFilterInputs] = useState<Record<string, string>>({});
   const [appliedFilters, setAppliedFilters] = useState<Record<string, string>>({});
@@ -199,8 +201,17 @@ function TableDataPanel({
         sort,
         columns: visibleColumns.length > 0 ? visibleColumns : undefined,
       }, backendInfo, outputFilePath);
+      if (outputFilePath) {
+        toast({ title: 'CSV saved', description: outputFilePath, variant: 'success' });
+      } else {
+        toast({ title: 'CSV downloaded', variant: 'success' });
+      }
     } catch (err) {
-      console.error('CSV download failed:', err);
+      toast({
+        title: 'Export failed',
+        description: err instanceof Error ? err.message : 'CSV export failed',
+        variant: 'error',
+      });
     } finally {
       setIsDownloading(false);
     }

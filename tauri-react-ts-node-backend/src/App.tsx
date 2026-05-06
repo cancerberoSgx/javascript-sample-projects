@@ -6,6 +6,7 @@ import { ConnectionTabs } from '@/components/ConnectionTabs';
 import { WelcomeScreen } from '@/components/WelcomeScreen';
 import { getBackendInfo } from '@/lib/backend';
 import { useAppStore } from '@/store';
+import { Toaster } from '@/components/Toaster';
 
 function MainContent() {
   const view = useAppStore((s) => s.view);
@@ -48,12 +49,15 @@ function App() {
   }
 
   return (
-    <SidebarProvider className="h-full overflow-hidden">
-      <AppSidebar />
-      <SidebarInset className="min-h-0 overflow-hidden">
-        <MainContent />
-      </SidebarInset>
-    </SidebarProvider>
+    <>
+      <SidebarProvider className="h-full overflow-hidden">
+        <AppSidebar />
+        <SidebarInset className="min-h-0 overflow-hidden">
+          <MainContent />
+        </SidebarInset>
+      </SidebarProvider>
+      <Toaster />
+    </>
   );
 }
 
