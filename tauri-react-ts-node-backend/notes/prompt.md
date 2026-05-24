@@ -275,11 +275,46 @@ p3:
 * in the frontend, when asking for csv file path, remember the previous one
 * in the backend, in all download csv operations, convert the timestamps (or any time/date field) to format YEAR-MONTH-DAY:HOUR:MINUTE:SECOND (the standard utc format)
 
-use toast 
-csv download success or failures
+# use toast 
+in the frontend install @radix-ui/react-toast and use toast to inform users when csv download success or fail
+
+on the frontend
+use toast to inform of success or errors of running a script, 
+use toast informing only errors when obtaining table data , table fields
+
+
+# how to compile for other platforms
+
+I have a linux machine, can you explain if there's an easy way to compile this tauri application to other platforms like windows and macos in linux ? or do i must have a mac and windows machines or emulators in order to do that ?
+
+
+  Option 1: GitHub Actions (recommended)
+  
+  Tauri provides an official action that builds all three platforms in parallel on GitHub-hosted runners — no machines of your own needed.
+
+  # .github/workflows/release.yml
+  jobs:
+    build:
+      strategy:
+        matrix:
+          include:
+            - platform: macos-latest
+            - platform: windows-latest
+            - platform: ubuntu-22.04
+      runs-on: ${{ matrix.platform }}
+      steps:
+        - uses: actions/checkout@v4
+        - uses: tauri-apps/tauri-action@v0
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  This is what most Tauri projects use in production. Free for public repos; private repos get 2,000 free minutes/month on GitHub's free plan.
+
+
 
 
 
 
 # FUTURE: 
 when invalid token, make a frontend with error 
+
