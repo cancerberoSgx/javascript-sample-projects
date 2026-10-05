@@ -183,7 +183,7 @@ function OrganizationPanel({ org, canEdit, onChanged }: { org: Organization; can
 }
 
 function UsersPanel({ org, orgs, onChanged }: { org: Organization; orgs: Organization[]; onChanged: () => Promise<void> }) {
-  const { user: me, refresh } = useAuth();
+  const { user: me, refresh, impersonate } = useAuth();
   const isRoot = me!.role === "root";
   const [users, setUsers] = useState<User[]>([]);
   const [editing, setEditing] = useState<User | "new" | null>(null);
@@ -239,6 +239,15 @@ function UsersPanel({ org, orgs, onChanged }: { org: Organization; orgs: Organiz
                 <span className={`chip role-${u.role}`}>{u.role}</span>
               </td>
               <td className="actions">
+                {isRoot && u.role === "member" && (
+                  <button
+                    className="small"
+                    title="See the app exactly as this user does"
+                    onClick={() => impersonate(u.id).catch((e) => setError((e as Error).message))}
+                  >
+                    Impersonate
+                  </button>
+                )}
                 {canEdit(u) && (
                   <button className="small" onClick={() => setEditing(u)}>
                     Edit

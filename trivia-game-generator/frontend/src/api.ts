@@ -26,6 +26,11 @@ export interface Organization {
   updated_at: string;
 }
 
+/** /auth/me: the user requests act as, plus the root user behind it when impersonating. */
+export interface Me extends User {
+  impersonator: User | null;
+}
+
 export interface UserInput {
   organization_id?: number;
   name?: string;
@@ -130,29 +135,35 @@ export class ApiError extends Error {
   }
 }
 
-const TOKEN_KEY = "trivia.token";
+function storage(key: string) {
+  return {
+    get(): string | null {
+      try {
+        return localStorage.getItem(key);
+      } catch {
+        return null;
+      }
+    },
+    set(token: string | null) {
+      try {
+        if (token) localStorage.setItem(key, token);
+        else localStorage.removeItem(key);
+      } catch {
+        // storage unavailable (private mode): the session lasts until reload
+      }
+    },
+  };
+}
 
-export const tokenStore = {
-  get(): string | null {
-    try {
-      return localStorage.getItem(TOKEN_KEY);
-    } catch {
-      return null;
-    }
-  },
-  set(token: string | null) {
-    try {
-      if (token) localStorage.setItem(TOKEN_KEY, token);
-      else localStorage.removeItem(TOKEN_KEY);
-    } catch {
-      // storage unavailable (private mode): the session lasts until reload
-    }
-  },
-};
+/** The token sent with every request. */
+export const tokenStore = storage("trivia.token");
+/** While impersonating: the root user's own token, restored on exit. */
+export const impersonatorTokenStore = storage("trivia.token.impersonator");
 
-let onUnauthorized: () => void = () => {};
-/** Called when any request gets a 401, so the app can return to the login screen. */
-export function setUnauthorizedHandler(fn: () => void) {
+let onUnauthorized: (tokenUsed: string | null) => void = () => {};
+/** Called when a request gets a 401, with the token that request sent, so the app can tell
+ *  a lost session from a stale response that arrived after the session already changed. */
+export function setUnauthorizedHandler(fn: (tokenUsed: string | null) => void) {
   onUnauthorized = fn;
 }
 
@@ -166,7 +177,8 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   if (res.status === 204) return undefined as T;
   const data = await res.json().catch(() => null);
   if (!res.ok) {
-    if (res.status === 401 && path !== "/auth/login") onUnauthorized();
+    // A 401 from login is a wrong password, and from logout an already-invalid token: neither means "session lost"
+    if (res.status === 401 && path !== "/auth/login" && path !== "/auth/logout") onUnauthorized(token);
     const details = errorList(data);
     throw new ApiError(res.status, details.join("; ") || `${res.status} ${res.statusText}`, details);
   }
@@ -190,7 +202,9 @@ export const api = {
   login: (email: string, password: string) =>
     request<{ access_token: string; expires_at: string; user: User }>("POST", "/auth/login", { email, password }),
   logout: () => request<void>("POST", "/auth/logout"),
-  me: () => request<User>("GET", "/auth/me"),
+  me: () => request<Me>("GET", "/auth/me"),
+  impersonate: (userId: number) =>
+    request<{ access_token: string; expires_at: string; user: User }>("POST", `/auth/impersonate/${userId}`),
 
   listOrganizations: () => request<Organization[]>("GET", "/organizations"),
   createOrganization: (body: { name: string; openai_api_key?: string | null }) => request<Organization>("POST", "/organizations", body),

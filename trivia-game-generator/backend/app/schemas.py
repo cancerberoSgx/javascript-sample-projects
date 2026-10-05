@@ -31,6 +31,10 @@ class UserOut(BaseModel):
         return cls(**user.model_dump(exclude={"password_hash"}))
 
 
+class MeOut(UserOut):
+    impersonator: UserOut | None  # set when a root user is impersonating this user
+
+
 class TokenOut(BaseModel):
     access_token: str
     token_type: Literal["bearer"] = "bearer"

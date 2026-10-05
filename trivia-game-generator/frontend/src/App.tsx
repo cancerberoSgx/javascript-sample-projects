@@ -21,7 +21,7 @@ export default function App() {
 }
 
 function Shell() {
-  const { user, loading, logout } = useAuth();
+  const { user, loading, logout, stopImpersonating } = useAuth();
   const [tab, setTab] = useState<Tab>("games");
   const [orgs, setOrgs] = useState<Organization[]>([]);
   const [orgId, setOrgId] = useState<number | null>(null);
@@ -51,7 +51,19 @@ function Shell() {
   ];
 
   return (
-    <div className="app">
+    // key: switching user (impersonate / exit) remounts everything, so no state leaks between them
+    <div className="app" key={user.id}>
+      {user.impersonator && (
+        <div className="impersonation-banner" role="status">
+          <span>
+            👁 You're seeing the app as <strong>{user.name}</strong> ({user.email}, member of {user.organization_name}). Signed in as{" "}
+            {user.impersonator.name}.
+          </span>
+          <button className="small" onClick={stopImpersonating}>
+            Exit impersonation
+          </button>
+        </div>
+      )}
       <header>
         <h1>Trivia Game Generator</h1>
         <nav className="tabs">

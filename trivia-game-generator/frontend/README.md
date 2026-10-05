@@ -19,6 +19,8 @@ npm run build
 
 Auth: the JWT from `/api/auth/login` is kept in `localStorage` and sent as a bearer token (`src/api.ts`, `src/auth.tsx`). A 401 response returns to the login screen.
 
+Impersonation: root users get an **Impersonate** button on member users (Organizations tab). The app then runs with the member's token, so it looks and behaves exactly as it does for them, under a yellow banner with **Exit impersonation**. Meanwhile the root token waits in `localStorage` (`trivia.token.impersonator`) and is restored on exit, or automatically if the impersonation token expires. The whole app remounts on every switch (`key={user.id}`), so no state carries over between users.
+
 ## Layout
 
 | Path | What |

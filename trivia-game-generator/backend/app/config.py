@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     test_database_url: str | None = None  # used only by the test suite
     jwt_secret: str
     jwt_expire_minutes: int = 480
+    impersonation_expire_minutes: int = 60  # tokens root users get when impersonating a member
     encryption_key: str  # Fernet key used for organization API keys
 
     # Bootstrap root user, created on startup when no root user exists

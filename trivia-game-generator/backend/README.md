@@ -64,6 +64,7 @@ Tests also run inside the container: `docker compose -f docker/docker-compose.ym
 - New table → add its row model (and `New…` / `…Changes` models if it's writable) to `app/models.py` alongside the migration.
 - Secrets: passwords are bcrypt-hashed. Organization OpenAI keys are encrypted with Fernet (`ENCRYPTION_KEY`) and the API only ever returns them masked (`sk-…1234`). Changing `ENCRYPTION_KEY` makes stored keys unreadable.
 - Auth: `POST /api/auth/login` returns a JWT. Send it as `Authorization: Bearer <token>`. `POST /api/auth/logout` adds the token's `jti` to `trivia_revoked_tokens`, so it stops working right away. The user's role is read from the database on every request.
+- Impersonation: a root user calls `POST /api/auth/impersonate/{user_id}` (member users only) and gets a token that acts as that member. Its `sub` is the member and its `imp` claim is the root user. Every permission check sees the member; `CurrentUser.impersonator` holds the root user, and `/api/auth/me` returns it as `impersonator`. These tokens last `IMPERSONATION_EXPIRE_MINUTES`, stop working as soon as the impersonator is no longer root, and can't be nested. Exiting means `/logout` with that token. Every start is logged (`auth` logger).
 
 ## Permissions
 
@@ -75,6 +76,7 @@ Tests also run inside the container: `docker compose -f docker/docker-compose.ym
 | Create users | any organization, any role | own organization, role `member` only |
 | Update users | ✔ | `member` users in own organization (including themselves); can't grant `root` or move organizations |
 | Delete users | ✔ (not yourself) | ✘ |
+| Impersonate a member user | ✔ any organization | ✘ |
 
 | Categories, decks, cards, boards, games | every organization | own organization: full create / edit / delete |
 

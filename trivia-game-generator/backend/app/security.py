@@ -21,11 +21,15 @@ def verify_password(password: str, password_hash: str) -> bool:
         return False
 
 
-def create_access_token(user_id: int) -> tuple[str, uuid.UUID, datetime]:
+def create_access_token(user_id: int, impersonator_id: int | None = None) -> tuple[str, uuid.UUID, datetime]:
+    """`impersonator_id`: the root user acting as `user_id`. Stored in the "imp" claim; such tokens are short-lived."""
     settings = get_settings()
     jti = uuid.uuid4()
-    expires_at = datetime.now(UTC) + timedelta(minutes=settings.jwt_expire_minutes)
-    payload = {"sub": str(user_id), "jti": str(jti), "exp": expires_at, "iat": datetime.now(UTC)}
+    minutes = settings.impersonation_expire_minutes if impersonator_id else settings.jwt_expire_minutes
+    expires_at = datetime.now(UTC) + timedelta(minutes=minutes)
+    payload: dict = {"sub": str(user_id), "jti": str(jti), "exp": expires_at, "iat": datetime.now(UTC)}
+    if impersonator_id:
+        payload["imp"] = str(impersonator_id)
     return jwt.encode(payload, settings.jwt_secret, algorithm=JWT_ALGORITHM), jti, expires_at
 
 
