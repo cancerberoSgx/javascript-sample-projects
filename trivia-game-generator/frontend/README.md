@@ -1,13 +1,19 @@
-# Trivia Board Simulator (frontend)
+# Trivia Game Generator (frontend)
 
-A React + Vite app for loading board definitions from JSON and playing turns on them (hot-seat, 1–4 players). The game logic follows [`../rules.md`](../rules.md). Code comments cite its rule IDs.
+A React + Vite app. After login it shows:
+- **Organizations** (root) / **My organization** (member): CRUD for organizations and their users, backed by the FastAPI backend.
+- **Boards demo** (root only): loads board definitions from JSON and lets you play turns on them (hot-seat, 1–4 players). The game logic follows [`../rules.md`](../rules.md). Code comments cite its rule IDs.
+
+Usually run through `docker/docker-compose.yml`. To run it locally instead (the backend must be running on :8000):
 
 ```bash
 npm install
-npm run dev     # http://localhost:5173
+npm run dev     # http://localhost:5173. /api is proxied to VITE_API_PROXY (default http://localhost:8000)
 npm test        # engine tests against the example boards
 npm run build
 ```
+
+Auth: the JWT from `/api/auth/login` is kept in `localStorage` and sent as a bearer token (`src/api.ts`, `src/auth.tsx`). A 401 response returns to the login screen.
 
 ## Layout
 
@@ -21,7 +27,9 @@ npm run build
 | `src/engine/movement.ts` | Legal destinations for a roll (MOV-*, FRK-*) |
 | `src/engine/board.ts` | Default config and board/deck validation (BRD-*, CRD-*) |
 | `src/engine/loader.ts` | The only I/O: fetches JSON from `public/`. Swap for API calls later |
-| `src/components/` | Canvas board renderer and side panels |
+| `src/components/` | Canvas board renderer, game panels, login and Organizations pages |
+| `src/BoardsDemo.tsx` | The boards demo tab |
+| `src/api.ts` | REST client for the backend |
 
 ## Example boards
 

@@ -1,5 +1,23 @@
 # trivia game generator and playground
 
+## Quick start
+
+```bash
+./docker/init-env.sh                                  # once: creates .env with generated secrets and prints the root password
+docker compose -f docker/docker-compose.yml up --build
+```
+
+Open http://localhost:5173 and log in with `ROOT_EMAIL` / `ROOT_PASSWORD` from `.env`.
+
+| Folder | What |
+|---|---|
+| `frontend/` | React + Vite app: login, Organizations tab, Boards demo (root only). See [frontend/README.md](frontend/README.md) |
+| `backend/` | FastAPI + Postgres REST API with plain-SQL repositories and migrations. See [backend/README.md](backend/README.md) |
+| `docker/` | `docker-compose.yml` (db + backend + frontend in dev mode), `init-env.sh` |
+| `rules.md` | Game rules spec referenced by the engine |
+| `.env.example` | All configuration; copy it to `.env` (or run `init-env.sh`) |
+
+
 
 # old notes:
 

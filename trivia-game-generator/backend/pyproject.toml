@@ -1,0 +1,28 @@
+[project]
+name = "trivia-backend"
+version = "0.1.0"
+description = "REST API for the trivia game generator"
+requires-python = ">=3.13"
+dependencies = [
+    "bcrypt>=5.0.0",
+    "cryptography>=50.0.2",
+    "email-validator>=2.3.0",
+    "fastapi>=0.142.2",
+    "psycopg[binary,pool]>=3.3.6",
+    "pydantic-settings>=2.15.0",
+    "pyjwt>=2.15.1",
+    "uvicorn[standard]>=0.54.0",
+]
+
+[dependency-groups]
+dev = [
+    "httpx2>=2.13.1",
+    "pytest>=9.1.1",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [".", "tests"]
+
+[tool.uv]
+package = false

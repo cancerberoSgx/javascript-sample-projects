@@ -12,7 +12,7 @@ const PLAYER_COLORS = ["#e11d48", "#7c3aed", "#0891b2", "#ea580c"];
 const DEFAULT_PLAYERS: PlayerSetup[] = ["Ana", "Ben", "Cleo", "Dan"].map((name, i) => ({ name, color: PLAYER_COLORS[i] }));
 const CUSTOM = "__custom__";
 
-export default function App() {
+export function BoardsDemo() {
   const [manifest, setManifest] = useState<BoardManifestEntry[]>([]);
   const [file, setFile] = useState<string>("");
   const [loaded, setLoaded] = useState<LoadedBoard | null>(null);
@@ -94,9 +94,8 @@ export default function App() {
   const board = game?.board ?? loaded?.board;
 
   return (
-    <div className="app">
-      <header>
-        <h1>Trivia Board Simulator</h1>
+    <div className="boards-demo">
+      <div className="toolbar">
         <label>
           Board:{" "}
           <select value={file} onChange={(e) => setFile(e.target.value)}>
@@ -120,7 +119,7 @@ export default function App() {
             JSON
           </button>
         </div>
-      </header>
+      </div>
 
       {loadError && <div className="error">{loadError}</div>}
 

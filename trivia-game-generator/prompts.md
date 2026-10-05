@@ -73,6 +73,7 @@ it looks ok, but one issue with forked paths board. When a fork starts, it seems
 
 
 # infra and basic model
+ok boards look ok, now let's start building the foundation of this webapp before confining
 implement a "backend" folder with the backend rest api using python and fastapi.
 create a /docker/docker-compose file with a postgres db, the "backend" server and the frontend served for dev mode. I shoul dbe able to run /docker/docker-compose to bring the whole app up in a separate machine.
 There should be a root .env file with some configurations, for now the db urls
@@ -89,3 +90,37 @@ For now, just model the following concepts:
  * users can login/logout - use a json web token for session
 In the frontend, leave the current "boards demo" in a separate tab accessible by root users. Then an "organizations" tab where they can crud organizations and their users.
 do you have any question before proceeding ? 
+
+p2
+in repositories, let's type all concepts with pydantic or something else instead of using just dict
+
+# more concepts
+
+Now let's introduce more concepts (related to an organization)
+
+ * game
+   * status: running, not started, 
+   * players - see below
+   * creator: an organization user
+   * board: see below
+   * categories (see below)
+   * deck ( see below)
+
+ * player: game players doesn't have to be organization users. An organization member can create a new game and create N players each with their name
+   * name
+
+ * board
+   * the current board concept except "categories", see below. board definition example: trivia-game-generator/frontend/public/boards/index.json
+
+ * category
+   * name
+   * description
+
+ * deck (a collection of questions and answers, each associated with a category) - see trivia-game-generator/frontend/public/decks/general.json
+   * name
+   * description
+   * {category, question, answer} list
+
+An organization user can create/edit categories, deck, boards and games 
+
+do you have any questions before proceeding ? 

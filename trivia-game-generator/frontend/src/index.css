@@ -52,13 +52,15 @@ input { min-width: 0; flex: 1; }
 
 .app { max-width: 1400px; margin: 0 auto; padding: 12px 16px 40px; }
 header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
-header .tabs { margin-left: auto; }
+header .whoami { margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 14px; }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; margin-bottom: 12px; }
+.toolbar .tabs { margin-left: auto; }
 .upload { cursor: pointer; border: 1px dashed var(--border); border-radius: 8px; padding: 6px 10px; font-size: 14px; }
 .upload input { display: none; }
 .check input { flex: none; }
 
-main { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: start; }
-@media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+.boards-demo main { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: start; }
+@media (max-width: 900px) { .boards-demo main { grid-template-columns: 1fr; } }
 aside { display: flex; flex-direction: column; gap: 12px; }
 
 .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
@@ -119,3 +121,32 @@ table.players tr.active td { font-weight: 700; }
   background: var(--text); color: var(--panel); padding: 10px 16px; border-radius: 10px; font-size: 14px;
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
 }
+
+/* ---------- auth + organizations ---------- */
+button.danger { color: var(--error-text); border-color: var(--error-text); }
+button.danger:disabled { color: var(--muted); border-color: var(--border); }
+.ok { background: color-mix(in srgb, #16a34a 14%, transparent); color: #16a34a; border-radius: 8px; padding: 8px 12px; font-size: 13px; }
+.chip.role-root { color: var(--accent); border-color: var(--accent); margin-left: 4px; }
+.chip.role-member { margin-left: 4px; }
+
+.login-wrap { min-height: 100vh; display: grid; place-items: center; padding: 16px; }
+.login { width: min(380px, 100%); gap: 12px; padding: 24px; }
+.panel label.stack { flex-direction: column; align-items: stretch; gap: 4px; }
+
+.orgs-page { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 16px; align-items: start; }
+.orgs-page.single { grid-template-columns: minmax(0, 1fr); max-width: 900px; }
+@media (max-width: 800px) { .orgs-page { grid-template-columns: 1fr; } }
+.org-detail { display: flex; flex-direction: column; gap: 12px; }
+.org-list ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.org-list li button { width: 100%; display: flex; justify-content: space-between; gap: 8px; text-align: left; border-color: transparent; background: transparent; }
+.org-list li button.on { background: var(--canvas-bg); border-color: var(--accent); }
+.inline-form { display: flex; flex-direction: column; gap: 6px; padding: 8px; background: var(--canvas-bg); border-radius: 8px; }
+
+.grid-form { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 8px 12px; align-items: center; margin: 0; }
+.grid-form .span { grid-column: 1 / -1; }
+.grid-form label, .grid-form dt { font-size: 13px; color: var(--muted); }
+.grid-form dd { margin: 0; }
+.user-form { padding: 12px; background: var(--canvas-bg); border-radius: 8px; }
+code.key { padding: 4px 8px; background: var(--canvas-bg); border-radius: 6px; }
+table.users td.actions { text-align: right; white-space: nowrap; }
+table.users td.actions button + button { margin-left: 6px; }
