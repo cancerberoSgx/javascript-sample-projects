@@ -1,10 +1,10 @@
 """Pure-SQL data access for trivia_users."""
 
-from psycopg import sql
 from psycopg.rows import class_row
 
 from ..db import DbConn, fetch_scalar
 from ..models import NewUser, User, UserChanges
+from ._sql import update_row
 
 _SELECT = """
     SELECT u.id, u.organization_id, o.name AS organization_name, u.name, u.email,
@@ -50,12 +50,7 @@ def create(conn: DbConn, user: NewUser) -> int:
 
 def update(conn: DbConn, user_id: int, changes: UserChanges) -> bool:
     """Writes the fields set on `changes`. Returns False if the row doesn't exist."""
-    fields = changes.set_fields()
-    if not fields:
-        return get(conn, user_id) is not None
-    assignments = sql.SQL(", ").join(sql.SQL("{} = %s").format(sql.Identifier(k)) for k in fields)
-    query = sql.SQL("UPDATE trivia_users SET {}, updated_at = now() WHERE id = %s").format(assignments)
-    return conn.execute(query, (*fields.values(), user_id)).rowcount == 1
+    return update_row(conn, "trivia_users", user_id, changes)
 
 
 def delete(conn: DbConn, user_id: int) -> bool:

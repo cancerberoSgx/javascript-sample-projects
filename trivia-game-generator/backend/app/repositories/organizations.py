@@ -1,10 +1,10 @@
 """Pure-SQL data access for trivia_organizations."""
 
-from psycopg import sql
 from psycopg.rows import class_row
 
 from ..db import DbConn, fetch_scalar
 from ..models import Organization, OrganizationChanges
+from ._sql import update_row
 
 _SELECT = """
     SELECT o.id, o.name, o.openai_api_key_encrypted, o.created_at, o.updated_at,
@@ -39,12 +39,7 @@ def create(conn: DbConn, name: str, openai_api_key_encrypted: str | None) -> int
 
 def update(conn: DbConn, org_id: int, changes: OrganizationChanges) -> bool:
     """Writes the fields set on `changes`. Returns False if the row doesn't exist."""
-    fields = changes.set_fields()
-    if not fields:
-        return get(conn, org_id) is not None
-    assignments = sql.SQL(", ").join(sql.SQL("{} = %s").format(sql.Identifier(k)) for k in fields)
-    query = sql.SQL("UPDATE trivia_organizations SET {}, updated_at = now() WHERE id = %s").format(assignments)
-    return conn.execute(query, (*fields.values(), org_id)).rowcount == 1
+    return update_row(conn, "trivia_organizations", org_id, changes)
 
 
 def delete(conn: DbConn, org_id: int) -> bool:

@@ -5,15 +5,16 @@ import { LogPanel, PlayersPanel } from "./components/PlayersPanel";
 import { TurnPanel } from "./components/TurnPanel";
 import { resolveConfig } from "./engine/board";
 import { applyAction, createGame } from "./engine/engine";
-import { loadBoard, loadBoardFromJson, loadManifest, type BoardManifestEntry, type LoadedBoard } from "./engine/loader";
-import type { Action, GameState, PlayerSetup, Space } from "./engine/types";
+import { loadBoard, loadDeck, loadManifest, prepareBoard, type ManifestEntry, type LoadedBoard } from "./engine/loader";
+import type { Action, DeckFile, GameState, PlayerSetup, Space } from "./engine/types";
 
 const PLAYER_COLORS = ["#e11d48", "#7c3aed", "#0891b2", "#ea580c"];
 const DEFAULT_PLAYERS: PlayerSetup[] = ["Ana", "Ben", "Cleo", "Dan"].map((name, i) => ({ name, color: PLAYER_COLORS[i] }));
 const CUSTOM = "__custom__";
 
 export function BoardsDemo() {
-  const [manifest, setManifest] = useState<BoardManifestEntry[]>([]);
+  const [manifest, setManifest] = useState<ManifestEntry[]>([]);
+  const [deckFile, setDeckFile] = useState<DeckFile | null>(null);
   const [file, setFile] = useState<string>("");
   const [loaded, setLoaded] = useState<LoadedBoard | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -37,24 +38,26 @@ export function BoardsDemo() {
 
   useEffect(() => {
     loadManifest()
-      .then((m) => {
-        setManifest(m);
-        setFile(m[0]?.file ?? "");
+      .then(async (m) => {
+        setDeckFile(await loadDeck(m.decks[0].file));
+        setManifest(m.boards);
+        setFile(m.boards[0]?.file ?? "");
       })
       .catch((e) => setLoadError(String(e)));
   }, []);
 
   useEffect(() => {
-    if (!file || file === CUSTOM) return;
+    if (!file || file === CUSTOM || !deckFile) return;
     setGame(null);
     setLoaded(null);
     setLoadError(null);
-    loadBoard(file).then(setLoaded, (e) => setLoadError(String(e)));
-  }, [file]);
+    loadBoard(file, deckFile).then(setLoaded, (e) => setLoadError(String(e)));
+  }, [file, deckFile]);
 
   const uploadBoard = async (f: File) => {
     try {
-      const result = await loadBoardFromJson(await f.text());
+      if (!deckFile) return;
+      const result = prepareBoard(await f.text(), deckFile);
       setGame(null);
       setLoadError(null);
       setLoaded(result);
@@ -65,7 +68,7 @@ export function BoardsDemo() {
   };
 
   const startGame = () => {
-    if (!loaded?.deck) return;
+    if (!loaded?.board || !loaded.deck) return;
     const board = structuredClone(loaded.board);
     if (noTimer) board.config = { ...board.config, answer_time_limit_sec: 0 };
     setGame(createGame(board, loaded.deck, players.slice(0, playerCount), seed));
@@ -91,7 +94,7 @@ export function BoardsDemo() {
   };
 
   const entry = manifest.find((m) => m.file === file);
-  const board = game?.board ?? loaded?.board;
+  const board = game?.board ?? loaded?.preview;
 
   return (
     <div className="boards-demo">
@@ -104,7 +107,7 @@ export function BoardsDemo() {
                 {m.name}
               </option>
             ))}
-            {file === CUSTOM && <option value={CUSTOM}>Uploaded: {loaded?.board.name}</option>}
+            {file === CUSTOM && <option value={CUSTOM}>Uploaded: {loaded?.file.name}</option>}
           </select>
         </label>
         <label className="upload">

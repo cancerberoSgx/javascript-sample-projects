@@ -9,7 +9,7 @@ from .auth import Conn
 from .bootstrap import ensure_root_user
 from .config import get_settings
 from .migrations import apply_pending
-from .routers import auth, organizations, users
+from .routers import auth, boards, categories, decks, games, organizations, users
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 
@@ -19,12 +19,13 @@ async def lifespan(_: FastAPI):
     settings = get_settings()
     if settings.auto_migrate:
         apply_pending(settings.database_url, "migration")
-    if settings.run_seeds:
-        apply_pending(settings.database_url, "seed")
     db.open_pool(settings.database_url)
     try:
         with db._pool.connection() as conn:  # type: ignore[union-attr]
             ensure_root_user(conn, settings)
+        # After the root bootstrap, so seeds can reference the root user
+        if settings.run_seeds:
+            apply_pending(settings.database_url, "seed")
         yield
     finally:
         db.close_pool()
@@ -43,6 +44,8 @@ def create_app() -> FastAPI:
     app.include_router(auth.router)
     app.include_router(organizations.router)
     app.include_router(users.router)
+    for content in (categories, decks, boards, games):
+        app.include_router(content.router)
 
     @app.get("/api/health", tags=["health"])
     def health(conn: Conn):

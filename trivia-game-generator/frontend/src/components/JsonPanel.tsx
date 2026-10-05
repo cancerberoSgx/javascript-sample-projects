@@ -1,20 +1,19 @@
 import { useState } from "react";
 import { resolveConfig } from "../engine/board";
 import type { LoadedBoard } from "../engine/loader";
-import { GRAND_PRIZE } from "../engine/types";
 
-/** Shows how the board is serialized: the raw file, the effective config, and a deck summary. */
+/** Shows how the board is serialized: the raw file, the effective config, and the deck it's played with. */
 export function JsonPanel({ loaded, file }: { loaded: LoadedBoard; file: string }) {
   const [tab, setTab] = useState<"board" | "config" | "deck">("board");
-  const { board, deck } = loaded;
+  const { file: board, deckFile: deck, mapping } = loaded;
 
-  const deckSummary = deck
-    ? [...board.categories.map((c) => c.id), GRAND_PRIZE].map((id) => ({
-        id,
-        mc: deck.cards.filter((c) => c.category === id && c.options).length,
-        open: deck.cards.filter((c) => c.category === id && !c.options).length,
-      }))
-    : [];
+  const rows = deck.categories.map((c) => ({
+    ...c,
+    slot: Object.entries(mapping).find(([, m]) => m.id === c.id)?.[0] ?? "–",
+    mc: deck.cards.filter((x) => x.category === c.id && x.options && !x.grand_prize).length,
+    open: deck.cards.filter((x) => x.category === c.id && !x.options && !x.grand_prize).length,
+    gp: deck.cards.filter((x) => x.category === c.id && x.grand_prize).length,
+  }));
 
   return (
     <section className="panel json">
@@ -30,7 +29,7 @@ export function JsonPanel({ loaded, file }: { loaded: LoadedBoard; file: string 
             Deck
           </button>
         </div>
-        <code className="muted small">{tab === "deck" ? board.deck : file}</code>
+        <code className="muted small">{tab === "deck" ? "decks/general.json" : file}</code>
       </div>
 
       {tab === "board" && <pre>{loaded.rawJson}</pre>}
@@ -39,38 +38,43 @@ export function JsonPanel({ loaded, file }: { loaded: LoadedBoard; file: string 
           <p className="muted small">
             The board file's <code>config</code> merged over the defaults from rules.md §1. This is what the engine uses.
           </p>
-          <pre>{JSON.stringify(resolveConfig(board), null, 2)}</pre>
+          <pre>{JSON.stringify(resolveConfig({ ...board, categories: [], spaces: [] }), null, 2)}</pre>
         </>
       )}
-      {tab === "deck" &&
-        (deck ? (
-          <>
-            <p className="muted small">
-              {deck.name}: {deck.cards.length} cards
-            </p>
-            <table className="players">
-              <thead>
-                <tr>
-                  <th>Category</th>
-                  <th>Multiple choice</th>
-                  <th>Open-ended</th>
+      {tab === "deck" && (
+        <>
+          <p className="muted small">
+            {deck.name}: {deck.cards.length} cards. The demo plays each board slot with the deck's categories in order. In the app, a
+            game picks the category for each slot.
+          </p>
+          <table className="players">
+            <thead>
+              <tr>
+                <th>Slot</th>
+                <th>Category</th>
+                <th>Multiple choice</th>
+                <th>Open-ended</th>
+                <th>Grand prize</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.id}>
+                  <td>{r.slot}</td>
+                  <td>{r.name}</td>
+                  <td>{r.mc}</td>
+                  <td>{r.open}</td>
+                  <td>{r.gp}</td>
                 </tr>
-              </thead>
-              <tbody>
-                {deckSummary.map((r) => (
-                  <tr key={r.id}>
-                    <td>{r.id}</td>
-                    <td>{r.mc}</td>
-                    <td>{r.open}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <pre>{JSON.stringify(deck.cards.slice(0, 2), null, 2)}{"\n…"}</pre>
-          </>
-        ) : (
-          <p>Deck could not be loaded.</p>
-        ))}
+              ))}
+            </tbody>
+          </table>
+          <pre>
+            {JSON.stringify(deck.cards.slice(0, 2), null, 2)}
+            {"\n…"}
+          </pre>
+        </>
+      )}
     </section>
   );
 }

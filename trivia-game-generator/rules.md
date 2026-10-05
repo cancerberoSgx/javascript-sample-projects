@@ -31,44 +31,51 @@ All tunable behavior lives in one `GameConfig` object. The engine MUST NOT hard-
 ### 2.1 Board
 The board is a **directed graph of spaces**, not just an array, because forks (§6.2) need it. A board with no forks is a simple path. A **fork** is any space with more than one entry in `next`; it is a property of the graph, not a space type, so a fork can also be a category or HQ space.
 
+A board has **no categories of its own**, only category **slots** (e.g. `A`, `B`, `C`, `D`). A **game** chooses which category plays each slot (§2.6), so one board layout can be reused for any topic.
+
 ```ts
 type SpaceType = "start" | "category" | "hq" | "wildcard" | "roll_again" | "penalty" | "finish";
 
 interface Space {
   index: number;            // 0..N-1, unique
   type: SpaceType;
-  category: string | null;  // required for "category" and "hq"; null otherwise
+  slot: string | null;      // one of Board.slots; required for "category" and "hq", null otherwise
   next: number[];           // indices of following spaces; length > 1 = fork
   pos: { x: number; y: number }; // layout coordinates in grid units (fractions allowed), set by the board author
 }
 
 interface Board {
+  config: Partial<GameConfig>; // §1, merged over the defaults
+  slots: string[];          // e.g. ["A", "B", "C", "D"]
   spaces: Space[];          // N spaces
-  categories: { id: string; name: string; color: string }[]; // playable categories; spaces and cards use the id
 }
 ```
 
 - `BRD-1` Space `0` MUST be of type `start`.
 - `BRD-2` Linear track: space `N-1` MUST be of type `finish`, with `next = []`.
 - `BRD-3` Loop track: following `next` from space `N-1` returns to `0`. A loop has no `finish` space.
-- `BRD-4` Each category in `Board.categories` MUST have at least one `hq` space, or the `collection` win can never happen.
-- `BRD-5` Each category MUST have at least one card in the deck (§2.2).
+- `BRD-4` Each slot MUST have at least one `hq` space, or the `collection` win can never happen.
+- `BRD-5` The category that plays each slot MUST have at least one (non-grand-prize) card in the game's deck (§2.2).
+- `BRD-6` Slot names MUST be unique. A game MUST map every slot, each to a different category.
 
-### 2.2 Cards
+### 2.2 Categories, decks and cards
+A **category** belongs to an organization: `{ name, description, color }`. A **deck** is a named collection of cards, and each card belongs to one category.
+
 ```ts
 interface Card {
   id: string;
-  category: string;          // a Board category, or "grand_prize"
+  category: string;          // category id
   question: string;
-  options: string[] | null;  // 2..4 choices for multiple choice; null for open-ended
-  correct_answer: string | number; // option index (MC) or answer text (open-ended)
+  options: string[] | null;  // 2..6 choices for multiple choice; null for open-ended
+  answer: string;            // the answer text; for multiple choice, one of `options`
   difficulty: 1 | 2 | 3;     // 1 Easy, 2 Medium, 3 Hard
+  grand_prize: boolean;      // only drawn for the final question at the finish (§7.1)
 }
 ```
-- `CRD-1` For multiple-choice cards, `correct_answer` is the 0-based index into `options`.
+- `CRD-1` For multiple-choice cards, `answer` MUST be one of `options`, and options MUST be unique.
 - `CRD-2` Each category has its own shuffled deck. "Draw" means taking the top card of that deck.
 - `CRD-3` When a deck runs out, reshuffle its used cards into a new deck. *(decision)*
-- `CRD-4` `grand_prize` cards come from a separate deck and SHOULD all be `difficulty: 3`.
+- `CRD-4` Grand prize cards form a separate draw pile, whatever their category, and SHOULD all be `difficulty: 3`. A board whose win conditions include `finish` needs at least one in the deck.
 
 ### 2.3 Dice
 - `DIE-1` `roll()` returns a uniform random integer in `[1, dice_sides]`.
@@ -102,6 +109,14 @@ interface GameState {
   winner: string | null;     // player id
 }
 ```
+
+### 2.6 Game (stored)
+A stored game belongs to an organization and has: a name, a `status`, a creator (an organization user), a board, a deck, a category for each board slot, and players (just names; they don't need accounts, and their order is the turn order).
+
+- `GAM-1` `status` goes `not_started → running → finished`, never backwards.
+- `GAM-2` While `not_started`, the board, deck, slot mapping and players can change. A game can only start once BRD-*, BRD-5, BRD-6, CRD-4 hold and it has at least one player.
+- `GAM-3` Starting copies the board, deck and categories into the game (a *snapshot*). Later edits or deletes of the originals never change a running or finished game.
+- `GAM-4` A board, deck or category can't be deleted while a not-started game uses it. A category can't be deleted while cards use it.
 
 ---
 
@@ -246,13 +261,14 @@ The engine checks every active condition after each `APPLY_RESULT` (RES-4) and a
 ---
 
 ## 7b. Serialization (board and deck files)
-A game is defined by data files, so the generator can produce new games without code changes. Today they are static files in `frontend/public/`. Later they will come from the server or DB in the same format.
+Boards and decks are plain data, so the generator can produce new games without code changes. The same shapes are used by the example files in `frontend/public/`, the backend API, and game snapshots (GAM-3). Format version 2:
 
-- `SER-1` `boards/index.json` lists the available boards: `{ "boards": [{ "file", "name", "description" }] }`.
-- `SER-2` A board file is a `BoardDefinition`: `schema_version`, `id`, `name`, `description`, `deck` (path to a deck file), `config` (a *partial* `GameConfig` merged over the §1 defaults), `categories`, and `spaces` (§2.1).
-- `SER-3` A deck file is `{ schema_version, id, name, cards: Card[] }` (§2.2). Several boards can share one deck.
-- `SER-4` A board is validated on load (BRD-*, FRK-4, CRD-1, config sanity). A board that fails validation can be viewed but not played.
-- `SER-5` `schema_version` changes whenever the format changes in a breaking way.
+- `SER-1` `boards/index.json` lists the example files: `{ "boards": [{ "file", "name", "description" }], "decks": [...] }`.
+- `SER-2` A **board file** is `{ schema_version: 2, id?, name, description?, config, slots, spaces }` (§2.1). The backend stores `{config, slots, spaces}` as a board's `definition`.
+- `SER-3` A **deck file** is `{ schema_version: 2, id?, name, description?, categories: [{id, name, description, color}], cards: Card[] }` (§2.2). The categories travel with the deck, so a file is self-contained.
+- `SER-4` A **game snapshot** is `{ board: BoardFile, deck: DeckFile, mapping: { slot: categoryId } }`. `frontend/src/engine/resolve.ts` (`resolveGame`) turns it into the engine's internal board (each space's slot replaced by its category) and cards.
+- `SER-5` Boards are validated on save (backend) and as you type (frontend), with the same rules: BRD-*, FRK-4, slots, config sanity. A board that fails can be viewed but not saved or played.
+- `SER-6` `schema_version` changes whenever the format changes in a breaking way. Version 1 had categories on the board and `correct_answer` indices on cards.
 
 ---
 

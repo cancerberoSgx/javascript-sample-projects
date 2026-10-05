@@ -1,7 +1,11 @@
 # Trivia Game Generator (frontend)
 
 A React + Vite app. After login it shows:
-- **Organizations** (root) / **My organization** (member): CRUD for organizations and their users, backed by the FastAPI backend.
+- **Games**: set up a game (board, deck, a category for each board slot, players), see what still blocks it, start it, finish it.
+- **Boards**: edit a board's JSON definition, with live validation and a canvas preview. New boards can start from an example.
+- **Decks**: questions and answers (open or multiple choice, difficulty, grand prize).
+- **Categories**: name, description, color.
+- **Organizations** (root) / **My organization** (member): CRUD for organizations and their users. Root users also get an organization picker on the content tabs.
 - **Boards demo** (root only): loads board definitions from JSON and lets you play turns on them (hot-seat, 1–4 players). The game logic follows [`../rules.md`](../rules.md). Code comments cite its rule IDs.
 
 Usually run through `docker/docker-compose.yml`. To run it locally instead (the backend must be running on :8000):
@@ -20,13 +24,14 @@ Auth: the JWT from `/api/auth/login` is kept in `localStorage` and sent as a bea
 | Path | What |
 |---|---|
 | `public/boards/index.json` | Manifest of example boards (SER-1) |
-| `public/boards/*.json` | Board definitions (SER-2). Each space has `type`, `category`, `next` (forks = more than one entry) and `pos` |
-| `public/decks/general.json` | Sample card deck (SER-3) |
+| `public/boards/*.json` | Example boards (SER-2, format v2). Each space has `type`, `slot`, `next` (forks = more than one entry) and `pos`. Also seeded into the backend |
+| `public/decks/general.json` | Sample deck (SER-3) with its categories. Also seeded into the backend |
 | `src/engine/` | Pure TypeScript game engine, no React. It can move to the server later as is |
 | `src/engine/engine.ts` | `createGame` / `applyAction(state, action, now)`: a pure state machine (§3–§7) |
 | `src/engine/movement.ts` | Legal destinations for a roll (MOV-*, FRK-*) |
 | `src/engine/board.ts` | Default config and board/deck validation (BRD-*, CRD-*) |
-| `src/engine/loader.ts` | The only I/O: fetches JSON from `public/`. Swap for API calls later |
+| `src/engine/resolve.ts` | Board file (slots) + slot→category mapping + deck file → the engine's board and cards. Also used for game snapshots from the backend |
+| `src/engine/loader.ts` | Fetches the example JSON for the boards demo. The demo plays slot A, B, … with the deck's categories in order |
 | `src/components/` | Canvas board renderer, game panels, login and Organizations pages |
 | `src/BoardsDemo.tsx` | The boards demo tab |
 | `src/api.ts` | REST client for the backend |

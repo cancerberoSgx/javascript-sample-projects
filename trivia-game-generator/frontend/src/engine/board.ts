@@ -45,12 +45,12 @@ function reachable(spaces: Space[], from: number, reverse = false): Set<number> 
  * Returns human-readable errors; an empty array means the board is playable.
  */
 export function validateBoard(board: BoardDefinition, deck: DeckDefinition | null): string[] {
+  // deck = null checks the board alone (e.g. in the board editor, before a deck is chosen)
   const errors: string[] = [];
   const err = (msg: string) => errors.push(msg);
   const config = resolveConfig(board);
   const spaces = board.spaces ?? [];
 
-  if (board.schema_version !== 1) err(`Unsupported schema_version: ${board.schema_version}`);
   if (!spaces.length) return [...errors, "Board has no spaces"];
 
   // Indices must be exactly 0..N-1
@@ -70,9 +70,9 @@ export function validateBoard(board: BoardDefinition, deck: DeckDefinition | nul
   for (const s of spaces) {
     const where = `space ${s.index}`;
     if (s.type === "category" || s.type === "hq") {
-      if (!s.category || !categoryIds.has(s.category)) err(`${where}: '${s.type}' needs a valid category (got ${s.category})`);
+      if (!s.category || !categoryIds.has(s.category)) err(`${where}: '${s.type}' needs a valid slot (got ${s.category})`);
     } else if (s.category !== null) {
-      err(`${where}: '${s.type}' spaces must have category null`);
+      err(`${where}: '${s.type}' spaces must have slot null`);
     }
     for (const n of s.next) {
       if (!byIndex.has(n)) err(`${where}: next points to missing space ${n}`);
@@ -122,13 +122,12 @@ export function validateBoard(board: BoardDefinition, deck: DeckDefinition | nul
   if (config.win_conditions.includes("collection")) {
     for (const c of board.categories) {
       if (!spaces.some((s) => s.type === "hq" && s.category === c.id))
-        err(`BRD-4: category '${c.id}' has no 'hq' space, so the collection win is impossible`);
+        err(`BRD-4: ${c.name} has no 'hq' space, so the collection win is impossible`);
     }
   }
 
   // BRD-5 and card checks
-  if (!deck) err(`Deck '${board.deck}' could not be loaded`);
-  else {
+  if (deck) {
     for (const card of deck.cards) {
       const where = `card ${card.id}`;
       if (card.options) {
@@ -139,10 +138,10 @@ export function validateBoard(board: BoardDefinition, deck: DeckDefinition | nul
     }
     // Every category may be drawn (wildcards let the player pick any), so each needs cards.
     for (const c of board.categories) {
-      if (!deck.cards.some((card) => card.category === c.id)) err(`BRD-5: deck has no cards for category '${c.id}'`);
+      if (!deck.cards.some((card) => card.category === c.id)) err(`BRD-5: deck has no cards for category '${c.name}'`);
     }
     if (config.win_conditions.includes("finish") && !deck.cards.some((card) => card.category === GRAND_PRIZE))
-      err(`Deck has no '${GRAND_PRIZE}' cards, required by the 'finish' win condition`);
+      err("Deck has no grand prize cards, required by the 'finish' win condition");
   }
 
   return errors;

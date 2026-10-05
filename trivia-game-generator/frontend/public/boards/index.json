@@ -25,5 +25,11 @@
       "name": "Special Spaces Sandbox",
       "description": "A short track full of special spaces, played with a 4-sided die and a 15 s timer. Good for testing roll-again caps, penalty skips and wildcard choices."
     }
+  ],
+  "decks": [
+    {
+      "file": "decks/general.json",
+      "name": "General Knowledge (sample)"
+    }
   ]
 }

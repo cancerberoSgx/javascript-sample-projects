@@ -1,6 +1,6 @@
 # Trivia backend (FastAPI)
 
-REST API for organizations, users and auth. Data access is plain SQL (psycopg 3), with no ORM, and the schema is managed by numbered SQL migrations.
+REST API for organizations, users and auth, plus each organization's game content: categories, decks (with cards), boards and games (with players). Data access is plain SQL (psycopg 3), with no ORM, and the schema is managed by numbered SQL migrations.
 
 ## Running
 
@@ -17,7 +17,12 @@ docker compose -f docker/docker-compose.yml up --build
 | http://localhost:8000/docs | Interactive API docs (Swagger) |
 | `localhost:5433` | Postgres (`POSTGRES_HOST_PORT`) |
 
-On startup the backend applies pending migrations (`AUTO_MIGRATE`) and seeds (`RUN_SEEDS`). If no root user exists, it then creates one from `ROOT_EMAIL` / `ROOT_PASSWORD`. Log in with those credentials.
+On startup the backend:
+1. applies pending migrations (`AUTO_MIGRATE`),
+2. creates a root user from `ROOT_EMAIL` / `ROOT_PASSWORD` if none exists,
+3. applies pending seeds (`RUN_SEEDS`). They run after step 2, so a seed can reference the root user.
+
+Log in with the root credentials. With seeds on, the `Default` organization has the example categories, sample deck, five example boards and a game that's ready to start.
 
 To run the backend outside Docker (the db container must still be running):
 
@@ -43,7 +48,9 @@ Tests also run inside the container: `docker compose -f docker/docker-compose.ym
 | `app/schemas.py` | API request/response models. Separate from the row models so secrets like `password_hash` never reach a response |
 | `app/permissions.py` | Every root/member access rule, in one place |
 | `app/auth.py` | Bearer JWT → `CurrentUser` dependency, with a revocation check |
-| `app/routers/` | HTTP endpoints: `/api/auth`, `/api/organizations`, `/api/users` |
+| `app/routers/` | HTTP endpoints: `/api/auth`, `/api/organizations`, `/api/users`, `/api/categories`, `/api/decks` (+ `/cards`), `/api/boards`, `/api/games` |
+| `app/formats.py` | Board definition and game snapshot formats (match the frontend's `BoardFile` / `DeckFile`) |
+| `app/validation.py` | Board and game-setup checks. Python port of `frontend/src/engine/board.ts` + `resolve.ts`, using the same rule IDs from `rules.md` |
 | `migrations/`, `seeds/` | Numbered `.sql` files |
 
 ## Conventions
@@ -53,6 +60,7 @@ Tests also run inside the container: `docker compose -f docker/docker-compose.ym
   - Reads map rows straight into Pydantic models with `class_row(Model)`, which fails loudly if a query and its model drift apart.
   - Single values (`count(*)`, `RETURNING id`) go through `db.fetch_scalar`.
   - Partial updates take a `...Changes` model. Only the fields you set get written, and its `extra="forbid"` config acts as the column allow-list for the dynamic `UPDATE` (built with `psycopg.sql.Identifier`, never string formatting).
+- A board's `definition` is stored as `jsonb` and typed in Python as `formats.BoardDefinition`. Its `config` is partial: only the settings that differ from the defaults are stored, so changing a default changes every board that doesn't override it.
 - New table → add its row model (and `New…` / `…Changes` models if it's writable) to `app/models.py` alongside the migration.
 - Secrets: passwords are bcrypt-hashed. Organization OpenAI keys are encrypted with Fernet (`ENCRYPTION_KEY`) and the API only ever returns them masked (`sk-…1234`). Changing `ENCRYPTION_KEY` makes stored keys unreadable.
 - Auth: `POST /api/auth/login` returns a JWT. Send it as `Authorization: Bearer <token>`. `POST /api/auth/logout` adds the token's `jti` to `trivia_revoked_tokens`, so it stops working right away. The user's role is read from the database on every request.
@@ -68,7 +76,22 @@ Tests also run inside the container: `docker compose -f docker/docker-compose.ym
 | Update users | ✔ | `member` users in own organization (including themselves); can't grant `root` or move organizations |
 | Delete users | ✔ (not yourself) | ✘ |
 
+| Categories, decks, cards, boards, games | every organization | own organization: full create / edit / delete |
+
 Other rules: the last root user can't be demoted or deleted, an organization that still has users can't be deleted, and anything outside your scope returns `404`.
+
+## Game content
+
+| Resource | Notes |
+|---|---|
+| `/api/categories` | `name`, `description`, `color`. Can't be deleted while cards or a not-started game use it |
+| `/api/decks`, `/api/decks/{id}/cards` | A card has `category_id`, `question`, `options` (null = open-ended), `answer` (for multiple choice, one of the options), `difficulty` 1–3, `grand_prize` |
+| `/api/boards` | `definition` = `{config, slots, spaces}` (rules.md §2.1). Spaces use **slots**, not categories. Invalid boards are rejected with a list of errors |
+| `/api/games` | `board_id`, `deck_id`, `categories` (`{slot: category_id}`), `players` (`[{name}]`; order = turn order). `GET /api/games/{id}` includes `setup_errors`, the list of what still blocks starting |
+| `POST /api/games/{id}/start` | `not_started → running`. Validates the setup, then stores a `snapshot` (`{board, deck, mapping}`), so later edits don't affect the game |
+| `POST /api/games/{id}/finish` | `running → finished` |
+
+List endpoints return the caller's organization. Root users can pass `?organization_id=`, and `organization_id` in create bodies. A game's board, deck and categories must belong to the game's organization.
 
 ## Migrations
 
@@ -122,11 +145,13 @@ Rules:
 Seeds are optional demo or dev data in `seeds/`. They use the same file naming and are tracked in the same table (`kind = 'seed'`), so each one runs only once.
 
 ```bash
-uv run python -m app.migrations new "demo organizations" --seed   # -> seeds/0002_demo_organizations.sql
+uv run python -m app.migrations new "more demo decks" --seed   # -> seeds/0003_more_demo_decks.sql
 uv run python -m app.migrations seed     # applies pending migrations, then pending seeds
 ```
 
 They also run on startup when `RUN_SEEDS=true`. Set it to `false` for environments that shouldn't have demo data. Make seeds safe to re-run, for example with `INSERT … ON CONFLICT DO NOTHING`, because the target database may already have some of the rows.
+
+Current seeds: `0001` adds two demo organizations. `0002_example_content.sql` loads `frontend/public/boards/*.json` and `decks/general.json` into the `Default` organization. It was generated from those files by `python scripts/generate_example_seed.py`; existing databases keep the copy they already seeded.
 
 Don't put user passwords in seeds; the first root user is created from `.env`. To seed users for local testing, create them through the API or the Organizations tab.
 

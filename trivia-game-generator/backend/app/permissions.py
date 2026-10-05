@@ -8,6 +8,8 @@ Member:  sees only their own organization and its users. Can create users there 
 A resource the caller can't see is reported as 404, not 403, so its existence isn't leaked.
 """
 
+from typing import Protocol
+
 from fastapi import HTTPException, status
 
 from .auth import CurrentUser
@@ -58,3 +60,40 @@ def check_update_user(me: CurrentUser, target: User, changes: UserChanges) -> No
         raise forbidden("Members can't grant the root role")
     if changes.organization_id not in (None, me.organization_id):
         raise forbidden("Members can't move users to another organization")
+
+
+# ---------- organization content (categories, decks, boards, games) ----------
+# Any user of an organization can create, edit and delete its content. Root users can
+# do it for every organization.
+
+
+def can_access_org(me: CurrentUser, organization_id: int) -> bool:
+    return me.is_root or me.organization_id == organization_id
+
+
+def target_org(me: CurrentUser, organization_id: int | None) -> int:
+    """The organization a new item goes into: the one requested, or the caller's own."""
+    org_id = organization_id or me.organization_id
+    if not can_access_org(me, org_id):
+        raise forbidden("You can only add content to your own organization")
+    return org_id
+
+
+class _OrgOwned(Protocol):
+    @property
+    def organization_id(self) -> int: ...
+
+
+def visible[T: _OrgOwned](me: CurrentUser, item: T | None, what: str) -> T:
+    """Returns `item` if it exists and the caller may see it; otherwise raises 404."""
+    if item is None or not can_access_org(me, item.organization_id):
+        raise not_found(f"{what} not found")
+    return item
+
+
+def list_org(me: CurrentUser, organization_id: int | None) -> int:
+    """The organization a list request is for: the one requested (root) or the caller's own."""
+    org_id = organization_id or me.organization_id
+    if not can_access_org(me, org_id):
+        raise not_found("Organization not found")
+    return org_id

@@ -9,7 +9,10 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
+from .formats import BoardDefinition, GameSnapshot
+
 Role = Literal["root", "member"]
+GameStatus = Literal["not_started", "running", "finished"]
 
 
 class Row(BaseModel):
@@ -74,3 +77,155 @@ class UserChanges(Changes):
     email: str | None = None
     password_hash: str | None = None
     role: Role | None = None
+
+
+# ---------- trivia_categories ----------
+
+
+class Category(Row):
+    id: int
+    organization_id: int
+    name: str
+    description: str
+    color: str
+    card_count: int  # computed by the query
+    created_at: datetime
+    updated_at: datetime
+
+
+class NewCategory(BaseModel):
+    organization_id: int
+    name: str
+    description: str
+    color: str
+
+
+class CategoryChanges(Changes):
+    name: str | None = None
+    description: str | None = None
+    color: str | None = None
+
+
+# ---------- trivia_decks + trivia_cards ----------
+
+
+class Deck(Row):
+    id: int
+    organization_id: int
+    name: str
+    description: str
+    card_count: int  # computed by the query
+    created_at: datetime
+    updated_at: datetime
+
+
+class NewDeck(BaseModel):
+    organization_id: int
+    name: str
+    description: str
+
+
+class DeckChanges(Changes):
+    name: str | None = None
+    description: str | None = None
+
+
+class Card(Row):
+    id: int
+    deck_id: int
+    category_id: int
+    question: str
+    options: list[str] | None
+    answer: str
+    difficulty: int
+    grand_prize: bool
+    position: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class NewCard(BaseModel):
+    deck_id: int
+    category_id: int
+    question: str
+    options: list[str] | None
+    answer: str
+    difficulty: int
+    grand_prize: bool
+
+
+class CardChanges(Changes):
+    category_id: int | None = None
+    question: str | None = None
+    options: list[str] | None = None  # None (when set) = make it open-ended
+    answer: str | None = None
+    difficulty: int | None = None
+    grand_prize: bool | None = None
+
+
+# ---------- trivia_boards ----------
+
+
+class Board(Row):
+    id: int
+    organization_id: int
+    name: str
+    description: str
+    definition: BoardDefinition
+    created_at: datetime
+    updated_at: datetime
+
+
+class NewBoard(BaseModel):
+    organization_id: int
+    name: str
+    description: str
+    definition: BoardDefinition
+
+
+class BoardChanges(Changes):
+    name: str | None = None
+    description: str | None = None
+    definition: BoardDefinition | None = None
+
+
+# ---------- trivia_games + trivia_game_categories + trivia_players ----------
+
+
+class Player(Row):
+    id: int
+    game_id: int
+    name: str
+    position: int
+
+
+class Game(Row):
+    id: int
+    organization_id: int
+    name: str
+    status: GameStatus
+    creator_id: int | None
+    creator_name: str | None  # joined
+    board_id: int | None
+    board_name: str | None  # joined
+    deck_id: int | None
+    deck_name: str | None  # joined
+    snapshot: GameSnapshot | None
+    started_at: datetime | None
+    finished_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class NewGame(BaseModel):
+    organization_id: int
+    name: str
+    creator_id: int
+    board_id: int | None
+    deck_id: int | None
+
+
+class GameChanges(Changes):
+    name: str | None = None
+    board_id: int | None = None
+    deck_id: int | None = None

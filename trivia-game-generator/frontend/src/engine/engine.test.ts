@@ -1,16 +1,25 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { validateBoard } from "./board";
 import { activePlayer, applyAction, createGame, normalizeAnswer } from "./engine";
 import { legalDestinations } from "./movement";
-import type { Action, BoardDefinition, DeckDefinition, GameState } from "./types";
+import { resolveGame, validateBoardFile } from "./resolve";
+import type { Action, BoardDefinition, BoardFile, DeckFile, GameState, SlotMapping } from "./types";
 
 const PUBLIC = join(__dirname, "../../public");
 const readJson = <T,>(path: string): T => JSON.parse(readFileSync(join(PUBLIC, path), "utf8"));
-const deck = readJson<DeckDefinition>("decks/general.json");
+const deckFile = readJson<DeckFile>("decks/general.json");
 const manifest = readJson<{ boards: { file: string }[] }>("boards/index.json");
-const loadBoard = (id: string) => readJson<BoardDefinition>(`boards/${id}.json`);
+const loadBoardFile = (id: string) => readJson<BoardFile>(`boards/${id}.json`);
+/** Slots A, B, C, D play science, history, art, pop. */
+const mappingFor = (b: BoardFile): SlotMapping => Object.fromEntries(b.slots.map((s, i) => [s, deckFile.categories[i]]));
+
+function resolve(file: BoardFile) {
+  const r = resolveGame(file, mappingFor(file), deckFile);
+  if (!r.board) throw new Error(r.errors.join("\n"));
+  return { ...r, board: r.board, deck: r.deck! };
+}
+const loadBoard = (id: string): BoardDefinition => resolve(loadBoardFile(id)).board;
 
 const PLAYERS = [
   { name: "Ana", color: "#e11d48" },
@@ -18,9 +27,10 @@ const PLAYERS = [
 ];
 const NOW = 1_000_000;
 
-function newGame(id: string, patch: (b: BoardDefinition) => void = () => {}) {
-  const board = structuredClone(loadBoard(id));
-  patch(board);
+function newGame(id: string, patch: (b: BoardFile) => void = () => {}) {
+  const file = structuredClone(loadBoardFile(id));
+  patch(file);
+  const { board, deck } = resolve(file);
   return createGame(board, deck, PLAYERS, 42, NOW);
 }
 
@@ -31,19 +41,41 @@ function act(s: GameState, action: Action, now = NOW): GameState {
 }
 
 describe("example boards", () => {
-  it.each(manifest.boards.map((b) => b.file))("%s is valid", (file) => {
-    expect(validateBoard(readJson(file), deck)).toEqual([]);
+  it.each(manifest.boards.map((b) => b.file))("%s is valid on its own and with the sample deck", (file) => {
+    const board = readJson<BoardFile>(file);
+    expect(validateBoardFile(board)).toEqual([]);
+    expect(resolveGame(board, mappingFor(board), deckFile).errors).toEqual([]);
   });
 
   it("reports broken boards", () => {
-    const board = structuredClone(loadBoard("linear-basic"));
+    const board = structuredClone(loadBoardFile("linear-basic"));
     board.spaces[3].next = [99];
     board.spaces[0].type = "category";
+    board.spaces[0].slot = "A";
     board.config.track_type = "loop";
-    const errors = validateBoard(board, deck).join("\n");
+    const errors = validateBoardFile(board).join("\n");
     expect(errors).toMatch(/BRD-1/);
     expect(errors).toMatch(/missing space 99/);
     expect(errors).toMatch(/loop track cannot have a 'finish'/);
+  });
+
+  it("reports slot and mapping problems", () => {
+    const board = structuredClone(loadBoardFile("linear-basic"));
+    board.spaces[1].slot = "Z";
+    expect(validateBoardFile(board).join()).toMatch(/needs one of the slots A, B, C, D \(got Z\)/);
+
+    const ok = loadBoardFile("linear-basic");
+    const sameTwice = { ...mappingFor(ok), B: deckFile.categories[0] };
+    expect(resolveGame(ok, sameTwice, deckFile).errors.join()).toMatch(/different category/);
+    const { D: _omit, ...missing } = mappingFor(ok);
+    expect(resolveGame(ok, missing, deckFile).errors.join()).toMatch(/slot\(s\): D/);
+  });
+
+  it("resolves deck cards for the engine", () => {
+    const { deck } = resolve(loadBoardFile("linear-basic"));
+    const mc = deck.cards.find((c) => c.id === "science-1")!;
+    expect(mc.correct_answer).toBe(1); // "Au" is options[1]
+    expect(deck.cards.filter((c) => c.category === "grand_prize")).toHaveLength(4);
   });
 });
 

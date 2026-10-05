@@ -124,3 +124,10 @@ Now let's introduce more concepts (related to an organization)
 An organization user can create/edit categories, deck, boards and games 
 
 do you have any questions before proceeding ? 
+
+
+# claude.md
+initialize trivia-game-generator/CLAUDE.md with the results of this conversations and this firsts prompts we've implemented relevant to future work with you implementing more features.
+
+# impersonate
+root users are able to impersonate a member user of any organization, in which case they see exactly the same experience as this member. When impersonating there must be a top-banner saying that with the option to "exit" impersonate experience. The objective is that root users can test any member user experience without having to logout / login

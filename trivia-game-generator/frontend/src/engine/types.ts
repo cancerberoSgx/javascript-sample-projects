@@ -1,6 +1,60 @@
 // Types mirror rules.md §1–§2. Rule IDs in comments refer to that file.
 
-// ---------- Serialized formats (what lives in the JSON files) ----------
+// ---------- File / API formats (schema_version 2) ----------
+// What lives in the JSON files and in the backend. A board has no categories, only
+// category *slots*. A game maps each slot to a real category (rules.md §2.1, SER-*).
+// resolve.ts turns these into the engine formats below.
+
+export interface BoardFileSpace {
+  index: number;
+  type: SpaceType;
+  slot: string | null; // required for "category" and "hq"
+  next: number[];
+  pos: { x: number; y: number };
+  label?: string;
+}
+
+export interface BoardFile {
+  schema_version: 2;
+  id?: string;
+  name: string;
+  description?: string;
+  config: Partial<GameConfig>; // merged over DEFAULT_CONFIG
+  slots: string[];
+  spaces: BoardFileSpace[];
+}
+
+export interface CategoryDef {
+  id: string;
+  name: string;
+  description?: string;
+  color: string;
+}
+
+export interface DeckCard {
+  id: string;
+  category: string; // category id
+  question: string;
+  options: string[] | null; // null = open-ended
+  answer: string; // for multiple choice, one of `options`
+  difficulty: 1 | 2 | 3;
+  grand_prize?: boolean; // only drawn for the final question (WIN-F1)
+}
+
+export interface DeckFile {
+  schema_version: 2;
+  id?: string;
+  name: string;
+  description?: string;
+  categories: CategoryDef[];
+  cards: DeckCard[];
+}
+
+/** Which category plays each board slot. */
+export type SlotMapping = Record<string, Category>;
+
+// ---------- Engine formats ----------
+// A board whose slots are resolved to categories, and a deck in the engine's card shape.
 
 export type TrackType = "linear" | "loop";
 export type WinCondition = "finish" | "collection" | "turn_limit";
@@ -34,13 +88,11 @@ export interface Category {
   color: string;
 }
 
-/** A board file: public/boards/<id>.json */
+/** A resolved board: each space's category is a real category id. Built by resolveBoard(). */
 export interface BoardDefinition {
-  schema_version: 1;
-  id: string;
+  id?: string;
   name: string;
   description?: string;
-  deck: string; // path relative to public/, e.g. "decks/general.json"
   config: Partial<GameConfig>; // merged over DEFAULT_CONFIG
   categories: Category[];
   spaces: Space[];
@@ -55,10 +107,8 @@ export interface Card {
   difficulty: 1 | 2 | 3;
 }
 
-/** A deck file: public/decks/<id>.json */
+/** Engine deck: grand prize cards use the GRAND_PRIZE category. Built by resolveDeck(). */
 export interface DeckDefinition {
-  schema_version: 1;
-  id: string;
   name: string;
   cards: Card[];
 }
