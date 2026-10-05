@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "id": "linear-basic",
+  "name": "Linear Snake",
+  "description": "20 spaces in a straight line laid out as a snake. Win by reaching the finish and answering the Grand Prize, or by collecting all 4 HQ tokens.",
+  "deck": "decks/general.json",
+  "config": {"track_type": "linear", "win_conditions": ["finish", "collection"]},
+  "categories": [{"id": "science", "name": "Science", "color": "#3b82f6"}, {"id": "history", "name": "History", "color": "#d97706"}, {"id": "art", "name": "Art", "color": "#db2777"}, {"id": "pop", "name": "Pop Culture", "color": "#16a34a"}],
+  "spaces": [
+    {"index": 0, "type": "start", "category": null, "next": [1], "pos": {"x": 0, "y": 0}},
+    {"index": 1, "type": "category", "category": "science", "next": [2], "pos": {"x": 1, "y": 0}},
+    {"index": 2, "type": "category", "category": "history", "next": [3], "pos": {"x": 2, "y": 0}},
+    {"index": 3, "type": "hq", "category": "science", "next": [4], "pos": {"x": 3, "y": 0}},
+    {"index": 4, "type": "category", "category": "art", "next": [5], "pos": {"x": 4, "y": 0}},
+    {"index": 5, "type": "roll_again", "category": null, "next": [6], "pos": {"x": 4, "y": 1}},
+    {"index": 6, "type": "category", "category": "pop", "next": [7], "pos": {"x": 3, "y": 1}},
+    {"index": 7, "type": "hq", "category": "history", "next": [8], "pos": {"x": 2, "y": 1}},
+    {"index": 8, "type": "category", "category": "science", "next": [9], "pos": {"x": 1, "y": 1}},
+    {"index": 9, "type": "category", "category": "history", "next": [10], "pos": {"x": 0, "y": 1}},
+    {"index": 10, "type": "penalty", "category": null, "next": [11], "pos": {"x": 0, "y": 2}},
+    {"index": 11, "type": "category", "category": "art", "next": [12], "pos": {"x": 1, "y": 2}},
+    {"index": 12, "type": "hq", "category": "art", "next": [13], "pos": {"x": 2, "y": 2}},
+    {"index": 13, "type": "category", "category": "pop", "next": [14], "pos": {"x": 3, "y": 2}},
+    {"index": 14, "type": "wildcard", "category": null, "next": [15], "pos": {"x": 4, "y": 2}},
+    {"index": 15, "type": "category", "category": "science", "next": [16], "pos": {"x": 4, "y": 3}},
+    {"index": 16, "type": "hq", "category": "pop", "next": [17], "pos": {"x": 3, "y": 3}},
+    {"index": 17, "type": "category", "category": "history", "next": [18], "pos": {"x": 2, "y": 3}},
+    {"index": 18, "type": "category", "category": "art", "next": [19], "pos": {"x": 1, "y": 3}},
+    {"index": 19, "type": "finish", "category": null, "next": [], "pos": {"x": 0, "y": 3}}
+  ]
+}

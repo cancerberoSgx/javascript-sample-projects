@@ -1,0 +1,29 @@
+{
+  "boards": [
+    {
+      "file": "boards/linear-basic.json",
+      "name": "Linear Snake",
+      "description": "20 spaces in a straight line laid out as a snake. Win by reaching the finish and answering the Grand Prize, or by collecting all 4 HQ tokens."
+    },
+    {
+      "file": "boards/loop-classic.json",
+      "name": "Classic Loop",
+      "description": "24 spaces in a closed loop. There is no finish: win by collecting all 4 HQ tokens, or have the best score after 12 rounds."
+    },
+    {
+      "file": "boards/linear-forks.json",
+      "name": "Forked Paths",
+      "description": "A linear track with two forks. Fork 1: a short branch with a penalty, or a longer one with a roll-again. Fork 2: a direct penalty path, or a scenic detour past two HQs."
+    },
+    {
+      "file": "boards/loop-shortcut.json",
+      "name": "Loop with Shortcut",
+      "description": "A 20-space loop with a 4-space shortcut down the middle. The shortcut has the only Pop Culture HQ and a penalty. Collect all tokens, or have the best score after 10 rounds."
+    },
+    {
+      "file": "boards/special-sandbox.json",
+      "name": "Special Spaces Sandbox",
+      "description": "A short track full of special spaces, played with a 4-sided die and a 15 s timer. Good for testing roll-again caps, penalty skips and wildcard choices."
+    }
+  ]
+}

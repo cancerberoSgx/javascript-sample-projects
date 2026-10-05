@@ -1,0 +1,280 @@
+# Trivia Board Game: Rules Specification
+
+This is the source of truth for game logic. Every rule has an ID (e.g. `MOV-3`) so it can be cited in code, tests, and discussions.
+
+Conventions:
+- **MUST** means a hard requirement. **DEFAULT** means behavior that a config flag (§1) can change.
+- Rules marked *(decision)* filled a gap or settled a conflict in the original notes. §9 lists them for review.
+
+---
+
+## 1. Configuration
+
+All tunable behavior lives in one `GameConfig` object. The engine MUST NOT hard-code these values.
+
+| Flag | Type | Default | Meaning |
+|---|---|---|---|
+| `track_type` | `"linear" \| "loop"` | `"linear"` | Shape of the board (§2.1). |
+| `dice_sides` | int | `6` | Dice returns 1..`dice_sides`. |
+| `answer_time_limit_sec` | int | `30` | Countdown for each question. |
+| `bonus_roll_on_correct` | bool | `true` | A correct answer grants an extra roll in the same turn. |
+| `max_rolls_per_turn` | int | `3` | Cap on rolls in one turn (initial + bonus + roll-again), so a turn can't loop forever. |
+| `win_conditions` | set of `"finish" \| "collection" \| "turn_limit"` | `{"finish","collection"}` | Which win checks are active (§7). `finish` needs `track_type = "linear"`. |
+| `max_rounds` | int \| null | `null` | Used only by the `turn_limit` win condition. |
+| `fuzzy_answer_check` | bool | `false` | Use an LLM judge for open-ended answers (§5.3). |
+| `reuse_cards` | bool | `false` | If false, a card is never asked twice until its category's deck is exhausted. |
+
+---
+
+## 2. Data Model
+
+### 2.1 Board
+The board is a **directed graph of spaces**, not just an array, because forks (§6.2) need it. A board with no forks is a simple path. A **fork** is any space with more than one entry in `next`; it is a property of the graph, not a space type, so a fork can also be a category or HQ space.
+
+```ts
+type SpaceType = "start" | "category" | "hq" | "wildcard" | "roll_again" | "penalty" | "finish";
+
+interface Space {
+  index: number;            // 0..N-1, unique
+  type: SpaceType;
+  category: string | null;  // required for "category" and "hq"; null otherwise
+  next: number[];           // indices of following spaces; length > 1 = fork
+  pos: { x: number; y: number }; // layout coordinates in grid units (fractions allowed), set by the board author
+}
+
+interface Board {
+  spaces: Space[];          // N spaces
+  categories: { id: string; name: string; color: string }[]; // playable categories; spaces and cards use the id
+}
+```
+
+- `BRD-1` Space `0` MUST be of type `start`.
+- `BRD-2` Linear track: space `N-1` MUST be of type `finish`, with `next = []`.
+- `BRD-3` Loop track: following `next` from space `N-1` returns to `0`. A loop has no `finish` space.
+- `BRD-4` Each category in `Board.categories` MUST have at least one `hq` space, or the `collection` win can never happen.
+- `BRD-5` Each category MUST have at least one card in the deck (§2.2).
+
+### 2.2 Cards
+```ts
+interface Card {
+  id: string;
+  category: string;          // a Board category, or "grand_prize"
+  question: string;
+  options: string[] | null;  // 2..4 choices for multiple choice; null for open-ended
+  correct_answer: string | number; // option index (MC) or answer text (open-ended)
+  difficulty: 1 | 2 | 3;     // 1 Easy, 2 Medium, 3 Hard
+}
+```
+- `CRD-1` For multiple-choice cards, `correct_answer` is the 0-based index into `options`.
+- `CRD-2` Each category has its own shuffled deck. "Draw" means taking the top card of that deck.
+- `CRD-3` When a deck runs out, reshuffle its used cards into a new deck. *(decision)*
+- `CRD-4` `grand_prize` cards come from a separate deck and SHOULD all be `difficulty: 3`.
+
+### 2.3 Dice
+- `DIE-1` `roll()` returns a uniform random integer in `[1, dice_sides]`.
+- `DIE-2` The RNG MUST be injectable (seedable) so tests are deterministic.
+
+### 2.4 Players
+```ts
+interface Player {
+  id: string;
+  name: string;
+  current_space: number;     // starts at 0
+  inventory: Set<string>;    // categories collected at HQ spaces (one token per category)
+  score: number;             // starts at 0
+  skip_next_turn: boolean;   // starts false
+}
+```
+- `PLY-1` Players play in a fixed order: the order they joined, or a randomized order. The order MUST NOT change during the game.
+- `PLY-2` Inventory is a **set**: a second HQ win for a category that is already collected adds score but no new token.
+
+### 2.5 Game State
+```ts
+interface GameState {
+  config: GameConfig;
+  board: Board;
+  players: Player[];
+  active_player: number;     // index into players
+  round: number;             // +1 each time active_player wraps to 0
+  rolls_this_turn: number;
+  phase: Phase;              // see §3
+  current_card: Card | null;
+  winner: string | null;     // player id
+}
+```
+
+---
+
+## 3. Turn State Machine
+
+Main path: `TURN_START → ROLL → AWAIT_MOVE → MOVE → RESOLVE_SPACE → DRAW_CARD → AWAIT_ANSWER → EVALUATE → APPLY_RESULT → TURN_END`
+
+| From | Condition | To |
+|---|---|---|
+| `TURN_START` | `skip_next_turn` is true | `TURN_END` |
+| `TURN_START` | player is on `finish` (linear) | `DRAW_CARD` (Grand Prize) |
+| `TURN_START` | otherwise | `ROLL` |
+| `ROLL` | rolled `R`; legal destinations computed (FRK-1) | `AWAIT_MOVE` |
+| `AWAIT_MOVE` | player picked a legal destination | `MOVE` |
+| `MOVE` | token placed on the destination | `RESOLVE_SPACE` |
+| `RESOLVE_SPACE` | space has a card to draw | `DRAW_CARD` |
+| `RESOLVE_SPACE` | `wildcard` | `AWAIT_CATEGORY` |
+| `AWAIT_CATEGORY` | player picked a category | `DRAW_CARD` |
+| `RESOLVE_SPACE` | `roll_again` and rolls left | `ROLL` |
+| `RESOLVE_SPACE` | anything else (start, penalty, no rolls left) | `TURN_END` |
+| `DRAW_CARD` | card shown | `AWAIT_ANSWER` |
+| `AWAIT_ANSWER` | answer received or timer expired | `EVALUATE` |
+| `EVALUATE` | result decided | `APPLY_RESULT` |
+| `APPLY_RESULT` | a win condition is met | `GAME_OVER` |
+| `APPLY_RESULT` | correct, bonus roll on, rolls left | `ROLL` |
+| `APPLY_RESULT` | otherwise | `TURN_END` |
+| `TURN_END` | round limit reached (`turn_limit`) | `GAME_OVER` |
+| `TURN_END` | otherwise | `TURN_START` (next player) |
+
+`Phase` = `TURN_START | ROLL | AWAIT_MOVE | MOVE | AWAIT_CATEGORY | RESOLVE_SPACE | DRAW_CARD | AWAIT_ANSWER | EVALUATE | APPLY_RESULT | TURN_END | GAME_OVER`
+
+- `SM-1` Only one phase is active at a time. The engine moves between phases only through the transitions in this table.
+- `SM-2` Only `ROLL`, `AWAIT_MOVE`, `AWAIT_CATEGORY` (wildcard) and `AWAIT_ANSWER` wait for player input. Every other phase runs automatically.
+- `SM-3` Only the active player may send input. Input from other players or in the wrong phase MUST be rejected.
+
+---
+
+## 4. Phase Rules
+
+### 4.1 TURN_START
+- `TS-1` Set `rolls_this_turn = 0`.
+- `TS-2` If the active player's `skip_next_turn` is true: set it to false and go straight to `TURN_END`. No roll happens.
+- `TS-3` Linear track only: if the player is already on the `finish` space (they missed the Grand Prize earlier), skip rolling and go to `DRAW_CARD` with a Grand Prize card (§7.1). *(decision)*
+
+### 4.2 ROLL
+- `ROL-1` The active player triggers the roll. `R = roll()`, then increment `rolls_this_turn`.
+
+### 4.3 MOVE
+The engine works out every space the roll can reach, and the player picks one (§6.2).
+- `MOV-1` A legal destination is any space reached by following `next` edges exactly `R` times from the current space, taking any branch at each fork.
+- `MOV-2` Linear track: if the player reaches `finish` before using all `R` steps, they stop there. Extra steps are lost, which is the same as `min(current + R, N-1)`.
+- `MOV-3` Loop track: movement wraps from `N-1` back to `0`, the same as `(current + R) mod N`.
+- `MOV-4` Only the space where movement ends triggers an effect. Spaces passed through do nothing.
+- `MOV-5` Several players may stand on the same space. They do not interact.
+
+### 4.4 RESOLVE_SPACE
+The type of the landing space decides what happens next:
+
+| Space type | Effect |
+|---|---|
+| `start` | No card. Go to `TURN_END`. |
+| `category` | Draw from that space's category deck. |
+| `hq` | Draw from that space's category deck. A correct answer also gives a token (§4.7). |
+| `wildcard` | The player picks any category, then draws from it. *(decision)* |
+| `roll_again` | No card. Go to `ROLL` if `rolls_this_turn < max_rolls_per_turn`, otherwise `TURN_END`. |
+| `penalty` | No card. Set `skip_next_turn = true`, then `TURN_END`. *(decision: no question on a penalty space)* |
+| `finish` | Draw a Grand Prize card (§7.1). |
+
+### 4.5 DRAW_CARD / AWAIT_ANSWER
+- `TRV-1` Draw the top card of the chosen deck and set `current_card`.
+- `TRV-2` Show the question, plus options if it is multiple choice, to **all** players. Only the active player answers.
+- `TRV-3` Start the countdown when the question appears. Track the deadline on the server, never on the client.
+- `TRV-4` The player sends exactly one answer. Nothing can be changed after submitting.
+- `TRV-5` If the timer runs out with no answer, the result is `timeout`, which counts as incorrect.
+
+### 4.6 EVALUATE
+Result is one of `correct | incorrect | timeout`.
+- `EVL-1` Multiple choice: correct only if the selected index equals `correct_answer`.
+- `EVL-2` Open-ended: normalize both strings (trim, lowercase, collapse spaces, remove accents and punctuation). Correct if they are equal.
+- `EVL-3` If `fuzzy_answer_check` is on and EVL-2 fails, ask the LLM judge whether the answer is roughly equivalent (e.g. "one third" ≈ "-1/3"). Its yes/no answer is final.
+- `EVL-4` The timer only decides whether the answer arrived in time. Time spent in EVL-3 judging does not count against the player.
+
+### 4.7 APPLY_RESULT
+**If correct:**
+- `RES-1` `score += card.difficulty`.
+- `RES-2` If the landing space is `hq`, add its category to `inventory` (a set, see PLY-2).
+- `RES-3` If it was a Grand Prize card, the player wins (§7.1).
+- `RES-4` Run CHECK_WIN (§7) right away. If someone has won, go to `GAME_OVER`.
+- `RES-5` If `bonus_roll_on_correct` is on and `rolls_this_turn < max_rolls_per_turn`, go to `ROLL`. Otherwise go to `TURN_END`.
+
+**If incorrect or timeout:**
+- `RES-6` No reward and no penalty, and the player keeps their position. Go to `TURN_END`.
+
+### 4.8 TURN_END
+- `TE-1` Clear `current_card`.
+- `TE-2` `active_player = (active_player + 1) mod players.length`. If this wraps to 0, increment `round`.
+- `TE-3` If `turn_limit` is active and `round > max_rounds`, run the turn-limit win check (§7.3).
+- `TE-4` Go to `TURN_START`.
+
+---
+
+## 5. Scoring Summary
+- Correct answer: +1 / +2 / +3 points, matching difficulty 1 / 2 / 3.
+- Wrong answer or timeout: no change.
+- Scores never go down.
+- Score decides the `turn_limit` win (§7.3) and is shown on the progress board. It does not decide the `finish` or `collection` wins.
+
+---
+
+## 6. Special Spaces
+
+### 6.1 Roll Again
+See RESOLVE_SPACE. It counts toward `max_rolls_per_turn`.
+
+### 6.2 Fork (decision node)
+- `FRK-1` After the roll, the engine lists every legal destination (MOV-1, MOV-2), each with one path that reaches it. With no fork in reach there is exactly one.
+- `FRK-2` The player picks the destination directly, which also picks the branch. Any other space MUST be rejected. When two paths reach the same space, the path taken doesn't matter (MOV-4).
+- `FRK-3` Picking a destination has no timer. *(decision)*
+- `FRK-4` Every branch MUST rejoin the main path, or reach `finish` on a linear track. No dead ends.
+
+### 6.3 Penalty
+- `PEN-1` Landing here sets `skip_next_turn = true` and ends the turn.
+- `PEN-2` A skipped turn is used up at the player's next `TURN_START` (TS-2). Penalties don't stack: landing on a second one before the skip is used still costs only one turn.
+
+---
+
+## 7. Win Conditions
+The engine checks every active condition after each `APPLY_RESULT` (RES-4) and at round limits (TE-3). The first player to meet any condition wins at once and the game goes to `GAME_OVER`. Turns are sequential, so two players can never win at the same moment.
+
+### 7.1 `finish`: Reach the end + Grand Prize (linear tracks only)
+- `WIN-F1` A player who reaches `finish` gets a Grand Prize question right away in that turn.
+- `WIN-F2` Correct: that player wins.
+- `WIN-F3` Wrong or timeout: the turn ends and the player stays on `finish`. Each later turn they skip the roll and get a new Grand Prize question (TS-3), until they answer one correctly or someone else wins first.
+
+### 7.2 `collection`: Collect every category
+- `WIN-C1` A player wins as soon as `inventory` holds every entry in `Board.categories`.
+
+### 7.3 `turn_limit` (optional)
+- `WIN-T1` After `max_rounds` full rounds, the highest score wins.
+- `WIN-T2` Ties are broken by most inventory tokens, then by furthest position. If still tied, the game is a draw. *(decision)*
+
+---
+
+## 7b. Serialization (board and deck files)
+A game is defined by data files, so the generator can produce new games without code changes. Today they are static files in `frontend/public/`. Later they will come from the server or DB in the same format.
+
+- `SER-1` `boards/index.json` lists the available boards: `{ "boards": [{ "file", "name", "description" }] }`.
+- `SER-2` A board file is a `BoardDefinition`: `schema_version`, `id`, `name`, `description`, `deck` (path to a deck file), `config` (a *partial* `GameConfig` merged over the §1 defaults), `categories`, and `spaces` (§2.1).
+- `SER-3` A deck file is `{ schema_version, id, name, cards: Card[] }` (§2.2). Several boards can share one deck.
+- `SER-4` A board is validated on load (BRD-*, FRK-4, CRD-1, config sanity). A board that fails validation can be viewed but not played.
+- `SER-5` `schema_version` changes whenever the format changes in a breaking way.
+
+---
+
+## 8. Invariants (good test targets)
+- `INV-1` `0 <= current_space < N` for every player at all times.
+- `INV-2` `score` never decreases. `inventory` never shrinks.
+- `INV-3` `rolls_this_turn <= max_rolls_per_turn`.
+- `INV-4` Once `winner` is set, no further game actions are accepted.
+- `INV-5` For a given seed and input sequence, the engine produces the same states (deterministic replay).
+
+---
+
+## 9. Decisions Made While Formalizing (review these)
+Answers to gaps or conflicts in the original draft. Change any of them and update the matching rule.
+
+1. **Loop vs. linear and the finish win**: "reach N-1" only makes sense on a linear track. On loop boards only `collection` and `turn_limit` apply.
+2. **Forks on an array**: forks need a graph, so `Space.next[]` replaces plain index arithmetic. The `mod N` and `min` formulas still describe fork-free boards.
+3. **Forks are resolved by picking the destination**, not a direction at each fork. The player clicks one of the highlighted landing spaces, which covers forks that are only passed through.
+4. **Infinite extra turns**: bonus rolls and roll-again spaces could chain forever, so `max_rolls_per_turn` caps them.
+5. **Penalty space**: no question is asked. The space only sets the skip.
+6. **Wildcard space**: the player picks the category.
+7. **Missing the Grand Prize**: the player stays on `finish` and tries again on later turns instead of being sent back.
+8. **Empty decks**: used cards are reshuffled.
+9. **Score has a purpose**: it decides the optional `turn_limit` win and the leaderboard.
+10. **Open-ended answers**: exact match after normalization, with an optional LLM judge (from the readme idea).
