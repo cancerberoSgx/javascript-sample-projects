@@ -82,6 +82,12 @@ aside { display: flex; flex-direction: column; gap: 12px; }
 .tabs { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
 .tabs button { border: 0; border-radius: 0; background: transparent; }
 .tabs button.on { background: var(--accent); color: #fff; }
+/* Main navigation: links (each tab has a URL), styled like the tab buttons */
+.tabs a { font-size: 14px; padding: 6px 10px; color: var(--text); text-decoration: none; }
+.tabs a:hover:not(.on) { background: var(--canvas-bg); }
+.tabs a.on { background: var(--accent); color: #fff; }
+h1 a { color: inherit; text-decoration: none; }
+a { color: var(--accent); }
 
 .turn-head { display: flex; align-items: center; gap: 8px; }
 .die { display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 8px; background: var(--text); color: var(--panel); font-weight: 800; font-size: 18px; margin-left: 4px; }
@@ -140,6 +146,7 @@ button.danger:disabled { color: var(--muted); border-color: var(--border); }
 .org-list ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .org-list li button { width: 100%; display: flex; justify-content: space-between; gap: 8px; text-align: left; border-color: transparent; background: transparent; }
 .org-list li button.on { background: var(--canvas-bg); border-color: var(--accent); }
+tr.on td { background: var(--canvas-bg); }
 .inline-form { display: flex; flex-direction: column; gap: 6px; padding: 8px; background: var(--canvas-bg); border-radius: 8px; }
 
 .grid-form { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 8px 12px; align-items: center; margin: 0; }

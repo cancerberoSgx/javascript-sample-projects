@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, type Organization, type Role, type User, type UserInput } from "../api";
 import { useAuth } from "../auth";
+import { NotFound, useRouteSelection } from "./common";
 
 // The backend enforces every rule; the UI only hides actions that would be rejected.
 // Root: all organizations and users. Member: own organization (read-only), create users
@@ -10,25 +11,25 @@ export function OrganizationsPage() {
   const { user: me } = useAuth();
   const isRoot = me!.role === "root";
   const [orgs, setOrgs] = useState<Organization[]>([]);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [loaded, setLoaded] = useState(false);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Members only see their own organization, so /organizations opens it
+  const { selectedId, selected, select, missing } = useRouteSelection("/organizations", { items: orgs, loaded, error });
 
   const reload = useCallback(async () => {
     try {
-      const list = await api.listOrganizations();
-      setOrgs(list);
-      setSelectedId((id) => (id && list.some((o) => o.id === id) ? id : (list[0]?.id ?? null)));
+      setOrgs(await api.listOrganizations());
     } catch (e) {
       setError((e as Error).message);
+    } finally {
+      setLoaded(true);
     }
   }, []);
 
   useEffect(() => {
     reload();
   }, [reload]);
-
-  const selected = orgs.find((o) => o.id === selectedId) ?? null;
 
   return (
     <div className={isRoot ? "orgs-page" : "orgs-page single"}>
@@ -45,14 +46,14 @@ export function OrganizationsPage() {
               onDone={async (created) => {
                 setCreating(false);
                 await reload();
-                if (created) setSelectedId(created.id);
+                if (created) select(created.id);
               }}
             />
           )}
           <ul>
             {orgs.map((o) => (
               <li key={o.id}>
-                <button className={o.id === selectedId ? "on" : ""} onClick={() => setSelectedId(o.id)}>
+                <button className={o.id === selectedId ? "on" : ""} onClick={() => select(o.id)}>
                   <span>{o.name}</span>
                   <span className="muted small">
                     {o.user_count} user{o.user_count === 1 ? "" : "s"}
@@ -67,9 +68,16 @@ export function OrganizationsPage() {
 
       <div className="org-detail">
         {error && <div className="error">{error}</div>}
+        {missing && <NotFound what="Organization" back="/organizations" />}
         {selected && (
           <>
-            <OrganizationPanel key={selected.id} org={selected} canEdit={isRoot} onChanged={reload} />
+            <OrganizationPanel
+              key={selected.id}
+              org={selected}
+              canEdit={isRoot}
+              onChanged={reload}
+              onDeleted={async () => (await reload(), select(null, true))}
+            />
             <UsersPanel org={selected} orgs={orgs} onChanged={reload} />
           </>
         )}
@@ -107,17 +115,27 @@ function NewOrganizationForm({ onDone }: { onDone: (created: Organization | null
   );
 }
 
-function OrganizationPanel({ org, canEdit, onChanged }: { org: Organization; canEdit: boolean; onChanged: () => Promise<void> }) {
+function OrganizationPanel({
+  org,
+  canEdit,
+  onChanged,
+  onDeleted,
+}: {
+  org: Organization;
+  canEdit: boolean;
+  onChanged: () => Promise<void>;
+  onDeleted: () => Promise<void>;
+}) {
   const [name, setName] = useState(org.name);
   const [newKey, setNewKey] = useState("");
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
-  const run = async (fn: () => Promise<unknown>, ok: string) => {
+  const run = async (fn: () => Promise<unknown>, ok: string, after = onChanged) => {
     try {
       await fn();
       setMsg({ ok: true, text: ok });
       setNewKey("");
-      await onChanged();
+      await after();
     } catch (e) {
       setMsg({ ok: false, text: (e as Error).message });
     }
@@ -161,7 +179,7 @@ function OrganizationPanel({ org, canEdit, onChanged }: { org: Organization; can
               className="danger"
               disabled={org.user_count > 0}
               title={org.user_count > 0 ? "Delete or move its users first" : ""}
-              onClick={() => confirm(`Delete organization "${org.name}"?`) && run(() => api.deleteOrganization(org.id), "Deleted.")}
+              onClick={() => confirm(`Delete organization "${org.name}"?`) && run(() => api.deleteOrganization(org.id), "Deleted.", onDeleted)}
             >
               Delete organization
             </button>

@@ -1,17 +1,13 @@
 import { useEffect, useState } from "react";
 import { api, type Board, type Category, type Deck, type GameDetail, type GameInput } from "../api";
 import type { SlotMapping } from "../engine/types";
-import { BoardPreview, ErrorBox, StatusBadge, categoryMapping, toBoardFile, useAction, useList } from "./common";
+import { BoardPreview, ErrorBox, NotFound, StatusBadge, categoryMapping, toBoardFile, useAction, useList, useRouteSelection } from "./common";
 
 export function GamesPage({ orgId }: { orgId: number }) {
   const games = useList(() => api.listGames(orgId), [orgId]);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const { selectedId, selected, select, missing } = useRouteSelection("/games", games, orgId);
   const [newName, setNewName] = useState("");
   const create = useAction();
-
-  useEffect(() => {
-    if (!games.items.some((g) => g.id === selectedId)) setSelectedId(games.items[0]?.id ?? null);
-  }, [games.items, selectedId]);
 
   return (
     <div className="orgs-page">
@@ -25,7 +21,7 @@ export function GamesPage({ orgId }: { orgId: number }) {
               const g = await api.createGame({ organization_id: orgId, name: newName });
               setNewName("");
               await games.reload();
-              setSelectedId(g.id);
+              select(g.id);
             });
           }}
         >
@@ -36,7 +32,7 @@ export function GamesPage({ orgId }: { orgId: number }) {
         <ul>
           {games.items.map((g) => (
             <li key={g.id}>
-              <button className={g.id === selectedId ? "on" : ""} onClick={() => setSelectedId(g.id)}>
+              <button className={g.id === selectedId ? "on" : ""} onClick={() => select(g.id)}>
                 <span>{g.name}</span>
                 <StatusBadge status={g.status} />
               </button>
@@ -45,13 +41,35 @@ export function GamesPage({ orgId }: { orgId: number }) {
         </ul>
       </section>
       <div className="org-detail">
-        {selectedId ? <GameEditor key={selectedId} gameId={selectedId} orgId={orgId} onChanged={games.reload} /> : <p className="muted">Create a game to get started.</p>}
+        {missing ? (
+          <NotFound what="Game" back="/games" />
+        ) : selected ? (
+          <GameEditor
+            key={selected.id}
+            gameId={selected.id}
+            orgId={orgId}
+            onChanged={games.reload}
+            onDeleted={async () => (await games.reload(), select(null, true))}
+          />
+        ) : (
+          games.loaded && !games.items.length && <p className="muted">Create a game to get started.</p>
+        )}
       </div>
     </div>
   );
 }
 
-function GameEditor({ gameId, orgId, onChanged }: { gameId: number; orgId: number; onChanged: () => Promise<void> }) {
+function GameEditor({
+  gameId,
+  orgId,
+  onChanged,
+  onDeleted,
+}: {
+  gameId: number;
+  orgId: number;
+  onChanged: () => Promise<void>;
+  onDeleted: () => Promise<void>;
+}) {
   const [game, setGame] = useState<GameDetail | null>(null);
   const boards = useList(() => api.listBoards(orgId), [orgId]);
   const decks = useList(() => api.listDecks(orgId), [orgId]);
@@ -87,7 +105,7 @@ function GameEditor({ gameId, orgId, onChanged }: { gameId: number; orgId: numbe
             Mark as finished
           </button>
         )}
-        <button className="danger" onClick={() => confirm(`Delete game "${game.name}"?`) && action.run(async () => (await api.deleteGame(game.id), onChanged()))}>
+        <button className="danger" onClick={() => confirm(`Delete game "${game.name}"?`) && action.run(async () => (await api.deleteGame(game.id), onDeleted()))}>
           Delete game
         </button>
       </StartedGame>
@@ -136,7 +154,7 @@ function GameEditor({ gameId, orgId, onChanged }: { gameId: number; orgId: numbe
           <button className="primary" disabled={game.setup_errors.length > 0 || action.busy} onClick={() => action.run(async () => apply(await api.startGame(game.id)))}>
             ▶ Start game
           </button>
-          <button className="danger" onClick={() => confirm(`Delete game "${game.name}"?`) && action.run(async () => (await api.deleteGame(game.id), onChanged()))}>
+          <button className="danger" onClick={() => confirm(`Delete game "${game.name}"?`) && action.run(async () => (await api.deleteGame(game.id), onDeleted()))}>
             Delete game
           </button>
         </div>

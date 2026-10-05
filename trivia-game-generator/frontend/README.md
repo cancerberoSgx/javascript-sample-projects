@@ -8,6 +8,25 @@ A React + Vite app. After login it shows:
 - **Organizations** (root) / **My organization** (member): CRUD for organizations and their users. Root users also get an organization picker on the content tabs.
 - **Boards demo** (root only): loads board definitions from JSON and lets you play turns on them (hot-seat, 1–4 players). The game logic follows [`../rules.md`](../rules.md). Code comments cite its rule IDs.
 
+## URLs
+
+Every tab has its own address ([React Router](https://reactrouter.com), `BrowserRouter` in `src/App.tsx`), so links can be shared, reloaded and bookmarked, and Back/Forward work:
+
+| URL | Shows |
+|---|---|
+| `/` | Redirects to `/games` |
+| `/games/:id`, `/boards/:id`, `/decks/:id` | That item, selected in its list. The bare list URL (`/games`) opens the first item |
+| `/categories`, `/categories/:id` | The categories table; with an id, that category's edit form |
+| `/organizations/:id` | That organization and its users. Members only ever see their own |
+| `/demo` | Boards demo (root only; others are sent to `/games`) |
+
+- Logged out, the login page shows on the requested URL and opens it after login.
+- A root user can open a link to any organization's item: `ContentRoute` looks up the item's `organization_id` and switches the organization picker to it. Links inside the app pass the organization in the navigation state (`RouteState`), which skips that lookup.
+- An id that doesn't exist, or that belongs to an organization the user can't see, shows "… not found". Unknown paths show "Page not found".
+- Pages get the selection from `useRouteSelection` (`components/common.tsx`) and change it by navigating, never with local state.
+- Impersonating goes to `/games`, exiting goes back to `/organizations/<the member's organization>`, and logging out goes to `/`.
+- The Vite dev server already falls back to `index.html` for these paths. A production static server must do the same (serve `index.html` for unknown non-`/api` paths).
+
 Usually run through `docker/docker-compose.yml`. To run it locally instead (the backend must be running on :8000):
 
 ```bash
@@ -37,6 +56,7 @@ Impersonation: root users get an **Impersonate** button on member users (Organiz
 | `src/components/` | Canvas board renderer, game panels, login and Organizations pages |
 | `src/BoardsDemo.tsx` | The boards demo tab |
 | `src/api.ts` | REST client for the backend |
+| `src/App.tsx` | Header, tabs and routes |
 
 ## Example boards
 

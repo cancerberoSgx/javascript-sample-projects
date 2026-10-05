@@ -1,18 +1,12 @@
 import { useEffect, useState } from "react";
 import { api, type Card, type CardInput, type Category, type Deck } from "../api";
-import { ErrorBox, useAction, useList } from "./common";
+import { ErrorBox, NotFound, useAction, useList, useRouteSelection } from "./common";
 
 export function DecksPage({ orgId }: { orgId: number }) {
   const decks = useList(() => api.listDecks(orgId), [orgId]);
   const categories = useList(() => api.listCategories(orgId), [orgId]);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const { selectedId, selected, select, missing } = useRouteSelection("/decks", decks, orgId);
   const [creating, setCreating] = useState(false);
-
-  useEffect(() => {
-    if (!decks.items.some((d) => d.id === selectedId)) setSelectedId(decks.items[0]?.id ?? null);
-  }, [decks.items, selectedId]);
-
-  const selected = decks.items.find((d) => d.id === selectedId) ?? null;
 
   return (
     <div className="orgs-page">
@@ -32,14 +26,14 @@ export function DecksPage({ orgId }: { orgId: number }) {
               const d = await api.createDeck({ organization_id: orgId, name, description });
               setCreating(false);
               await decks.reload();
-              setSelectedId(d.id);
+              select(d.id);
             }}
           />
         )}
         <ul>
           {decks.items.map((d) => (
             <li key={d.id}>
-              <button className={d.id === selectedId ? "on" : ""} onClick={() => setSelectedId(d.id)}>
+              <button className={d.id === selectedId ? "on" : ""} onClick={() => select(d.id)}>
                 <span>{d.name}</span>
                 <span className="muted small">{d.card_count} cards</span>
               </button>
@@ -48,10 +42,18 @@ export function DecksPage({ orgId }: { orgId: number }) {
         </ul>
       </section>
       <div className="org-detail">
-        {selected ? (
-          <DeckEditor key={selected.id} deck={selected} categories={categories.items} onChanged={decks.reload} />
+        {missing ? (
+          <NotFound what="Deck" back="/decks" />
+        ) : selected ? (
+          <DeckEditor
+            key={selected.id}
+            deck={selected}
+            categories={categories.items}
+            onChanged={decks.reload}
+            onDeleted={async () => (await decks.reload(), select(null, true))}
+          />
         ) : (
-          <p className="muted">Create a deck to start adding questions.</p>
+          decks.loaded && !decks.items.length && <p className="muted">Create a deck to start adding questions.</p>
         )}
       </div>
     </div>
@@ -97,7 +99,17 @@ export function NameForm({
   );
 }
 
-function DeckEditor({ deck, categories, onChanged }: { deck: Deck; categories: Category[]; onChanged: () => Promise<void> }) {
+function DeckEditor({
+  deck,
+  categories,
+  onChanged,
+  onDeleted,
+}: {
+  deck: Deck;
+  categories: Category[];
+  onChanged: () => Promise<void>;
+  onDeleted: () => Promise<void>;
+}) {
   const [name, setName] = useState(deck.name);
   const [description, setDescription] = useState(deck.description);
   const [cards, setCards] = useState<Card[]>([]);
@@ -134,7 +146,7 @@ function DeckEditor({ deck, categories, onChanged }: { deck: Deck; categories: C
             <button
               type="button"
               className="danger"
-              onClick={() => confirm(`Delete deck "${deck.name}" and its ${cards.length} cards?`) && action.run(async () => (await api.deleteDeck(deck.id), onChanged()))}
+              onClick={() => confirm(`Delete deck "${deck.name}" and its ${cards.length} cards?`) && action.run(async () => (await api.deleteDeck(deck.id), onDeleted()))}
             >
               Delete deck
             </button>

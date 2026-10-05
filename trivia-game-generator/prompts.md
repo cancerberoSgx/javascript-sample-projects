@@ -131,3 +131,26 @@ initialize trivia-game-generator/CLAUDE.md with the results of this conversation
 
 # impersonate
 root users are able to impersonate a member user of any organization, in which case they see exactly the same experience as this member. When impersonating there must be a top-banner saying that with the option to "exit" impersonate experience. The objective is that root users can test any member user experience without having to logout / login
+
+# routes
+in the frontend, each main tab games, boards, categories, boards, decks, organizations, etc must have a browser url address (route) like /organizations/1, /boards/1, games/1, etc
+
+# game experience
+
+there's a /games/1234/play page which displays the game play experience, right now leave it the same as the current "boards demo" experience where user given a board and deck can roll dice and switch user's turn. In the games/3 route (game details) a member can participate in the current game as one of the players for testing it.
+Also we want to save a game state (current user's space, scores, tokens, logs, etc). Member is able to save / load games. use a db table games_instances to store/load games. The objective is that a game can be interrupted to day, saved and load it by the member in the future to continue it 
+
+
+
+
+# FUTURE
+
+multiplayer game experience
+
+the creator of a game, can create a game without players
+the creator then can share a game like foo.com/games/123?code=12345 and if other players open the link in their own devices, the the app ask them for their name and if they want to enter (game's player names must be unique)
+when player confirms, the player is automatically created
+new players can only be created when the game status is "awaiting"
+member user can "start the game" when they want, if there are more than zero players. 
+the /game/123 screen must use websockets or polling so each player has a "real time" game experience, seeing when others roll dices, move and them selves. 
+

@@ -1,18 +1,25 @@
 import { useState } from "react";
 import { api, type Category } from "../api";
 import { SLOT_COLORS } from "../engine/resolve";
-import { ErrorBox, useAction, useList } from "./common";
+import { ErrorBox, NotFound, useAction, useList, useRouteSelection } from "./common";
 
 export function CategoriesPage({ orgId }: { orgId: number }) {
-  const { items, error, reload } = useList(() => api.listCategories(orgId), [orgId]);
-  const [editing, setEditing] = useState<Category | "new" | null>(null);
+  const list = useList(() => api.listCategories(orgId), [orgId]);
+  const { items, error, reload } = list;
+  // /categories/:id opens that category's edit form; a new one is only local state
+  const { selected, select, missing } = useRouteSelection("/categories", list, orgId, { autoSelect: false });
+  const [creating, setCreating] = useState(false);
+  const editing: Category | "new" | null = creating ? "new" : selected;
+  const close = () => (setCreating(false), select(null));
   const del = useAction();
+
+  if (missing) return <NotFound what="Category" back="/categories" />;
 
   return (
     <section className="panel content-page">
       <div className="row between">
         <h2>Categories</h2>
-        <button className="small" onClick={() => setEditing("new")}>
+        <button className="small" onClick={() => (setCreating(true), select(null))}>
           + New category
         </button>
       </div>
@@ -25,10 +32,10 @@ export function CategoriesPage({ orgId }: { orgId: number }) {
           orgId={orgId}
           suggestedColor={SLOT_COLORS[items.length % SLOT_COLORS.length]}
           onDone={async () => {
-            setEditing(null);
             await reload();
+            close();
           }}
-          onCancel={() => setEditing(null)}
+          onCancel={close}
         />
       )}
       <table className="players users">
@@ -42,19 +49,19 @@ export function CategoriesPage({ orgId }: { orgId: number }) {
         </thead>
         <tbody>
           {items.map((c) => (
-            <tr key={c.id}>
+            <tr key={c.id} className={c.id === selected?.id ? "on" : ""}>
               <td>
                 <span className="dot" style={{ background: c.color }} /> {c.name}
               </td>
               <td className="muted">{c.description}</td>
               <td>{c.card_count}</td>
               <td className="actions">
-                <button className="small" onClick={() => setEditing(c)}>
+                <button className="small" onClick={() => (setCreating(false), select(c.id))}>
                   Edit
                 </button>
                 <button
                   className="small danger"
-                  onClick={() => confirm(`Delete category "${c.name}"?`) && del.run(async () => (await api.deleteCategory(c.id), reload()))}
+                  onClick={() => confirm(`Delete category "${c.name}"?`) && del.run(async () => (await api.deleteCategory(c.id), await reload(), c.id === selected?.id && select(null, true)))}
                 >
                   Delete
                 </button>

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router";
 import { ApiError, type Board, type BoardDefinition } from "../api";
 import { placeholderMapping, resolveBoard, validateSlots } from "../engine/resolve";
 import type { BoardFile, Category, SlotMapping } from "../engine/types";
@@ -27,6 +28,8 @@ export function ErrorBox({ error }: { error: unknown }) {
 export function useList<T>(load: () => Promise<T[]>, deps: unknown[]) {
   const [items, setItems] = useState<T[]>([]);
   const [error, setError] = useState<unknown>(null);
+  /** True once the first load finished (successfully or not). */
+  const [loaded, setLoaded] = useState(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const fn = useCallback(load, deps);
   const reload = useCallback(async () => {
@@ -35,12 +38,61 @@ export function useList<T>(load: () => Promise<T[]>, deps: unknown[]) {
       setError(null);
     } catch (e) {
       setError(e);
+    } finally {
+      setLoaded(true);
     }
   }, [fn]);
   useEffect(() => {
     reload();
   }, [reload]);
-  return { items, error, reload };
+  return { items, error, loaded, reload };
+}
+
+/** Navigation state saying which organization the target item belongs to, so the app
+ *  doesn't have to look it up (see ContentRoute in App.tsx). */
+export interface RouteState {
+  orgId?: number;
+}
+
+/**
+ * The list item selected by the URL (`/games/:id`). On the bare list URL (`/games`) it opens
+ * the first item, so the address bar always names what's on screen. `missing` is true when
+ * the URL names an item that isn't in the loaded list (deleted, other organization, typo).
+ */
+export function useRouteSelection<T extends { id: number }>(
+  base: string,
+  list: { items: T[]; loaded: boolean; error: unknown },
+  orgId?: number,
+  { autoSelect = true } = {},
+) {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const selectedId = id === undefined ? null : Number(id);
+  const first = list.items[0]?.id;
+
+  const select = useCallback(
+    (itemId: number | null, replace = false) => navigate(itemId === null ? base : `${base}/${itemId}`, { replace, state: { orgId } satisfies RouteState }),
+    [navigate, base, orgId],
+  );
+
+  useEffect(() => {
+    if (autoSelect && id === undefined && first !== undefined) select(first, true);
+  }, [autoSelect, id, first, select]);
+
+  const selected = list.items.find((i) => i.id === selectedId) ?? null;
+  const missing = list.loaded && !list.error && selectedId !== null && !selected;
+  return { selectedId, selected, select, missing };
+}
+
+/** Shown when the URL names something that doesn't exist (or that you can't see). */
+export function NotFound({ what, back }: { what: string; back?: string }) {
+  return (
+    <section className="panel">
+      <h2>{what} not found</h2>
+      <p className="muted">It may have been deleted, or it belongs to another organization.</p>
+      {back && <Link to={back}>← Back to the list</Link>}
+    </section>
+  );
 }
 
 /** Runs an async action, keeping its error for display. */

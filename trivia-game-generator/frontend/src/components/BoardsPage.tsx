@@ -4,7 +4,7 @@ import { resolveConfig } from "../engine/board";
 import { loadManifest, type ManifestEntry } from "../engine/loader";
 import { validateBoardFile } from "../engine/resolve";
 import type { BoardFile } from "../engine/types";
-import { BoardPreview, ErrorBox, boardFile, useAction, useList } from "./common";
+import { BoardPreview, ErrorBox, NotFound, boardFile, useAction, useList, useRouteSelection } from "./common";
 import { NameForm } from "./DecksPage";
 
 const BLANK: BoardDefinition = {
@@ -27,7 +27,7 @@ export function formatDefinition(d: BoardDefinition): string {
 
 export function BoardsPage({ orgId }: { orgId: number }) {
   const boards = useList(() => api.listBoards(orgId), [orgId]);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const { selectedId, selected, select, missing } = useRouteSelection("/boards", boards, orgId);
   const [creating, setCreating] = useState(false);
   const [examples, setExamples] = useState<ManifestEntry[]>([]);
   const [template, setTemplate] = useState("blank");
@@ -35,11 +35,6 @@ export function BoardsPage({ orgId }: { orgId: number }) {
   useEffect(() => {
     loadManifest().then((m) => setExamples(m.boards), () => {});
   }, []);
-  useEffect(() => {
-    if (!boards.items.some((b) => b.id === selectedId)) setSelectedId(boards.items[0]?.id ?? null);
-  }, [boards.items, selectedId]);
-
-  const selected = boards.items.find((b) => b.id === selectedId) ?? null;
 
   return (
     <div className="orgs-page">
@@ -64,7 +59,7 @@ export function BoardsPage({ orgId }: { orgId: number }) {
               const b = await api.createBoard({ organization_id: orgId, name, description, definition });
               setCreating(false);
               await boards.reload();
-              setSelectedId(b.id);
+              select(b.id);
             }}
           >
             <select value={template} onChange={(e) => setTemplate(e.target.value)}>
@@ -80,7 +75,7 @@ export function BoardsPage({ orgId }: { orgId: number }) {
         <ul>
           {boards.items.map((b) => (
             <li key={b.id}>
-              <button className={b.id === selectedId ? "on" : ""} onClick={() => setSelectedId(b.id)}>
+              <button className={b.id === selectedId ? "on" : ""} onClick={() => select(b.id)}>
                 <span>{b.name}</span>
                 <span className="muted small">
                   {b.definition.spaces.length} spaces · {b.definition.slots.length} slots
@@ -91,13 +86,19 @@ export function BoardsPage({ orgId }: { orgId: number }) {
         </ul>
       </section>
       <div className="org-detail">
-        {selected ? <BoardEditor key={selected.id} board={selected} onChanged={boards.reload} /> : <p className="muted">Create a board to get started.</p>}
+        {missing ? (
+          <NotFound what="Board" back="/boards" />
+        ) : selected ? (
+          <BoardEditor key={selected.id} board={selected} onChanged={boards.reload} onDeleted={async () => (await boards.reload(), select(null, true))} />
+        ) : (
+          boards.loaded && !boards.items.length && <p className="muted">Create a board to get started.</p>
+        )}
       </div>
     </div>
   );
 }
 
-function BoardEditor({ board, onChanged }: { board: Board; onChanged: () => Promise<void> }) {
+function BoardEditor({ board, onChanged, onDeleted }: { board: Board; onChanged: () => Promise<void>; onDeleted: () => Promise<void> }) {
   const [name, setName] = useState(board.name);
   const [description, setDescription] = useState(board.description);
   const [json, setJson] = useState(() => formatDefinition(board.definition));
@@ -174,7 +175,7 @@ function BoardEditor({ board, onChanged }: { board: Board; onChanged: () => Prom
           </button>
           <button
             className="danger"
-            onClick={() => confirm(`Delete board "${board.name}"?`) && action.run(async () => (await api.deleteBoard(board.id), onChanged()))}
+            onClick={() => confirm(`Delete board "${board.name}"?`) && action.run(async () => (await api.deleteBoard(board.id), onDeleted()))}
           >
             Delete board
           </button>

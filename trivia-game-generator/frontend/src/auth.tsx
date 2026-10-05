@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { useNavigate } from "react-router";
 import { api, impersonatorTokenStore, setUnauthorizedHandler, tokenStore, type Me } from "./api";
 
 interface AuthState {
@@ -20,6 +21,7 @@ const AuthContext = createContext<AuthState | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<Me | null>(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   const clear = useCallback(() => {
     tokenStore.set(null);
@@ -72,6 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await api.logout().catch(() => {});
     }
     clear();
+    navigate("/"); // the next user starts on the home page, not on this one's last item
   };
 
   const impersonate = async (userId: number) => {
@@ -79,6 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     impersonatorTokenStore.set(tokenStore.get());
     tokenStore.set(res.access_token);
     setUser(await api.me());
+    navigate("/games"); // the current URL is root's view, maybe of another organization
   };
 
   const stopImpersonating = async () => {
@@ -87,7 +91,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       // already expired or revoked: nothing to undo
     }
-    if (!(await restoreImpersonator())) clear();
+    const memberOrg = user?.organization_id;
+    if (!(await restoreImpersonator())) return clear();
+    navigate(memberOrg ? `/organizations/${memberOrg}` : "/"); // back where impersonation usually starts
   };
 
   const refresh = async () => setUser(await api.me());

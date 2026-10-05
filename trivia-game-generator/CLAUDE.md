@@ -67,6 +67,7 @@ npx tsc -b && npx vitest run                            # engine tests run again
 ### Frontend
 - `api.ts` is the only HTTP client. Requests go to `/api` on the same origin, and Vite proxies them to `VITE_API_PROXY`. `ApiError.details` carries the server's validation lists, shown by `ErrorBox`.
 - `auth.tsx` holds the session. While impersonating, the root token waits in `trivia.token.impersonator`. A 401 handler gets the token that the failed request used and ignores stale ones. That fixed a race where several failing requests logged root out.
+- **Routes** (react-router, `App.tsx`): `/games/:id`, `/boards/:id`, `/decks/:id`, `/categories/:id`, `/organizations/:id`, `/demo`. The URL *is* the selection: pages use `useRouteSelection` (`common.tsx`) and navigate instead of keeping a selected id in state. For root, `ContentRoute` resolves a deep-linked item's organization; in-app links pass it as `RouteState` to skip that lookup. Details in `frontend/README.md`.
 - The UI only *hides* actions a user can't take. The backend enforces everything.
 - Content pages (`GamesPage`, `BoardsPage`, `DecksPage`, `CategoriesPage`) take an `orgId`. Root users pick one in the toolbar; members always use their own. The **Boards demo** tab (root only) plays the example JSON files locally.
 - `BoardCanvas` draws any resolved board. `BoardPreview` (in `common.tsx`) wraps it for boards that may have unmapped slots.
@@ -88,6 +89,7 @@ npx tsc -b && npx vitest run                            # engine tests run again
 5. Typed repositories (Pydantic row models, no dicts), pyright clean.
 6. Content: categories, decks + cards, boards (slots), games + players, start/finish with snapshot. Example content seeded. Management tabs in the UI.
 7. Impersonation of member users by root, with a banner and Exit.
+8. URL routes for every tab and item (`/games/1`, `/organizations/4`, …), with deep links surviving login.
 
 ## Known gaps and likely next steps
 - Play stored games: run the engine on `snapshot`, and persist game state and turns on the backend.

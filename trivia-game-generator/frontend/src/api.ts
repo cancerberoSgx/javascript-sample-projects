@@ -221,6 +221,7 @@ export const api = {
 
   // Content. orgId is only needed by root users working on another organization.
   listCategories: (orgId?: number) => request<Category[]>("GET", withOrg("/categories", orgId)),
+  getCategory: (id: number) => request<Category>("GET", `/categories/${id}`),
   createCategory: (body: { organization_id?: number; name: string; description: string; color: string }) =>
     request<Category>("POST", "/categories", body),
   updateCategory: (id: number, body: Partial<Pick<Category, "name" | "description" | "color">>) =>
@@ -237,6 +238,7 @@ export const api = {
   deleteCard: (deckId: number, cardId: number) => request<void>("DELETE", `/decks/${deckId}/cards/${cardId}`),
 
   listBoards: (orgId?: number) => request<Board[]>("GET", withOrg("/boards", orgId)),
+  getBoard: (id: number) => request<Board>("GET", `/boards/${id}`),
   createBoard: (body: { organization_id?: number; name: string; description: string; definition: BoardDefinition }) =>
     request<Board>("POST", "/boards", body),
   updateBoard: (id: number, body: { name?: string; description?: string; definition?: BoardDefinition }) =>
