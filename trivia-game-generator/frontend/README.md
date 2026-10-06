@@ -66,6 +66,8 @@ Impersonation: root users get an **Impersonate** button on member users (Organiz
 | `src/components/PlayTable.tsx` | The play UI shared by the Boards demo and live games: `useGamePlay` (dispatch + toasts; `useLocalGamePlay` runs the engine in the browser), `BoardView`, `GamePanels` |
 | `src/components/LiveGame.tsx` | Multiplayer: `useLiveGame` (the game's WebSocket), `LiveTable`, lobby list, join form, share link, host controls |
 | `src/components/GenerateCards.tsx` | Card generation: `useGeneration` (providers + the deck's open generation, polled while it runs), `GenerateForm`, `GenerationPanel` (progress, then the review list) |
+| `src/components/background.ts` | Backgrounds (rules.md §2.1.2): the pure layout math (`boardArea`, `cropRect`, `placeBackground`, tested in `background.test.ts`), `useBackgroundImage`, and `BackgroundLayer`, which renders the image once into an offscreen canvas that both board canvases copy every frame |
+| `src/components/BackgroundEditor.tsx` | `BackgroundEditor` (fit, crop rectangle, sliders) and `ImageLibrary` (upload, drop, import from URL, rename, delete). Used by the board editor and the game setup |
 | `src/components/PlayerGamePage.tsx` | `/games/:id?code=…`: the player's own device |
 
 ## Multiplayer
@@ -95,6 +97,16 @@ The generation runs on the server, so the page can be left and reopened. The pan
 - **Playable?** shows a checklist and every issue. Pointing at an issue makes its spaces glow, clicking it selects the space, and spaces with problems keep a red (error) or dashed amber (warning) outline.
 - Settings store only overrides of the defaults. Switching to a loop turns the finish into a space that leads back to the start, and turns off the finish win.
 - Arrows that would cross another tile are drawn bent around it, on the play board too.
+
+## Backgrounds
+
+A board's **Background** panel (in the editor's side column) sets its default background; undo/redo covers it, and the editor canvas shows it as it will look in a game. On a game that hasn't started, the **Background** panel chooses **Board's**, **Custom** (its own, starting from a copy of the board's) or **None**, next to a preview of the board; changes save by themselves (slider drags once they pause). Both use `BackgroundEditor`:
+
+- **Image**: pick one from the organization's library, upload one (button or drop), or paste a URL to import (the server keeps a copy). Images in use can't be deleted.
+- **Fill / Fit / Stretch / Mosaic** (cover, contain, stretch, tile). **Crop**: drag on the image to draw the part to use, drag it to move it, drag a corner to resize. **Match board shape** picks the largest part with the board's proportions.
+- **Zoom** (fill, fit) or **Tile size** (mosaic), **Horizontal / Vertical** position, **Opacity**, **Fade** (a veil in the board color, for readable spaces), **Blur**, **Black and white**, and a **Fill color** (behind the image, or a plain color without one).
+
+The background fills the board area, the rectangle around the spaces, so a phone and a desktop show the same picture at different sizes (BKG-1). Over an image, arrows get a halo in the board color. Images come from `/media/<key>` (Vite proxies `/media` to the backend too) and are cached by the browser for good.
 
 ## Example boards
 

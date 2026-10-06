@@ -7,6 +7,7 @@ from ..permissions import conflict, list_org, not_found, target_org, visible
 from ..repositories import boards
 from ..schemas import BoardCreate, BoardOut, BoardUpdate
 from ..validation import validate_board
+from .images import check_background
 
 router = APIRouter(prefix="/api/boards", tags=["boards"])
 
@@ -26,6 +27,7 @@ def list_boards(me: Me, conn: Conn, organization_id: int | None = None):
 @router.post("", response_model=BoardOut, status_code=status.HTTP_201_CREATED)
 def create_board(body: BoardCreate, me: Me, conn: Conn):
     org_id = target_org(me, body.organization_id)
+    check_background(conn, org_id, body.definition.background)
     try:
         with conn.transaction():
             new_id = boards.create(
@@ -45,7 +47,9 @@ def get_board(board_id: int, me: Me, conn: Conn):
 
 @router.patch("/{board_id}", response_model=BoardOut)
 def update_board(board_id: int, body: BoardUpdate, me: Me, conn: Conn):
-    visible(me, boards.get(conn, board_id), "Board")
+    board = visible(me, boards.get(conn, board_id), "Board")
+    if body.definition is not None:
+        check_background(conn, board.organization_id, body.definition.background)
     changes = BoardChanges(**{k: getattr(body, k) for k in body.model_fields_set if getattr(body, k) is not None})
     try:
         with conn.transaction():

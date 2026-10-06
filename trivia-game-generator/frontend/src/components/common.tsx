@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { ApiError, type Board, type BoardDefinition, type GameSnapshot } from "../api";
 import { placeholderMapping, resolveBoard } from "../engine/resolve";
-import type { BoardFile, Category, SlotMapping } from "../engine/types";
+import type { Background, BoardFile, Category, SlotMapping } from "../engine/types";
 import { BoardCanvas } from "./BoardCanvas";
 
 /** Shows an error; server validation lists are shown as bullet points. */
@@ -121,8 +121,9 @@ export function boardFile(name: string, definition: BoardDefinition, description
 
 export const toBoardFile = (b: Board) => boardFile(b.name, b.definition, b.description);
 
-/** Draws a board. Slots without a category in `mapping` get placeholder colors ("Slot A"). */
-export function BoardPreview({ board, mapping = {} }: { board: BoardFile; mapping?: SlotMapping }) {
+/** Draws a board. Slots without a category in `mapping` get placeholder colors ("Slot A").
+ *  `background` replaces the board's own (a game's background, BKG-5); undefined keeps it. */
+export function BoardPreview({ board, mapping = {}, background }: { board: BoardFile; mapping?: SlotMapping; background?: Background | null }) {
   let resolved;
   try {
     resolved = resolveBoard(board, { ...placeholderMapping(board), ...mapping });
@@ -130,7 +131,7 @@ export function BoardPreview({ board, mapping = {} }: { board: BoardFile; mappin
   } catch {
     return <p className="muted small">This board can't be drawn yet.</p>;
   }
-  return <BoardCanvas board={resolved} game={null} onSpaceClick={() => {}} onHover={() => {}} />;
+  return <BoardCanvas board={resolved} background={background === undefined ? board.background : background} game={null} onSpaceClick={() => {}} onHover={() => {}} />;
 }
 
 export function categoryMapping(board: BoardFile | BoardDefinition, slots: Record<string, number>, categories: { id: number; name: string; color: string; description?: string }[]): SlotMapping {

@@ -3,6 +3,7 @@ Every test starts from an empty schema, with migrations applied and the root use
 
 import json
 import os
+import tempfile
 from pathlib import Path
 
 import psycopg
@@ -22,6 +23,7 @@ os.environ.update(
     ROOT_ORGANIZATION="Default",
     RUN_SEEDS="false",
     AUTO_MIGRATE="true",
+    MEDIA_DIR=tempfile.mkdtemp(prefix="trivia-media-"),  # uploaded test images never land in backend/media
 )
 get_settings.cache_clear()
 

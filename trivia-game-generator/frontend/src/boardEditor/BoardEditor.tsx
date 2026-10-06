@@ -4,6 +4,7 @@ import { DEFAULT_CONFIG, SPACE_TYPE_NAMES, WIN_CONDITION_NAMES, resolveConfig, v
 import { SLOT_COLORS, placeholderMapping, resolveBoard } from "../engine/resolve";
 import type { BoardIssue, GameConfig, SpaceType, WinCondition } from "../engine/types";
 import { ErrorBox, boardFile, useAction } from "../components/common";
+import { BackgroundEditor, boardAspect } from "../components/BackgroundEditor";
 import { EditorCanvas, type Pending, type Selection } from "./EditorCanvas";
 import * as ops from "./ops";
 import type { Def, Pos } from "./ops";
@@ -74,7 +75,8 @@ function reducer(state: State, action: Action): State {
 /** Pretty-prints a definition with one space per line, like the example files. */
 export function formatDefinition(d: Def): string {
   const spaces = d.spaces.map((s) => "    " + JSON.stringify(s)).join(",\n");
-  return `{\n  "config": ${JSON.stringify(d.config)},\n  "slots": ${JSON.stringify(d.slots)},\n  "spaces": [\n${spaces}\n  ]\n}`;
+  const background = d.background ? `,\n  "background": ${JSON.stringify(d.background)}` : "";
+  return `{\n  "config": ${JSON.stringify(d.config)},\n  "slots": ${JSON.stringify(d.slots)},\n  "spaces": [\n${spaces}\n  ]${background}\n}`;
 }
 
 const TYPES: SpaceType[] = ["category", "hq", "wildcard", "roll_again", "penalty", "start", "finish"];
@@ -269,6 +271,7 @@ export function BoardEditor({
           <p className={`hint small ${state.pending ? "active" : ""}`}>{hint}</p>
           <EditorCanvas
             board={resolved}
+            background={def.background}
             cell={cell}
             selection={state.selection}
             pending={state.pending}
@@ -307,6 +310,16 @@ export function BoardEditor({
           />
           <SlotsPanel def={def} edit={edit} focusSlot={focus?.slot ?? null} />
           <SettingsPanel def={def} edit={edit} />
+          <section className="panel">
+            <h2>Background</h2>
+            <p className="muted small">The board's default look. Each game can choose its own instead.</p>
+            <BackgroundEditor
+              orgId={board.organization_id}
+              value={def.background ?? {}}
+              aspect={boardAspect(def)}
+              onChange={(bg, coalesce) => edit(ops.setBackground(def, bg), undefined, coalesce)}
+            />
+          </section>
         </div>
       </div>
 
@@ -853,7 +866,8 @@ function JsonPanel({ def, onChange }: { def: Def; onChange: (d: Def) => void }) 
       <summary>Advanced: JSON definition</summary>
       <p className="muted small">
         <code>config</code> overrides the defaults in rules.md §1. Each space has a <code>type</code>, a <code>slot</code> (for category and hq spaces),{" "}
-        <code>next</code> (more than one = fork), a grid <code>pos</code> and an optional <code>label</code>. Edits here are kept as typed (no renumbering).
+        <code>next</code> (more than one = fork), a grid <code>pos</code> and an optional <code>label</code>. The optional <code>background</code> is rules.md §2.1.2.
+        Edits here are kept as typed (no renumbering).
       </p>
       <textarea
         className="json-edit"
@@ -867,7 +881,9 @@ function JsonPanel({ def, onChange }: { def: Def; onChange: (d: Def) => void }) 
             if (!d || typeof d !== "object" || !Array.isArray(d.slots) || !Array.isArray(d.spaces)) throw new Error('needs "slots" and "spaces" arrays');
             if (d.spaces.some((s) => !s || !Array.isArray(s.next))) throw new Error('every space needs a "next" array');
             setProblem(null);
-            const parsed: Def = { config: d.config ?? {}, slots: d.slots, spaces: d.spaces };
+            if (d.background !== undefined && (typeof d.background !== "object" || d.background === null || Array.isArray(d.background)))
+              throw new Error('"background" must be an object');
+            const parsed: Def = { config: d.config ?? {}, slots: d.slots, spaces: d.spaces, ...(d.background ? { background: d.background } : {}) };
             mine.current = parsed;
             onChange(parsed);
           } catch (err) {

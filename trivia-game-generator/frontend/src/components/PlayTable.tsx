@@ -3,7 +3,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import { activePlayer, applyAction } from "../engine/engine";
-import type { Action, BoardDefinition, GameState, GameView, Space } from "../engine/types";
+import type { Action, Background, BoardDefinition, GameState, GameView, Space } from "../engine/types";
 import { BoardCanvas } from "./BoardCanvas";
 import { LogPanel, PlayersPanel } from "./PlayersPanel";
 import { TurnPanel, type TurnOptions } from "./TurnPanel";
@@ -61,11 +61,21 @@ export function useGamePlay(game: GameView | null, run: (action: Action) => stri
 }
 
 /** The board canvas, the hovered space's JSON and the legend. */
-export function BoardView({ board, game, onSpaceClick }: { board: BoardDefinition; game: GameView | null; onSpaceClick: (index: number) => void }) {
+export function BoardView({
+  board,
+  background,
+  game,
+  onSpaceClick,
+}: {
+  board: BoardDefinition;
+  background?: Background | null;
+  game: GameView | null;
+  onSpaceClick: (index: number) => void;
+}) {
   const [hovered, setHovered] = useState<Space | null>(null);
   return (
     <>
-      <BoardCanvas board={board} game={game} onSpaceClick={onSpaceClick} onHover={setHovered} />
+      <BoardCanvas board={board} background={background} game={game} onSpaceClick={onSpaceClick} onHover={setHovered} />
       <div className="space-info">
         {hovered ? (
           <code>{JSON.stringify(hovered)}</code>

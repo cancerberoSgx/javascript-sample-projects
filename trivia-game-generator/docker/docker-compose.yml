@@ -38,6 +38,8 @@ services:
       - ../backend/migrations:/app/migrations
       - ../backend/seeds:/app/seeds
       - ../backend/tests:/app/tests
+      # Background images (MEDIA_DIR, rules.md BKG-3): kept across rebuilds, like the database
+      - media:/app/media
     depends_on:
       db:
         condition: service_healthy
@@ -59,4 +61,5 @@ services:
 
 volumes:
   pgdata:
+  media:
   frontend_node_modules:

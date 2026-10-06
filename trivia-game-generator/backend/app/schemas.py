@@ -11,7 +11,7 @@ from pydantic import (
     model_validator,
 )
 
-from .formats import BoardDefinition, GameSnapshot
+from .formats import Background, BoardDefinition, GameSnapshot
 from .models import (
     MAX_GENERATED_CARDS,
     GameStatus,
@@ -245,6 +245,36 @@ class BoardUpdate(BaseModel):
     definition: BoardDefinition | None = None
 
 
+# ---------- image library (rules.md §2.1.2, BKG-*) ----------
+
+
+class ImageOut(BaseModel):
+    id: int
+    organization_id: int
+    key: str  # what a Background's `image` holds
+    url: str  # /media/<key>: public, immutable (BKG-8)
+    name: str
+    source_url: str | None
+    content_type: str
+    width: int
+    height: int
+    bytes: int
+    creator_name: str | None
+    board_count: int  # boards whose background uses it
+    game_count: int  # games that use it (their own background or their snapshot)
+    created_at: datetime
+
+
+class ImageImport(BaseModel):
+    organization_id: int | None = None
+    url: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)]
+    name: Name | None = None
+
+
+class ImageUpdate(BaseModel):
+    name: Name
+
+
 # ---------- games ----------
 
 
@@ -273,6 +303,7 @@ class GameOut(BaseModel):
     deck_name: str | None
     categories: dict[str, int]  # slot -> category id
     players: list[PlayerOut]
+    background: Background | None  # the game's own background; null = the board's (BKG-5)
     join_code: str  # players join with /games/{id}?code={join_code} (MPL-1)
     started_at: datetime | None
     finished_at: datetime | None
@@ -302,6 +333,7 @@ class GameUpdate(BaseModel):
     board_id: int | None = None
     deck_id: int | None = None
     categories: dict[str, int] | None = None
+    background: Background | None = None  # null = use the board's (BKG-5); a Background without image = none
 
 
 # ---------- multiplayer (rules.md §2.7, MPL-*) ----------
@@ -333,6 +365,7 @@ class LiveGameOut(BaseModel):
     name: str
     status: GameStatus
     board_name: str | None
+    background: Background | None  # what the started game draws (its snapshot's, BKG-6); null before the start
     players: list[LivePlayerOut]
 
 

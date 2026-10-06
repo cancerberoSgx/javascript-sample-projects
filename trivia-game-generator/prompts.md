@@ -187,9 +187,25 @@ do you have any doubts about these two things?
 
 # board background image
 User's can set a board's background image by uploading an image file or entering a url pointing to an image. 
-The background image belongs to a game so different games using the same board uses different images. 
+A board can have a default background image, but also users can set a custom image per game,  so different games using the same board can have  different images. 
 The user is able to set if they wan tot display it in mosaic, or expand it to feet the entire board, or cut a portion of the image, etc (think on other display image settings that make sense)
 Before implementing this, how would you say we should store the images ? as local files ? as db records ? This image will be served to multiple users playing so we should minimize the interfeering with the backend performance in general. Before implementing anytjhing, present me with questions and a implementation plan
+
+p2
+make sure background image is blurred or masked so the board spaces and graph arrows are clear. 
+
+# game screen
+
+the game screen where players play the trivia, like route /games/13?code=E6A9F28B needs to be more friendly and support small devices. 
+I would like to see the whole board maximized in the screen, and on top of it some actions / dialogs (small floating icon buttons)  to roll dices, see players and score, 
+Also remove or hide/display information such as board type, logs, category legends. Make this information available via small floating buttons that display it in a modal that can be display/hide.
+hide Game name. 
+Display player name, game status and any connection errors must be floating on top of the board.
+small devices support like phones is critical, since people will play on them mostly. For big boards, users will need to use zoom in+out and scrolling with mobile screen gestures (two fingers for zoom, drag to scroll.)
+The cards (questions & answers) must be shown in a modal or another primary component . The same with roll dices experience. 
+Can you elaborate a plan on how to implement this ? Would you need a frontend designer expert agent for a better design of the game screen ? Other ideas to make the game play screen more mobile / phone friendly 
+The rest of the screens (admin) keep them as they are, this game / play screen is different since it's all the players will see and the experience should be the best for playing not admin.
+Present ideas and doubts and plan before implementing any of this..
 
 
 # categories metadata

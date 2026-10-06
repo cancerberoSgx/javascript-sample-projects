@@ -22,6 +22,25 @@ export interface BoardFile {
   config: Partial<GameConfig>; // merged over DEFAULT_CONFIG
   slots: string[];
   spaces: BoardFileSpace[];
+  background?: Background; // BKG-*: drawn under the board. Not part of the engine (resolveBoard drops it)
+}
+
+export type BackgroundFit = "cover" | "contain" | "stretch" | "tile";
+
+/** A board's (or a game's) background image, rules.md §2.1.2. Fields left out use the defaults
+ *  there (see BACKGROUND_DEFAULTS in components/background.ts). Python: formats.Background. */
+export interface Background {
+  image?: string; // key in the organization's image library ("<sha256>.webp"), served at /media/<key>
+  fit?: BackgroundFit;
+  crop?: { x: number; y: number; w: number; h: number }; // fractions of the image
+  position?: { x: number; y: number }; // 0..1
+  zoom?: number; // 0.25..4 (cover, contain)
+  tile_size?: number; // 0.02..1 of the board's width (tile)
+  opacity?: number; // 0..1
+  fade?: number; // 0..0.9
+  blur?: number; // 0..20
+  grayscale?: boolean;
+  color?: string; // "#rrggbb"
 }
 
 export interface CategoryDef {

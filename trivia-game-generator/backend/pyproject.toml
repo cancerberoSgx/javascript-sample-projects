@@ -9,9 +9,11 @@ dependencies = [
     "email-validator>=2.3.0",
     "fastapi>=0.142.2",
     "httpx2>=2.13.1",
+    "pillow>=12.3.0",
     "psycopg[binary,pool]>=3.3.6",
     "pydantic-settings>=2.15.0",
     "pyjwt>=2.15.1",
+    "python-multipart>=0.0.32",
     "uvicorn[standard]>=0.54.0",
 ]
 

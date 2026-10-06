@@ -121,7 +121,7 @@ export function LiveTable({ live, aside }: { live: LiveGame; aside?: React.React
             <strong>{state.board.name}</strong> · {config.track_type} track · wins: {config.win_conditions.join(", ")}
             {!live.connected && <span className="chip warn">reconnecting…</span>}
           </p>
-          <BoardView board={state.board} game={state} onSpaceClick={onSpaceClick} />
+          <BoardView board={state.board} background={msg.game.background} game={state} onSpaceClick={onSpaceClick} />
         </div>
         <aside>
           {aside}

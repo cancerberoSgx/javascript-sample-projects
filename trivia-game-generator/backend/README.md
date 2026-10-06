@@ -48,11 +48,12 @@ Tests also run inside the container: `docker compose -f docker/docker-compose.ym
 | `app/schemas.py` | API request/response models. Separate from the row models so secrets like `password_hash` never reach a response |
 | `app/permissions.py` | Every root/member access rule, in one place |
 | `app/auth.py` | Bearer JWT → `CurrentUser` dependency, with a revocation check |
-| `app/routers/` | HTTP endpoints: `/api/auth`, `/api/organizations`, `/api/users`, `/api/categories`, `/api/decks` (+ `/cards`), `/api/boards`, `/api/games`, and multiplayer play (`routers/play.py`: join, lobby, host controls, the game WebSocket) |
+| `app/routers/` | HTTP endpoints: `/api/auth`, `/api/organizations`, `/api/users`, `/api/categories`, `/api/decks` (+ `/cards`), `/api/boards`, `/api/games`, `/api/images`, and multiplayer play (`routers/play.py`: join, lobby, host controls, the game WebSocket) |
 | `app/formats.py` | Board definition, game snapshot and live play-state (`EngineState`) formats (match the frontend's `BoardFile` / `DeckFile` / `GameState`) |
 | `app/engine/` | **The game engine, ported from `frontend/src/engine`** (`engine.ts`, `movement.ts`, `rng.ts`, `resolve.ts`). Same states, same rule IDs, same error messages. `tests/test_engine.py` replays the conformance fixture the TS tests write (`tests/fixtures/engine_conformance.json`). Change one engine, change the other |
 | `app/play.py` | Multiplayer play: deals a started game's opening state and applies actions (turn checks, auto-finish). The only code that changes a live state |
 | `app/generation.py`, `app/llm.py` | Card generation (rules.md §2.2.1): exact-mix planning, batches, duplicate detection, the background runner; `llm.py` calls OpenAI / Gemini over HTTP with a JSON schema |
+| `app/images.py`, `app/storage.py` | Background images (rules.md §2.1.2): decoding and re-encoding uploads to WebP, URL import with SSRF checks; `storage.py` writes the files to `MEDIA_DIR` and serves them at `/media` (`MediaFiles`) |
 | `app/live.py` | The in-memory WebSocket hub: who watches which game, broadcasts, presence and the server-side question timer |
 | `app/validation.py` | Board issues (`validate_board`, a line-by-line port of `validateBoardFile` in `frontend/src/engine/board.ts`) and game-setup checks (port of `resolve.ts`). `tests/test_validation.py` replays the frontend's fixture to keep them identical |
 | `migrations/`, `seeds/` | Numbered `.sql` files |
@@ -86,6 +87,8 @@ Tests also run inside the container: `docker compose -f docker/docker-compose.ym
 | Set an organization's OpenAI / Gemini key | ✔ | ✘ (sees them masked) |
 | Choose an organization's OpenAI / Gemini model | ✔ | own organization (only the models: `PATCH /api/organizations/{id}` with `openai_model` / `gemini_model`) |
 | Generate cards for a deck (with the organization's keys) | every organization | own organization |
+| Image library: upload, import, rename, delete | every organization | own organization |
+| Load an image file (`/media/<key>`) | anyone, no login (BKG-8) | anyone |
 
 Players don't need an account (rules.md §2.7). The game's join code lets anyone join while it's awaiting, and the player token they get proves which player a device is. Who can watch a game's WebSocket: its organization's users (and root), its players, and anyone with its join code.
 
@@ -97,8 +100,8 @@ Other rules: the last root user can't be demoted or deleted, an organization tha
 |---|---|
 | `/api/categories` | `name`, `description`, `color`. Can't be deleted while cards or an awaiting game use it |
 | `/api/decks`, `/api/decks/{id}/cards` | A card has `category_id`, `question`, `options` (null = open-ended), `answer` (for multiple choice, one of the options), `difficulty` 1–3, `grand_prize` |
-| `/api/boards` | `definition` = `{config, slots, spaces}` (rules.md §2.1). Spaces use **slots**, not categories. Only the shape is checked on save: boards with problems are saved as **drafts** (SER-5). Every board in a response has `issues`: `[{code, severity, message, spaces, slot}]` (rules.md §2.1.1); any `error` keeps games from starting with it |
-| `/api/games` | `board_id`, `deck_id`, `categories` (`{slot: category_id}`); `players` (`[{name}]`) only on create. Every game has a `join_code`; players have `joined` (from their own device) and `removed`. `GET /api/games/{id}` includes `setup_errors`, the list of what still blocks starting |
+| `/api/boards` | `definition` = `{config, slots, spaces, background?}` (rules.md §2.1, §2.1.2). Spaces use **slots**, not categories. Only the shape is checked on save: boards with problems are saved as **drafts** (SER-5). Every board in a response has `issues`: `[{code, severity, message, spaces, slot}]` (rules.md §2.1.1); any `error` keeps games from starting with it |
+| `/api/games` | `board_id`, `deck_id`, `categories` (`{slot: category_id}`), `background` (null = the board's; `{}` = none); `players` (`[{name}]`) only on create. Every game has a `join_code`; players have `joined` (from their own device) and `removed`. `GET /api/games/{id}` includes `setup_errors`, the list of what still blocks starting |
 | `POST /api/games/{id}/start` | `awaiting → running`. Validates the setup, stores a `snapshot` (`{board, deck, mapping}`) so later edits don't affect the game, and deals the opening play state (table `trivia_game_states`) |
 | `POST /api/games/{id}/finish` | `running → finished`: the host ends the game early. Reaching GAME_OVER finishes it by itself (MPL-10) |
 
@@ -114,6 +117,21 @@ Other rules: the last root user can't be demoted or deleted, an organization tha
 
 How it works: the request is planned into exact counts per (category, difficulty, type) (`generation.plan`), split into calls of up to `GENERATION_BATCH_SIZE` cards per category (`plan_batches`), and run on a thread pool in this process (`generation.runner`): categories in parallel (`GENERATION_PARALLEL_CALLS`), each category's calls in order. Each reply is checked (`check_card`) and deduplicated (`Deduper`) against the deck and the job, appended to `trivia_generation_jobs.cards`, and missing cards are asked for again (2 rounds). Like the WebSocket hub, the runner lives in process memory: on startup, jobs still `running` are marked failed. Each organization's `openai_model` / `gemini_model` (null = the app default, `OPENAI_MODEL` / `GEMINI_MODEL`) picks the model; saving one runs `llm.check_model`, a tiny real call with the organization's key (422 if unusable, 503 if the provider can't be reached). Reasoning / thinking parameters are chosen by model family (`llm.request_body`). Prompts give each category's description as its definition and list the deck's other categories (GEN-7). The keys only ever come from the organization. The test suite replaces `llm.complete_json` with a fake; `RUN_LIVE_LLM=1 uv run pytest tests/test_generation_live.py -s` calls the real APIs with `OPENAI_API_KEY` / `GEMINI_API_KEY` from `.env`.
 
+## Background images (rules.md §2.1.2)
+
+| Endpoint | What |
+|---|---|
+| `GET /api/images` | The organization's library: `[{id, key, url, name, source_url, width, height, bytes, creator_name, board_count, game_count, …}]` |
+| `POST /api/images` (multipart: `file`, `organization_id?`, `name?`) | Upload (201). PNG, JPEG, WebP, AVIF or GIF (first frame), ≤ `IMAGE_MAX_UPLOAD_MB` (10) and `IMAGE_MAX_MEGAPIXELS` (40). Stored as WebP, ≤ `IMAGE_MAX_SIDE` px (3000), without metadata. The same file twice returns the existing image. 422 for anything else |
+| `POST /api/images/import` `{url, organization_id?, name?}` | The server downloads the image once (≤ `IMAGE_IMPORT_TIMEOUT_SECONDS`) and stores it like an upload. Public `http(s)` addresses only: every address the host resolves to, every redirect (≤ 3) and the address actually connected to must be global (no localhost, private networks, link-local/metadata). 422 with the reason otherwise |
+| `PATCH /api/images/{id}` `{name}` | Rename |
+| `DELETE /api/images/{id}` | 409 while a board, a game or a started game's snapshot uses it (BKG-7). The file goes once no organization has it |
+| `GET /media/<key>` | The file. Static, no auth, `Cache-Control: public, max-age=31536000, immutable` |
+
+A `Background` (`formats.Background`) is `{image?, fit?, crop?, position?, zoom?, tile_size?, opacity?, fade?, blur?, grayscale?, color?}`; only what was chosen is stored. Boards and games can only use images from their own organization's library (422, BKG-4). Starting a game copies the background it shows (its own, else its board's) into `snapshot.board.background`, and the live view sends it as `game.background`.
+
+**Why files and not rows.** Every player of a game loads the image, so serving it must cost nothing: the key is the SHA-256 of the stored file, so its URL never changes and devices cache it for a year without asking again. The database holds only the library rows, and organizations that upload the same image share one file. Decoding uploads runs at most two at a time (`routers/images.py`), so large images can't take over the API's threads. **In production**, let the web server or a CDN serve `MEDIA_DIR` at `/media` (the app's mount is then never reached), and put a body limit on uploads there too (e.g. nginx `client_max_body_size 11m`): the app only refuses an oversized upload after receiving it. Moving the files to S3-compatible storage means another `ImageStore` in `storage.py` plus a public base URL. In Docker the files live in the `media` volume.
+
 ## Multiplayer (rules.md §2.7)
 
 | Endpoint | Who | What |
@@ -127,7 +145,7 @@ How it works: the request is planned into exact counts per (category, difficulty
 | `POST /api/games/{id}/join-code` | host | A new join code; the old link stops working |
 | `WS /api/games/{id}/ws` | see Permissions | The live view (below) |
 
-**WebSocket protocol.** The client's first message says who it is, with whatever it has: `{"type": "hello", "token": <login JWT>?, "player_token": ?, "code": ?}`. Without access it gets `{"type": "error", "fatal": true}` and close code 4404 (4400 for a bad hello). Then, after every change to the game (joins, start, actions, someone connecting or dropping), the server sends `{"type": "game", "game": {id, name, status, board_name, players: [{id, name, position, joined, removed, online}]}, "state", "version", "server_now", "you": {player_id, can_host}}`. `state` is the engine's `GameState` without `cards`, `decks`, `rng`, and without the pending card's `correct_answer` (MPL-6). `server_now` lets clients run question timers in server time. A device sends `{"type": "action", "action": {"type": "ROLL" | "MOVE" | "CHOOSE_CATEGORY" | "ANSWER" | "TIMEOUT", …}}`; mistakes come back as `{"type": "error", "message"}` to that device only. When the game is deleted, everyone gets `{"type": "gone"}`.
+**WebSocket protocol.** The client's first message says who it is, with whatever it has: `{"type": "hello", "token": <login JWT>?, "player_token": ?, "code": ?}`. Without access it gets `{"type": "error", "fatal": true}` and close code 4404 (4400 for a bad hello). Then, after every change to the game (joins, start, actions, someone connecting or dropping), the server sends `{"type": "game", "game": {id, name, status, board_name, background, players: [{id, name, position, joined, removed, online}]}, "state", "version", "server_now", "you": {player_id, can_host}}`. `state` is the engine's `GameState` without `cards`, `decks`, `rng`, and without the pending card's `correct_answer` (MPL-6). `server_now` lets clients run question timers in server time. A device sends `{"type": "action", "action": {"type": "ROLL" | "MOVE" | "CHOOSE_CATEGORY" | "ANSWER" | "TIMEOUT", …}}`; mistakes come back as `{"type": "error", "message"}` to that device only. When the game is deleted, everyone gets `{"type": "gone"}`.
 
 How it works: actions lock the game's `trivia_game_states` row, run the engine (`app/engine`), and save the new state with `version + 1`. The hub (`app/live.py`) then reads the game and sends each socket its view, one broadcast per game at a time so views never arrive out of order. It also schedules a timeout task for each pending question, so absent players can't stall a game. The hub lives in process memory: this is fine for the single uvicorn process the app runs as, but several workers would need shared broadcasts (for example Postgres `LISTEN/NOTIFY`). Long-lived sockets check the login token only when they connect.
 

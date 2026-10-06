@@ -17,6 +17,7 @@ from ..permissions import conflict, list_org, not_found, target_org, visible
 from ..repositories import boards, categories, decks, game_states, games
 from ..schemas import GameCreate, GameDetailOut, GameOut, GameUpdate, PlayerOut
 from ..validation import validate_game_setup
+from .images import check_background
 
 router = APIRouter(prefix="/api/games", tags=["games"])
 
@@ -116,8 +117,9 @@ def update_game(game_id: int, body: GameUpdate, me: Me, conn: Conn):
     game = _awaiting_game(me, conn, game_id)
     sent = body.model_fields_set
     _check_refs(conn, game.organization_id, body.board_id, body.deck_id, body.categories)
-    # name: null is ignored; board_id/deck_id: null clears the reference
-    changes = GameChanges(**{k: getattr(body, k) for k in ("name", "board_id", "deck_id") if k in sent and (k != "name" or body.name)})
+    check_background(conn, game.organization_id, body.background)
+    # name: null is ignored; board_id/deck_id: null clears the reference; background: null = the board's (BKG-5)
+    changes = GameChanges(**{k: getattr(body, k) for k in ("name", "board_id", "deck_id", "background") if k in sent and (k != "name" or body.name)})
     with conn.transaction():
         games.update(conn, game_id, changes)
         if body.categories is not None:
@@ -175,8 +177,15 @@ def _snapshot(conn: DbConn, game: Game, mapping: dict[str, int]) -> GameSnapshot
     assert board and deck
     cards = decks.list_cards(conn, deck.id)
     used = categories.get_many(conn, sorted({c.category_id for c in cards} | set(mapping.values())))
+    # BKG-6: the background the game shows (its own, else the board's) is frozen with the board
+    background = game.background if game.background is not None else board.definition.background
     return GameSnapshot(
-        board=SnapshotBoard(name=board.name, description=board.description, **board.definition.model_dump(exclude_unset=True)),
+        board=SnapshotBoard(
+            name=board.name,
+            description=board.description,
+            **board.definition.model_dump(exclude_unset=True, exclude={"background"}),
+            background=background if background and (background.image or background.color) else None,
+        ),
         deck=SnapshotDeck(
             name=deck.name,
             description=deck.description,

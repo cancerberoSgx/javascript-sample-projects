@@ -9,7 +9,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
-from .formats import BoardDefinition, EngineState, GameSnapshot
+from .formats import Background, BoardDefinition, EngineState, GameSnapshot
 
 Role = Literal["root", "member"]
 GameStatus = Literal["awaiting", "running", "finished"]
@@ -220,6 +220,7 @@ class Game(Row):
     board_name: str | None  # joined
     deck_id: int | None
     deck_name: str | None  # joined
+    background: Background | None  # None = the board's (BKG-5)
     snapshot: GameSnapshot | None
     join_code: str
     started_at: datetime | None
@@ -240,6 +241,44 @@ class GameChanges(Changes):
     name: str | None = None
     board_id: int | None = None
     deck_id: int | None = None
+    background: Background | None = None
+
+
+# ---------- trivia_images (rules.md §2.1.2, BKG-*) ----------
+
+
+class Image(Row):
+    id: int
+    organization_id: int
+    key: str  # "<sha256>.webp": the file in MEDIA_DIR, served at /media/<key>
+    name: str
+    source_url: str | None  # imported from this URL
+    content_type: str
+    width: int
+    height: int
+    bytes: int
+    creator_id: int | None
+    creator_name: str | None  # joined
+    board_count: int  # computed: boards whose background uses it
+    game_count: int  # computed: games (their own background or their snapshot) that use it
+    created_at: datetime
+    updated_at: datetime
+
+
+class NewImage(BaseModel):
+    organization_id: int
+    key: str
+    name: str
+    source_url: str | None
+    content_type: str
+    width: int
+    height: int
+    bytes: int
+    creator_id: int
+
+
+class ImageChanges(Changes):
+    name: str | None = None
 
 
 # ---------- trivia_game_states (live play state of running games) ----------

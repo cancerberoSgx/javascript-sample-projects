@@ -1,7 +1,7 @@
 // REST client for the backend. Requests go to /api on the same origin; Vite proxies them
 // to FastAPI in dev (see vite.config.ts).
 
-import type { BoardFile, BoardIssue, DeckFile, GameConfig, GameView, SpaceType } from "./engine/types";
+import type { Background, BoardFile, BoardIssue, DeckFile, GameConfig, GameView, SpaceType } from "./engine/types";
 
 export type Role = "root" | "member";
 
@@ -123,6 +123,26 @@ export interface BoardDefinition {
   config: Partial<GameConfig>;
   slots: string[];
   spaces: { index: number; type: SpaceType; slot: string | null; next: number[]; pos: { x: number; y: number }; label?: string }[];
+  background?: Background;
+}
+
+/** An image in an organization's library (rules.md §2.1.2). `key` is what a Background's `image` holds. */
+export interface LibraryImage {
+  id: number;
+  organization_id: number;
+  key: string;
+  /** /media/<key>: a public file that never changes (BKG-8). */
+  url: string;
+  name: string;
+  source_url: string | null;
+  content_type: string;
+  width: number;
+  height: number;
+  bytes: number;
+  creator_name: string | null;
+  board_count: number;
+  game_count: number;
+  created_at: string;
 }
 
 export interface Board {
@@ -164,6 +184,8 @@ export interface Game {
   deck_name: string | null;
   categories: Record<string, number>; // slot -> category id
   players: GamePlayer[];
+  /** The game's own background; null = the board's (BKG-5). One without `image` means "no image". */
+  background: Background | null;
   /** Players join with /games/:id?code=<join_code> (MPL-1). */
   join_code: string;
   started_at: string | null;
@@ -181,6 +203,7 @@ export interface GameInput {
   board_id?: number | null;
   deck_id?: number | null;
   categories?: Record<string, number>;
+  background?: Background | null;
 }
 
 // ---------- multiplayer (rules.md §2.7) ----------
@@ -193,6 +216,8 @@ export interface LiveMessage {
     name: string;
     status: GameStatus;
     board_name: string | null;
+    /** What the started game draws (frozen in its snapshot, BKG-6). */
+    background: Background | null;
     players: (GamePlayer & { online: boolean })[];
   };
   /** The engine state without its secrets (MPL-6); null until the game starts. */
@@ -254,9 +279,10 @@ async function request<T>(method: string, path: string, body?: unknown, extraHea
   const headers: Record<string, string> = { ...extraHeaders };
   const token = tokenStore.get();
   if (token) headers.Authorization = `Bearer ${token}`;
-  if (body !== undefined) headers["Content-Type"] = "application/json";
+  const form = body instanceof FormData;
+  if (body !== undefined && !form) headers["Content-Type"] = "application/json";
 
-  const res = await fetch(`/api${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+  const res = await fetch(`/api${path}`, { method, headers, body: body === undefined ? undefined : form ? body : JSON.stringify(body) });
   if (res.status === 204) return undefined as T;
   const data = await res.json().catch(() => null);
   if (!res.ok) {
@@ -340,6 +366,18 @@ export const api = {
   updateBoard: (id: number, body: { name?: string; description?: string; definition?: BoardDefinition }) =>
     request<Board>("PATCH", `/boards/${id}`, body),
   deleteBoard: (id: number) => request<void>("DELETE", `/boards/${id}`),
+
+  // Image library (rules.md §2.1.2). The files are served at /media/<key>, not under /api.
+  listImages: (orgId?: number) => request<LibraryImage[]>("GET", withOrg("/images", orgId)),
+  uploadImage: (file: File, orgId?: number) => {
+    const form = new FormData();
+    form.append("file", file);
+    if (orgId) form.append("organization_id", String(orgId));
+    return request<LibraryImage>("POST", "/images", form);
+  },
+  importImage: (url: string, orgId?: number) => request<LibraryImage>("POST", "/images/import", { url, organization_id: orgId }),
+  renameImage: (id: number, name: string) => request<LibraryImage>("PATCH", `/images/${id}`, { name }),
+  deleteImage: (id: number) => request<void>("DELETE", `/images/${id}`),
 
   listGames: (orgId?: number) => request<Game[]>("GET", withOrg("/games", orgId)),
   getGame: (id: number) => request<GameDetail>("GET", `/games/${id}`),

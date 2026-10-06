@@ -18,6 +18,7 @@ from .routers import (
     categories,
     decks,
     games,
+    images,
     organizations,
     play,
     users,
@@ -25,6 +26,7 @@ from .routers import (
 from .routers import (
     generation as generation_router,
 )
+from .storage import MEDIA_URL, MediaFiles
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 
@@ -66,8 +68,13 @@ def create_app() -> FastAPI:
     app.include_router(auth.router)
     app.include_router(organizations.router)
     app.include_router(users.router)
-    for content in (categories, decks, generation_router, boards, games, play):
+    for content in (categories, decks, generation_router, boards, games, play, images):
         app.include_router(content.router)
+
+    # Background images (BKG-8): static, immutable files. In production, serve settings.media_dir
+    # at /media from the web server or a CDN instead, and this mount is never reached.
+    settings.media_dir.mkdir(parents=True, exist_ok=True)
+    app.mount(MEDIA_URL, MediaFiles(directory=settings.media_dir), name="media")
 
     @app.get("/api/health", tags=["health"])
     def health(conn: Conn):

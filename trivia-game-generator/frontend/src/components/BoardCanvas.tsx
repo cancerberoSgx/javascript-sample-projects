@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { isFork } from "../engine/board";
-import type { BoardDefinition, GameView, Space } from "../engine/types";
+import type { Background, BoardDefinition, GameView, Space } from "../engine/types";
+import { BackgroundLayer, boardArea, hasBackground, useBackgroundImage, type Rect } from "./background";
 
 interface Props {
   board: BoardDefinition;
+  /** Drawn under the board (rules.md §2.1.2). Not part of the engine's board. */
+  background?: Background | null;
   game: GameView | null;
   onSpaceClick: (index: number) => void;
   onHover: (space: Space | null) => void;
@@ -24,6 +27,8 @@ interface Layout {
   center: (s: Space) => { x: number; y: number };
   width: number;
   height: number;
+  /** The board area the background fills (BKG-1). */
+  area: Rect;
 }
 
 function computeLayout(spaces: Space[], width: number): Layout {
@@ -42,6 +47,7 @@ function computeLayout(spaces: Space[], width: number): Layout {
     tile: cell * 0.8,
     width,
     height,
+    area: boardArea({ x: offsetX, y: offsetY, w: cols * cell, h: rows * cell }, cell),
     center: (s) => ({ x: offsetX + (s.pos.x - minX + 0.5) * cell, y: offsetY + (s.pos.y - minY + 0.5) * cell }),
   };
 }
@@ -178,7 +184,7 @@ export function drawTile(
   }
 }
 
-export function BoardCanvas({ board, game, onSpaceClick, onHover }: Props) {
+export function BoardCanvas({ board, background, game, onSpaceClick, onHover }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [width, setWidth] = useState(800);
@@ -186,6 +192,8 @@ export function BoardCanvas({ board, game, onSpaceClick, onHover }: Props) {
   const [themeTick, setThemeTick] = useState(0);
   const [anim, setAnim] = useState<{ playerId: string; path: number[]; start: number } | null>(null);
   const [now, setNow] = useState(0);
+  const bgImage = useBackgroundImage(background);
+  const [bgLayer] = useState(() => new BackgroundLayer());
 
   const layout = useMemo(() => computeLayout(board.spaces, width), [board, width]);
   const byIndex = useMemo(() => new Map(board.spaces.map((s) => [s.index, s])), [board]);
@@ -260,20 +268,26 @@ export function BoardCanvas({ board, game, onSpaceClick, onHover }: Props) {
 
     ctx.fillStyle = theme.bg;
     ctx.fillRect(0, 0, layout.width, layout.height);
+    if (hasBackground(background)) bgLayer.draw(ctx, background, bgImage, layout.area, theme.bg, layout.cell * 0.2);
 
-    // Edges
+    // Edges. Over an image, each arrow gets a halo in the board color so it stays visible.
     const head = Math.max(5, tile * 0.1);
-    ctx.lineWidth = Math.max(1.5, tile * 0.03);
+    const line = Math.max(1.5, tile * 0.03);
     const centers = board.spaces.map(center);
-    for (const s of board.spaces) {
-      const fork = isFork(s);
-      for (const n of s.next) {
-        const target = byIndex.get(n);
-        if (!target) continue;
-        ctx.strokeStyle = ctx.fillStyle = fork ? theme.accent : theme.edge;
-        arrow(ctx, center(s), center(target), tile * 0.5, head, arrowBend(center(s), center(target), centers, tile));
+    for (const halo of bgImage ? [true, false] : [false]) {
+      ctx.lineWidth = halo ? line + 4 : line;
+      ctx.globalAlpha = halo ? 0.75 : 1;
+      for (const s of board.spaces) {
+        const fork = isFork(s);
+        for (const n of s.next) {
+          const target = byIndex.get(n);
+          if (!target) continue;
+          ctx.strokeStyle = ctx.fillStyle = halo ? theme.bg : fork ? theme.accent : theme.edge;
+          arrow(ctx, center(s), center(target), tile * 0.5, halo ? head + 2 : head, arrowBend(center(s), center(target), centers, tile));
+        }
       }
     }
+    ctx.globalAlpha = 1;
 
     // Hovered destination path preview
     if (previewPath && game) {
@@ -370,7 +384,7 @@ export function BoardCanvas({ board, game, onSpaceClick, onHover }: Props) {
         ctx.fillText(p.name.slice(0, 1).toUpperCase(), tx, ty + 0.5);
       });
     }
-  }, [board, game, layout, hovered, anim, now, themeTick, byIndex, categoryColor, categoryName, destinations, previewPath]);
+  }, [board, game, layout, hovered, anim, now, themeTick, byIndex, categoryColor, categoryName, destinations, previewPath, background, bgImage, bgLayer]);
 
   // ---- Hit testing ----
   const spaceAtPoint = (e: React.MouseEvent<HTMLCanvasElement>): Space | null => {

@@ -14,7 +14,7 @@ _SELECT = """
            g.creator_id, u.name AS creator_name,
            g.board_id, b.name AS board_name,
            g.deck_id, d.name AS deck_name,
-           g.snapshot, g.join_code, g.started_at, g.finished_at, g.created_at, g.updated_at
+           g.background, g.snapshot, g.join_code, g.started_at, g.finished_at, g.created_at, g.updated_at
     FROM trivia_games g
     LEFT JOIN trivia_users u ON u.id = g.creator_id
     LEFT JOIN trivia_boards b ON b.id = g.board_id
@@ -43,7 +43,7 @@ def create(conn: DbConn, game: NewGame) -> int:
 
 
 def update(conn: DbConn, game_id: int, changes: GameChanges) -> bool:
-    return update_row(conn, "trivia_games", game_id, changes)
+    return update_row(conn, "trivia_games", game_id, changes, json_columns=frozenset({"background"}))
 
 
 def mark_started(conn: DbConn, game_id: int, snapshot: GameSnapshot) -> bool:

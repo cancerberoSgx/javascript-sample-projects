@@ -4,7 +4,7 @@
 
 import type { BoardDefinition } from "../api";
 import { DEFAULT_CONFIG } from "../engine/board";
-import type { BoardFileSpace, GameConfig, SpaceType } from "../engine/types";
+import type { Background, BoardFileSpace, GameConfig, SpaceType } from "../engine/types";
 
 export type Def = BoardDefinition;
 export type Pos = { x: number; y: number };
@@ -228,6 +228,12 @@ export function moveSlot(def: Def, slot: string, dir: -1 | 1): Def {
  * is dropped. Switching to a loop closes the track: the finish becomes a category space that
  * leads back to the start, and the finish win is turned off.
  */
+/** Sets the board's background (rules.md §2.1.2). An empty one removes the field. */
+export function setBackground(def: Def, background: Background | undefined): Def {
+  const { background: _old, ...rest } = def;
+  return background && Object.keys(background).length ? { ...rest, background } : rest;
+}
+
 export function setConfig(def: Def, patch: Partial<GameConfig>): Def {
   const d = clone(def);
   const config: Partial<GameConfig> = { ...d.config, ...patch };

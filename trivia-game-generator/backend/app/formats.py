@@ -2,14 +2,16 @@
 BoardFile / DeckFile types (frontend/src/engine/types.ts), so a snapshot can be passed
 straight to the engine's resolveGame()."""
 
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Annotated, Any, Literal
 
 from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
     SerializerFunctionWrapHandler,
+    field_validator,
     model_serializer,
+    model_validator,
 )
 
 if TYPE_CHECKING:
@@ -77,12 +79,71 @@ class BoardSpace(Strict):
         return data
 
 
+# ---------- background image (rules.md §2.1.2, BKG-*) ----------
+
+IMAGE_KEY_PATTERN = r"^[0-9a-f]{64}\.[a-z0-9]{3,4}$"  # "<sha256 of the stored file>.webp"
+BackgroundFit = Literal["cover", "contain", "stretch", "tile"]
+Fraction = Annotated[float, Field(ge=0, le=1)]
+
+
+class Crop(Strict):
+    """The part of the image to use, as fractions of its size."""
+
+    x: Fraction
+    y: Fraction
+    w: Annotated[float, Field(gt=0, le=1)]
+    h: Annotated[float, Field(gt=0, le=1)]
+
+    @model_validator(mode="after")
+    def _inside(self) -> "Crop":
+        if self.x + self.w > 1.0001 or self.y + self.h > 1.0001:
+            raise ValueError("the crop must stay inside the image (x + w <= 1, y + h <= 1)")
+        return self
+
+
+class Background(Strict):
+    """How a board (or a game, overriding its board) draws its background. Fields left out use
+    the defaults in rules.md §2.1.2; a background without `image` is a plain color (or nothing)."""
+
+    image: str | None = Field(default=None, pattern=IMAGE_KEY_PATTERN)
+    fit: BackgroundFit | None = None
+    crop: Crop | None = None
+    position: Pos | None = None
+    zoom: float | None = Field(default=None, ge=0.25, le=4)
+    tile_size: float | None = Field(default=None, ge=0.02, le=1)
+    opacity: Fraction | None = None
+    fade: float | None = Field(default=None, ge=0, le=0.9)
+    blur: float | None = Field(default=None, ge=0, le=20)
+    grayscale: bool | None = None
+    color: str | None = Field(default=None, pattern=r"^#[0-9a-fA-F]{6}$")
+
+    @field_validator("position")
+    @classmethod
+    def _position_in_range(cls, v: Pos | None) -> Pos | None:
+        if v is not None and not (0 <= v.x <= 1 and 0 <= v.y <= 1):
+            raise ValueError("position x and y must be between 0 and 1")
+        return v
+
+    @model_serializer(mode="wrap")
+    def _omit_unset(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
+        # Like BoardConfig: only what was chosen is stored, so defaults can change later
+        return {k: v for k, v in handler(self).items() if v is not None}
+
+
 class BoardDefinition(Strict):
     """What a board stores: everything except its name/description. Spaces point to slots, not categories."""
 
     config: BoardConfig = Field(default_factory=BoardConfig)
     slots: list[str] = Field(max_length=12)
     spaces: list[BoardSpace] = Field(max_length=500)
+    background: Background | None = None  # BKG-*: left out of the JSON when there is none
+
+    @model_serializer(mode="wrap")
+    def _omit_no_background(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
+        data = handler(self)
+        if data.get("background") is None:
+            data.pop("background", None)
+        return data
 
     def effective_config(self) -> dict:
         return {**DEFAULT_CONFIG, **self.config.model_dump()}

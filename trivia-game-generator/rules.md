@@ -73,6 +73,34 @@ interface Board {
 - `CFG-1` At least one win condition. `CFG-2` The `finish` win needs a linear track. `CFG-3` The `turn_limit` win needs `max_rounds > 0`. `CFG-4` `dice_sides >= 1` and `max_rolls_per_turn >= 1`.
 - **Warnings** are advice and never block anything: `BRD-W1` a slot no space uses (a game still has to map it), `BRD-W2` a slot with HQ spaces but no category spaces.
 
+#### 2.1.2 Background image
+A board can have a **background**: an image (or just a color) drawn under its arrows and spaces. A game can replace it with its own (§2.6), so two games on the same board can look different.
+
+```ts
+interface Background {
+  image?: string;          // key of an image in the organization's library: "<sha256>.webp". Left out = no image
+  fit?: "cover" | "contain" | "stretch" | "tile"; // default "cover"
+  crop?: { x: number; y: number; w: number; h: number }; // the part of the image to use, as fractions of its size (default: all of it)
+  position?: { x: number; y: number }; // 0..1, default 0.5/0.5: where the image sits when it is bigger (cover) or smaller (contain) than the board
+  zoom?: number;           // 0.25..4, default 1: scales the cover/contain size
+  tile_size?: number;      // 0.02..1, default 0.25: in tile mode, one tile's width as a fraction of the board's width
+  opacity?: number;        // 0..1, default 1
+  fade?: number;           // 0..0.9, default 0: a veil in the board's theme color over the image, so spaces and arrows stay readable
+  blur?: number;           // 0..20, default 0: blur radius in px on an 800 px wide board (it scales with the board)
+  grayscale?: boolean;     // default false
+  color?: string;          // "#rrggbb" under the image (letterboxing, transparent parts). Default: the theme's board color
+}
+```
+
+- `BKG-1` The background fills the **board area**: the rectangle around the spaces' grid cells, plus 0.15 of a cell on every side. It is laid out relative to the board, not the screen, so every device shows the same picture at its own size.
+- `BKG-2` `crop` is applied first; the fit then works on the cropped part. `cover` fills the area and cuts what overflows (`position` picks what stays), `contain` shows the whole image and leaves bands of `color` (`position` places it), `stretch` fills the area ignoring the image's proportions, `tile` repeats it as a mosaic (`position` shifts the pattern). `zoom` scales cover and contain.
+- `BKG-3` Images live in the organization's **image library**. They are uploaded (PNG, JPEG, WebP, AVIF or GIF, whose first frame is kept; at most 10 MB and 40 megapixels) or imported from a URL: the server downloads a copy once, from public `http(s)` addresses only, so a background never depends on another site staying up. The server re-encodes every image as WebP, at most 3000 px on its long side, without its metadata (EXIF, GPS). Identical images are stored once: the key is the SHA-256 of the stored file.
+- `BKG-4` A background's `image` must be in the library of the board's (or game's) organization.
+- `BKG-5` A game's background is `null` (use the board's), or a `Background` that replaces it. A `Background` without `image` means "no image", even when the board has one.
+- `BKG-6` Starting a game copies the background it uses into the snapshot's board (GAM-3). Changing the board's or the game's background later doesn't change a started game.
+- `BKG-7` An image can't be deleted while a board, a game or a started game's snapshot uses it.
+- `BKG-8` Images are public, immutable files at `/media/<key>`: players load them without logging in, and a device downloads each image once, then keeps it in its cache. The key is a content hash, so it can't be guessed.
+
 ### 2.2 Categories, decks and cards
 A **category** belongs to an organization: `{ name, description, color }`. A **deck** is a named collection of cards, and each card belongs to one category.
 
@@ -145,6 +173,7 @@ A stored game belongs to an organization and has: a name, a `status`, a creator 
 - `GAM-3` Starting copies the board, deck and categories into the game (a *snapshot*). Later edits or deletes of the originals never change a running or finished game.
 - `GAM-4` A board, deck or category can't be deleted while an awaiting game uses it. A category can't be deleted while cards use it.
 - `GAM-5` Only a `running` game can be played. It is played live and multiplayer (§2.7) at `/games/:id`.
+- `GAM-6` A game can have its own background (BKG-5). It can change while the game is `awaiting`, and it is frozen on start (BKG-6).
 
 ### 2.7 Multiplayer play
 Each player plays on their own device. The server runs the engine (a Python port of it, kept identical by a conformance fixture), so it alone decides what happens; devices send actions and show what the server broadcasts.
@@ -307,7 +336,7 @@ The engine checks every active condition after each `APPLY_RESULT` (RES-4) and a
 Boards and decks are plain data, so the generator can produce new games without code changes. The same shapes are used by the example files in `frontend/public/`, the backend API, and game snapshots (GAM-3). Format version 2:
 
 - `SER-1` `boards/index.json` lists the example files: `{ "boards": [{ "file", "name", "description" }], "decks": [...] }`.
-- `SER-2` A **board file** is `{ schema_version: 2, id?, name, description?, config, slots, spaces }` (§2.1). The backend stores `{config, slots, spaces}` as a board's `definition`.
+- `SER-2` A **board file** is `{ schema_version: 2, id?, name, description?, config, slots, spaces, background? }` (§2.1, §2.1.2). The backend stores `{config, slots, spaces, background?}` as a board's `definition`.
 - `SER-3` A **deck file** is `{ schema_version: 2, id?, name, description?, categories: [{id, name, description, color}], cards: Card[] }` (§2.2). The categories travel with the deck, so a file is self-contained.
 - `SER-4` A **game snapshot** is `{ board: BoardFile, deck: DeckFile, mapping: { slot: categoryId } }`. `frontend/src/engine/resolve.ts` (`resolveGame`) turns it into the engine's internal board (each space's slot replaced by its category) and cards.
 - `SER-5` Boards are validated as you edit (frontend) and on every read (backend), with the same rules (§2.1.1). A board with errors can still be saved, as a **draft**: the API returns its `issues`, lists mark it, and a game can't start with it (GAM-2). Only the shape (field names, types, space types, sizes) is rejected on save.
@@ -343,3 +372,4 @@ Answers to gaps or conflicts in the original draft. Change any of them and updat
 14. **Draft boards**: boards are built in a visual editor, so half-finished boards can be saved (SER-5). Validity is checked when a game starts, not when a board is saved.
 15. **Numbering is the editor's job**: the editor renumbers spaces in path order after every visual edit (start `0`, each fork branch in turn, the finish last), so authors never manage indices. Raw JSON edits are kept as typed.
 16. **Generated cards are reviewed, not trusted** (GEN-*): the server fixes the exact mix itself and only asks the model to fill it, drops repeats and broken cards, and keeps the result out of the deck until a person adds it. Calls are batched (about 20 cards each) rather than one call per request: a 100-card call works but takes ~25 s, returned the wrong mix in testing, and a failure loses everything.
+17. **Background images are files, not database rows** (BKG-*): every player of a game loads the image, so it is served as a static, immutable file that each device caches, and Python and Postgres are never involved in serving it. The database only keeps the library (who uploaded what, sizes, the key). Images imported from a URL are copied for the same reason: other sites can disappear, slow down, or see every player's IP address.

@@ -40,6 +40,14 @@ class Settings(BaseSettings):
     generation_parallel_calls: int = 3  # calls in flight per job (one per category at a time)
     llm_timeout_seconds: float = 180
 
+    # Background images (rules.md §2.1.2). Files go to media_dir and are served at /media/<key>;
+    # in production a web server or CDN in front of that folder can serve them instead of the app.
+    media_dir: Path = BACKEND_DIR / "media"
+    image_max_upload_mb: float = 10
+    image_max_megapixels: float = 40
+    image_max_side: int = 3000  # stored images are scaled down to this long side
+    image_import_timeout_seconds: float = 15
+
     # Fail at startup, not on the first request that needs these
     @field_validator("encryption_key")
     @classmethod

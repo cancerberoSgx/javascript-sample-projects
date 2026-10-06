@@ -11,9 +11,11 @@ from ..permissions import (
     not_found,
     require_root,
 )
+from ..repositories import images
 from ..repositories import organizations as orgs
 from ..schemas import OrganizationCreate, OrganizationOut, OrganizationUpdate
 from ..security import decrypt_secret, encrypt_secret, mask_secret
+from .images import delete_files_of
 
 router = APIRouter(prefix="/api/organizations", tags=["organizations"])
 
@@ -120,9 +122,11 @@ def delete_organization(org_id: int, me: Me, conn: Conn):
         raise not_found("Organization not found")
     if org.user_count:
         raise conflict(f"'{org.name}' still has {org.user_count} user(s). Delete or move them first.")
+    keys = images.keys_for_org(conn, org_id)
     try:
         with conn.transaction():
             orgs.delete(conn, org_id)
     except errors.ForeignKeyViolation:  # a user was added concurrently
         raise conflict("Organization still has users")
+    delete_files_of(conn, keys)  # its library rows went with it; files other organizations have stay
     return Response(status_code=status.HTTP_204_NO_CONTENT)

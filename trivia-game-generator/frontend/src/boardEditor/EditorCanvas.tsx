@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { isFork } from "../engine/board";
-import type { BoardDefinition, Space } from "../engine/types";
+import type { Background, BoardDefinition, Space } from "../engine/types";
 import { arrow, arrowBend, arrowPoints, drawTile, readTheme, roundRect, segmentDistance } from "../components/BoardCanvas";
+import { BackgroundLayer, boardArea, hasBackground, useBackgroundImage } from "../components/background";
 import type { Pos } from "./ops";
 
 export type Selection = { kind: "space"; index: number } | { kind: "arrow"; from: number; to: number } | null;
@@ -11,6 +12,8 @@ export type Pending = { kind: "arrow" | "branch"; from: number } | null;
 interface Props {
   /** The board being edited, resolved with placeholder categories (resolveBoard + placeholderMapping). */
   board: BoardDefinition;
+  /** Drawn in the board area, like on the play board (rules.md BKG-1). */
+  background?: Background;
   cell: number;
   selection: Selection;
   pending: Pending;
@@ -29,7 +32,7 @@ const MARGIN = 2; // empty cells around the board, room to grow
 
 /** The board editor's drawing surface: a grid with the board on it. Click empty cells to add
  *  spaces, click spaces or arrows to select them, drag spaces to move them. */
-export function EditorCanvas({ board, cell, selection, pending, marks, focus, onCellClick, onArrowClick, onMove, overlay }: Props) {
+export function EditorCanvas({ board, background, cell, selection, pending, marks, focus, onCellClick, onArrowClick, onMove, overlay }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [viewWidth, setViewWidth] = useState(800);
@@ -37,6 +40,8 @@ export function EditorCanvas({ board, cell, selection, pending, marks, focus, on
   const [press, setPress] = useState<{ start: Pos; space: number | null; dragging: boolean } | null>(null);
   const [themeTick, setThemeTick] = useState(0);
   const [now, setNow] = useState(0);
+  const bgImage = useBackgroundImage(background);
+  const [bgLayer] = useState(() => new BackgroundLayer());
 
   useEffect(() => {
     const el = wrapRef.current!;
@@ -78,6 +83,18 @@ export function EditorCanvas({ board, cell, selection, pending, marks, focus, on
       height: rows * cell,
       center: (p: Pos) => ({ x: (p.x - minX + 0.5) * cell, y: (p.y - minY + 0.5) * cell }),
       cellAt: (px: number, py: number): Pos => ({ x: Math.floor(px / cell) + minX, y: Math.floor(py / cell) + minY }),
+      // The cells the spaces span, as on the play board (BoardCanvas computeLayout)
+      area: placed.length
+        ? boardArea(
+            {
+              x: (Math.min(...xs) - minX) * cell,
+              y: (Math.min(...ys) - minY) * cell,
+              w: (Math.max(...xs) - Math.min(...xs) + 1) * cell,
+              h: (Math.max(...ys) - Math.min(...ys) + 1) * cell,
+            },
+            cell,
+          )
+        : null,
       placed,
     };
   }, [board, cell, viewWidth]);
@@ -129,14 +146,17 @@ export function EditorCanvas({ board, cell, selection, pending, marks, focus, on
 
     ctx.fillStyle = theme.bg;
     ctx.fillRect(0, 0, layout.width, layout.height);
+    if (hasBackground(background) && layout.area) bgLayer.draw(ctx, background, bgImage, layout.area, theme.bg, step * 0.2);
 
     // Grid
+    ctx.globalAlpha = bgImage ? 0.45 : 1;
     ctx.strokeStyle = theme.border;
     ctx.lineWidth = 1;
     ctx.beginPath();
     for (let x = step; x < layout.width; x += step) (ctx.moveTo(Math.round(x) + 0.5, 0), ctx.lineTo(Math.round(x) + 0.5, layout.height));
     for (let y = step; y < layout.height; y += step) (ctx.moveTo(0, Math.round(y) + 0.5), ctx.lineTo(layout.width, Math.round(y) + 0.5));
     ctx.stroke();
+    ctx.globalAlpha = 1;
 
     // Where a click would add a space
     if (hoverCell && dragging === null) {
@@ -156,8 +176,15 @@ export function EditorCanvas({ board, cell, selection, pending, marks, focus, on
 
     const posOf = (s: Space) => (dragging === s.index && mouse ? mouse : center(s.pos));
 
-    // Arrows
+    // Arrows (over an image, with a halo in the board color, as on the play board)
     const head = Math.max(5, tile * 0.1);
+    if (bgImage) {
+      ctx.globalAlpha = 0.75;
+      ctx.strokeStyle = ctx.fillStyle = theme.bg;
+      ctx.lineWidth = Math.max(1.5, tile * 0.03) + 4;
+      for (const a of arrows) arrow(ctx, posOf(byIndex.get(a.from)!), posOf(byIndex.get(a.to)!), half, head + 2, dragging === a.from || dragging === a.to ? null : a.bend);
+      ctx.globalAlpha = 1;
+    }
     for (const a of arrows) {
       const [s, t] = [byIndex.get(a.from)!, byIndex.get(a.to)!];
       const moving = dragging === a.from || dragging === a.to;
@@ -231,7 +258,7 @@ export function EditorCanvas({ board, cell, selection, pending, marks, focus, on
       }
       ctx.globalAlpha = 1;
     }
-  }, [layout, byIndex, arrows, colors, selection, pending, marks, focus, mouse, hoverCell?.x, hoverCell?.y, hoverArrow?.from, hoverArrow?.to, hoverSpace?.index, dragging, now, themeTick]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [layout, byIndex, arrows, colors, selection, pending, marks, focus, mouse, hoverCell?.x, hoverCell?.y, hoverArrow?.from, hoverArrow?.to, hoverSpace?.index, dragging, now, themeTick, background, bgImage]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const point = (e: React.PointerEvent): Pos => {
     const rect = canvasRef.current!.getBoundingClientRect();

@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, type Board, type Category, type Deck, type GameDetail, type GameInput, type LiveMessage } from "../api";
 import { BoardPreview, ErrorBox, NotFound, StatusBadge, categoryMapping, snapshotMapping, toBoardFile, useAction, useList, useRouteSelection } from "./common";
+import type { Background, SlotMapping } from "../engine/types";
+import { BackgroundEditor, boardAspect } from "./BackgroundEditor";
 import { FinalResult, HostControls, JoinForm, LeaveButton, LiveTable, LobbyPlayers, SharePanel, YouBanner, useLiveGame, type LiveGame } from "./LiveGame";
 
 export function GamesPage({ orgId }: { orgId: number }) {
@@ -146,8 +148,9 @@ function GameEditor({
         ) : (
           <p className="muted small">Choose a board first: its slots appear here.</p>
         )}
-        {board && <BoardPreview board={toBoardFile(board)} mapping={categoryMapping(board.definition, game.categories, categories.items)} />}
       </section>
+
+      <GameLook game={game} board={board} mapping={board ? categoryMapping(board.definition, game.categories, categories.items) : {}} orgId={orgId} onSave={update} />
 
       <SharePanel game={game} onChanged={setGame} />
 
@@ -252,6 +255,97 @@ function LobbyEditor({ game, msg, live, onChanged }: { game: GameDetail; msg: Li
         The order is the turn order. Players who join with the link play on their own devices; players added here play on the host's screen. Names must be unique.
       </p>
     </>
+  );
+}
+
+type LookMode = "board" | "custom" | "none";
+const SAVE_DELAY_MS = 400;
+
+/** The game's background (BKG-5): the board's, its own, or none, with a preview of the board. */
+function GameLook({
+  game,
+  board,
+  mapping,
+  orgId,
+  onSave,
+}: {
+  game: GameDetail;
+  board: Board | null;
+  mapping: SlotMapping;
+  orgId: number;
+  onSave: (body: GameInput) => Promise<boolean>;
+}) {
+  const own = game.background;
+  const [mode, setMode] = useState<LookMode>(own === null ? "board" : Object.keys(own).length ? "custom" : "none");
+  const [draft, setDraft] = useState<Background>(own ?? {});
+  // Slider drags send one request when they pause, not one per step
+  const pending = useRef<{ timer: number; background: Background | null } | null>(null);
+  const flush = () => {
+    if (!pending.current) return;
+    clearTimeout(pending.current.timer);
+    const { background } = pending.current;
+    pending.current = null;
+    onSave({ background });
+  };
+  const save = (background: Background | null, delay = 0) => {
+    if (pending.current) clearTimeout(pending.current.timer);
+    pending.current = { background, timer: window.setTimeout(flush, delay) };
+  };
+  useEffect(() => flush, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const boardBg = board?.definition.background;
+  const pick = (next: LookMode) => {
+    setMode(next);
+    if (next === "board") save(null);
+    else if (next === "none") save({});
+    else {
+      const start = draft.image || draft.color ? draft : (boardBg ?? {});
+      setDraft(start);
+      save(start);
+    }
+  };
+  const shown = mode === "board" ? (boardBg ?? null) : mode === "none" ? null : draft;
+
+  return (
+    <section className="panel">
+      <h2>Background</h2>
+      <div className="game-look">
+        <div className="stack">
+          <div className="tabs self-start" role="group" aria-label="Background">
+            {(
+              [
+                ["board", "Board's"],
+                ["custom", "Custom"],
+                ["none", "None"],
+              ] as [LookMode, string][]
+            ).map(([m, label]) => (
+              <button key={m} className={mode === m ? "on" : ""} onClick={() => mode !== m && pick(m)}>
+                {label}
+              </button>
+            ))}
+          </div>
+          {mode === "board" && (
+            <p className="muted small">
+              {!board ? "Choose a board first." : boardBg?.image || boardBg?.color ? `Uses the background set on the board "${board.name}".` : `The board "${board.name}" has no background.`}
+            </p>
+          )}
+          {mode === "none" && <p className="muted small">No background image, even if the board has one.</p>}
+          {mode === "custom" && (
+            <BackgroundEditor
+              orgId={orgId}
+              value={draft}
+              aspect={board ? boardAspect(board.definition) : null}
+              onChange={(bg, coalesce) => {
+                setDraft(bg);
+                save(bg, coalesce ? SAVE_DELAY_MS : 0);
+              }}
+            />
+          )}
+          <p className="muted small">Starting the game freezes the background, like the board and deck.</p>
+        </div>
+        <div>{board ? <BoardPreview board={toBoardFile(board)} mapping={mapping} background={shown} /> : <p className="muted small">The preview appears once a board is chosen.</p>}</div>
+      </div>
+    </section>
   );
 }
 

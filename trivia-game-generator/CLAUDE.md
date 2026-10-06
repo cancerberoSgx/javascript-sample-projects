@@ -16,6 +16,7 @@ Read first:
 | `docker/docker-compose.yml` | db + backend (uvicorn `--reload`) + frontend (Vite dev server), with source bind-mounted |
 | `.env` / `.env.example` | All config. `.env` is gitignored; `docker/.env` is a committed symlink to it, because that's where Compose looks |
 | `frontend/public/boards/*.json`, `decks/general.json` | Example board and deck files (format v2). Also seeded into the DB |
+| `backend/media/` (gitignored) / `media` volume | Background image files (`MEDIA_DIR`), served at `/media/<key>` |
 
 The git repo root is the parent folder (`javascript-sample-projects`), on branch `master`. Only commit when asked.
 
@@ -65,6 +66,7 @@ npx tsc -b && npx vitest run                            # engine tests run again
 - Boards are saved even with errors (**drafts**, SER-5): `BoardOut.issues` is computed on every read, and `validate_game_setup` blocks the start.
 - Secrets: passwords use bcrypt. Organization OpenAI and Gemini keys are Fernet-encrypted with `ENCRYPTION_KEY` and only ever returned masked. JWTs carry a `jti`; logout revokes it in `trivia_revoked_tokens`. The role is re-read from the DB on every request.
 - **Impersonation:** root calls `POST /api/auth/impersonate/{member_id}` and gets a short-lived token. Its `sub` is the member and its `imp` claim is the root user. All permission checks see the member, and `CurrentUser.impersonator` holds the root user. The token dies as soon as the impersonator stops being root, and impersonation can't be nested.
+- **Background images** (rules.md §2.1.2, `BKG-*`): files, not rows. `images.py` re-encodes every upload/import to WebP (Pillow, ≤ 3000 px, no metadata, no SVG); `storage.py` writes `<sha256>.webp` to `MEDIA_DIR` and mounts it at `/media` with immutable caching (no DB, no auth: the hash is the access key). `trivia_images` is only the per-organization library (migration 0007). A board's background lives in its `definition.background`; a game's in `trivia_games.background` (null = the board's, `{}` = none); starting copies the effective one into `snapshot.board.background`, and the live view sends it as `game.background`. The engines never see it (`resolveBoard` drops it). URL import refuses non-public addresses (checked before connecting, on each redirect and on the connected peer). Tests use a temp `MEDIA_DIR` (conftest).
 - **Card generation** (rules.md §2.2.1, `GEN-*`): `app/generation.py` plans exact counts per (category, difficulty, type), batches them per category, dedupes (`Deduper`) and runs jobs on an in-process thread pool (`runner`), writing into `trivia_generation_jobs`. `app/llm.py` is the only code that calls OpenAI/Gemini (plain HTTP via `httpx2`, JSON-schema output). Keys and models come from the organization (`openai_model` / `gemini_model`, null = `OPENAI_MODEL` / `GEMINI_MODEL`); a model is verified with a tiny real call when saved. Prompts treat category descriptions as definitions and list sibling categories (GEN-7). Tests monkeypatch `llm.complete_json`; `tests/test_generation_live.py` hits the real APIs only with `RUN_LIVE_LLM=1`.
 - Don't run `ruff format` over the codebase. It was never applied, and a mass reformat would bury real diffs.
 
@@ -77,6 +79,7 @@ npx tsc -b && npx vitest run                            # engine tests run again
 - The play UI (`PlayTable.tsx`: `useGamePlay`, `BoardView`, `GamePanels`, `TurnPanel` with `canAct`/`dev`/`clockOffset`) is shared by the Boards demo and live games (`LiveGame.tsx`: `useLiveGame`, `LiveTable`, lobby, share link, host controls). Change it once.
 - `BoardCanvas` draws any resolved board. `BoardPreview` (in `common.tsx`) wraps it for boards that may have unmapped slots. Its `drawTile` / `arrow` / `arrowBend` helpers are shared with the editor canvas.
 - **Card generation UI** (`GenerateCards.tsx`): form → progress (polling) → review list → accept. Nothing reaches the deck before accept. `CardForm` (DecksPage) is reused to edit generated cards.
+- **Backgrounds**: `components/background.ts` (pure layout math + `BackgroundLayer`, an offscreen-canvas cache, so per-frame redraws stay cheap) is shared by `BoardCanvas` and `EditorCanvas`; `BackgroundEditor.tsx` (library, crop, sliders) by the board editor and the game setup. `BoardPreview` takes an optional `background` override.
 - **Board editor** (`src/boardEditor/`): `ops.ts` holds the pure edit operations, and `normalize` renumbers spaces in path order after every visual edit. `EditorCanvas` handles the grid, hit tests and drag. `BoardEditor` holds the undo/redo reducer, halo and panels. Issues drive the highlights (`spaces`, `slot`). Details in `frontend/README.md`.
 
 ### Keep in sync (checklist)
@@ -104,6 +107,8 @@ npx tsc -b && npx vitest run                            # engine tests run again
 12. LLM card generation: organizations get a Gemini key next to the OpenAI one. Decks → ✨ Generate N cards (≤ 200) with category / difficulty / type % mixes and instructions, using OpenAI or Gemini (user picks when both keys exist). Exact mix planned server-side, ~20-card batches per category, duplicate filtering vs. the deck and the batch, background job with progress, review-then-accept (migration 0005, `GEN-*`).
 13. Per-organization OpenAI / Gemini models (any member can change them, checked with a real call on save; migration 0006), reasoning parameters chosen by model family, and category descriptions given to the model as definitions alongside the deck's other categories (GEN-7).
 
+14. Background images: an organization image library (upload, drag-and-drop, import from URL), board default backgrounds and per-game overrides (board's / custom / none), fill / fit / stretch / mosaic, crop, position, zoom, tile size, opacity, fade, blur, grayscale, fill color. Files served as immutable static files; frozen into the snapshot at start (migration 0007, `BKG-*`).
+
 ## Known gaps and likely next steps
 - The WebSocket hub is in-process memory: fine for one uvicorn process, but several workers would need shared broadcasts (Postgres `LISTEN/NOTIFY`). Sockets check the login token only on connect.
 - The board canvas is small on phones (tiles about 22px wide), which makes tapping moves fiddly. A zoom, or a list of legal moves as buttons, would help.
@@ -113,5 +118,6 @@ npx tsc -b && npx vitest run                            # engine tests run again
 - Generation jobs run in-process (like the WebSocket hub): a restart or `--reload` fails running jobs (their cards so far stay reviewable). No per-organization cost limit beyond 200 cards per request and one open generation per deck. Duplicate detection is lexical; heavy rewordings can pass (the user reviews).
 - Deleting an organization whose decks have cards fails with a FK error (`trivia_cards.category_id` blocks the cascade, despite the comment in migration 0002). Found while testing generation; not fixed yet.
 - Tokens (login and player) live in `localStorage`.
+- Background images: no per-organization storage quota, and no thumbnails (the library grid loads full images, ≤ 3000 px WebP). The app's `/media` mount is fine for dev; production should serve `MEDIA_DIR` from nginx/CDN and cap upload size there (the app only rejects oversized uploads after receiving them). The Boards demo doesn't show backgrounds (example files have none).
 - The backend suite once failed with 9 setup errors that never reproduced in 6+ reruns. Look into it if it recurs.
 - `frontend/tsconfig.tsbuildinfo` is tracked in git, and changes on every typecheck.
