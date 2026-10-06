@@ -1,9 +1,16 @@
-from fastapi import APIRouter, Response, status
+from fastapi import APIRouter, HTTPException, Response, status
 from psycopg import errors
 
+from .. import llm
 from ..auth import Conn, Me
-from ..models import Organization, OrganizationChanges
-from ..permissions import can_view_organization, conflict, not_found, require_root
+from ..models import Organization, OrganizationChanges, Provider
+from ..permissions import (
+    can_view_organization,
+    check_update_organization,
+    conflict,
+    not_found,
+    require_root,
+)
 from ..repositories import organizations as orgs
 from ..schemas import OrganizationCreate, OrganizationOut, OrganizationUpdate
 from ..security import decrypt_secret, encrypt_secret, mask_secret
@@ -23,6 +30,10 @@ def to_out(org: Organization | None) -> OrganizationOut:
         openai_api_key_masked=mask_secret(decrypt_secret(openai)) if openai else None,
         has_gemini_api_key=gemini is not None,
         gemini_api_key_masked=mask_secret(decrypt_secret(gemini)) if gemini else None,
+        openai_model=org.openai_model,
+        gemini_model=org.gemini_model,
+        default_openai_model=llm.default_model("openai"),
+        default_gemini_model=llm.default_model("gemini"),
         user_count=org.user_count,
         created_at=org.created_at,
         updated_at=org.updated_at,
@@ -58,7 +69,11 @@ def get_organization(org_id: int, me: Me, conn: Conn):
 
 @router.patch("/{org_id}", response_model=OrganizationOut)
 def update_organization(org_id: int, body: OrganizationUpdate, me: Me, conn: Conn):
-    require_root(me)
+    check_update_organization(me, org_id, body.model_fields_set)
+    org = orgs.get(conn, org_id)
+    if org is None:
+        raise not_found("Organization not found")
+    _check_models(org, body)
     changes = OrganizationChanges()
     if body.name is not None:
         changes.name = body.name
@@ -66,6 +81,9 @@ def update_organization(org_id: int, body: OrganizationUpdate, me: Me, conn: Con
         changes.openai_api_key_encrypted = encrypt_secret(body.openai_api_key) if body.openai_api_key else None
     if "gemini_api_key" in body.model_fields_set:
         changes.gemini_api_key_encrypted = encrypt_secret(body.gemini_api_key) if body.gemini_api_key else None
+    for field in ("openai_model", "gemini_model"):
+        if field in body.model_fields_set:  # null = back to the app's default
+            setattr(changes, field, getattr(body, field))
     try:
         with conn.transaction():
             found = orgs.update(conn, org_id, changes)
@@ -74,6 +92,24 @@ def update_organization(org_id: int, body: OrganizationUpdate, me: Me, conn: Con
     if not found:
         raise not_found("Organization not found")
     return to_out(orgs.get(conn, org_id))
+
+
+def _check_models(org: Organization, body: OrganizationUpdate) -> None:
+    """GEN-1: a model being set must exist for the organization's key (the one in this request, or the
+    stored one). Without a key there's nothing to check it with, so it's saved as is."""
+    providers: tuple[Provider, ...] = ("openai", "gemini")
+    for provider in providers:
+        model = getattr(body, f"{provider}_model")
+        if model is None:
+            continue
+        stored = getattr(org, f"{provider}_api_key_encrypted")
+        key = getattr(body, f"{provider}_api_key") if f"{provider}_api_key" in body.model_fields_set else (decrypt_secret(stored) if stored else None)
+        if not key:
+            continue
+        try:
+            llm.check_model(provider, model, key)
+        except llm.LlmError as e:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT if not e.retryable else status.HTTP_503_SERVICE_UNAVAILABLE, str(e))
 
 
 @router.delete("/{org_id}", status_code=status.HTTP_204_NO_CONTENT)

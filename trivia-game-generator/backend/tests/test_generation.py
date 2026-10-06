@@ -146,12 +146,14 @@ class FakeLlm:
 
     def __init__(self, extra=lambda prompt: [], short_by: int = 0):
         self.prompts: list[str] = []
+        self.models: list[str] = []
         self.extra = extra
         self.short_by = short_by  # the first reply leaves out this many cards
         self.n = 0
         self.lock = threading.Lock()
 
-    def __call__(self, provider, api_key, system, user, schema, attempts=3):
+    def __call__(self, provider, model, api_key, system, user, schema, attempts=3):
+        self.models.append(model)
         assert api_key.startswith("sk-test") or api_key.startswith("AIza-test")
         with self.lock:
             self.prompts.append(user)
@@ -229,7 +231,7 @@ def test_generate_review_and_accept(client, root, world, acme, monkeypatch):
     broken = {"question": "Broken?", "type": "multiple_choice", "difficulty": "easy", "options": ["a", "b"], "answer": "z"}
 
     def extra(prompt):
-        if '"History"' in prompt and "medium" not in prompt and not getattr(extra, "done", False):
+        if 'Category: "History"' in prompt and "medium" not in prompt and not getattr(extra, "done", False):
             extra.done = True  # type: ignore[attr-defined]
             return [{"question": existing, "type": "open", "difficulty": "easy", "options": [], "answer": "42"}, broken]
         return []
@@ -260,10 +262,10 @@ def test_generate_review_and_accept(client, root, world, acme, monkeypatch):
     assert all(c["answer"] in c["options"] for c in cards if c["options"])
     # Prompts carry the instructions and list the deck's questions as already used
     assert all("For kids, in Spanish" in p for p in fake.prompts)
-    assert any(existing in p for p in fake.prompts if '"History"' in p)
-    assert all("A Science question?" not in p for p in fake.prompts if '"History"' in p)  # only the same category's
+    assert any(existing in p for p in fake.prompts if 'Category: "History"' in p)
+    assert all("A Science question?" not in p for p in fake.prompts if 'Category: "History"' in p)  # only the same category's
     # Later calls of a category list what the earlier ones wrote
-    history_prompts = [p for p in fake.prompts if '"History"' in p]
+    history_prompts = [p for p in fake.prompts if 'Category: "History"' in p]
     assert "Unique fact number" in history_prompts[-1]
 
     # Nothing is in the deck before accepting (GEN-6)
@@ -344,10 +346,10 @@ def test_a_failed_batch_leaves_a_message(client, root, world, acme, monkeypatch)
     ana, deck = acme["auth"], acme["deck"]
     inner = FakeLlm()
 
-    def flaky(provider, api_key, system, user, schema, attempts=3):
-        if '"Science"' in user:
+    def flaky(provider, model, api_key, system, user, schema, attempts=3):
+        if 'Category: "Science"' in user:
             raise llm.LlmError("OpenAI didn't answer within 180s")
-        return inner(provider, api_key, system, user, schema)
+        return inner(provider, model, api_key, system, user, schema)
 
     monkeypatch.setattr(llm, "complete_json", flaky)
     _set_keys(client, root, world["acme"]["id"])
@@ -387,3 +389,87 @@ def test_interrupted_jobs_are_failed_on_startup(client, root, world, acme, monke
         job = restarted.get(f"/api/decks/{acme['deck']['id']}/generation", headers=acme["auth"]).json()
     release.set()
     assert job["status"] == "failed" and "restart" in job["error"]
+
+
+# ---------- models per organization, and what the prompt says about categories ----------
+
+
+def test_reasoning_is_only_sent_to_models_that_take_it():
+    def body(provider, model):
+        return llm.request_body(provider, model, "s", "u", {})
+
+    assert body("openai", "gpt-5.4-mini")["reasoning_effort"] == "low"
+    assert body("openai", "o4-mini")["reasoning_effort"] == "low"
+    assert "reasoning_effort" not in body("openai", "gpt-4.1")
+    assert body("gemini", "gemini-3.5-flash")["generationConfig"]["thinkingConfig"] == {"thinkingLevel": "low"}
+    assert "thinkingConfig" not in body("gemini", "gemini-2.5-flash")["generationConfig"]
+
+
+def test_organization_models(client, root, world, acme, monkeypatch):
+    ana, acme_id, globex_id = acme["auth"], world["acme"]["id"], world["globex"]["id"]
+    org_url = f"/api/organizations/{acme_id}"
+    org = client.get(org_url, headers=ana).json()
+    assert org["openai_model"] is None and org["default_openai_model"] == "gpt-5.4-mini"
+    assert org["gemini_model"] is None and org["default_gemini_model"] == "gemini-3.5-flash"
+
+    checked = []
+
+    def check(provider, model, key):
+        checked.append((provider, model, key))
+        if model == "no-such-model":
+            raise llm.LlmError("OpenAI has no model named 'no-such-model' for this key", retryable=False)
+        if model == "flaky-model":
+            raise llm.LlmError("Couldn't reach OpenAI")
+
+    monkeypatch.setattr(llm, "check_model", check)
+
+    # Members choose their own organization's models, and nothing else
+    r = client.patch(org_url, json={"gemini_model": "gemini-2.5-flash"}, headers=ana)
+    assert r.status_code == 200 and r.json()["gemini_model"] == "gemini-2.5-flash"
+    assert checked == []  # no Gemini key: nothing to check it with
+    assert client.patch(org_url, json={"name": "Renamed"}, headers=ana).status_code == 403
+    assert client.patch(org_url, json={"openai_api_key": "sk-test-x"}, headers=ana).status_code == 403
+    assert client.patch(f"/api/organizations/{globex_id}", json={"openai_model": "gpt-4.1"}, headers=ana).status_code == 404
+    assert client.patch(org_url, json={"openai_model": "bad model!"}, headers=ana).status_code == 422
+
+    # With a key, the model is checked against the provider
+    _set_keys(client, root, acme_id)
+    r = client.patch(org_url, json={"openai_model": "no-such-model"}, headers=ana)
+    assert r.status_code == 422 and "no model named" in r.json()["detail"]
+    assert client.patch(org_url, json={"openai_model": "flaky-model"}, headers=ana).status_code == 503
+    r = client.patch(org_url, json={"openai_model": "gpt-4.1"}, headers=ana)
+    assert r.status_code == 200 and r.json()["openai_model"] == "gpt-4.1"
+    assert checked[-1] == ("openai", "gpt-4.1", "sk-test-openai-key-1111")
+    # A key and a model in the same request: checked with the new key
+    client.patch(org_url, json={"openai_api_key": "sk-test-new-key", "openai_model": "gpt-5.5"}, headers=root)
+    assert checked[-1] == ("openai", "gpt-5.5", "sk-test-new-key")
+
+    # Generation uses the organization's model
+    fake = FakeLlm()
+    monkeypatch.setattr(llm, "complete_json", fake)
+    deck_url = f"/api/decks/{acme['deck']['id']}/generation"
+    assert client.get(f"{deck_url}/providers", headers=ana).json()[0]["model"] == "gpt-5.5"
+    assert client.post(deck_url, json=_body(acme, count=4), headers=ana).json()["model"] == "gpt-5.5"
+    _wait(client, ana, acme["deck"]["id"])
+    assert set(fake.models) == {"gpt-5.5"}
+
+    # null goes back to the default
+    r = client.patch(org_url, json={"openai_model": None}, headers=ana)
+    assert r.json()["openai_model"] is None
+    assert client.get(f"{deck_url}/providers", headers=ana).json()[0]["model"] == "gpt-5.4-mini"
+
+
+def test_prompts_define_categories_by_their_descriptions(client, root, world, acme, fake):
+    ana, cats = acme["auth"], acme["cats"]
+    client.patch(f"/api/categories/{cats['History']['id']}", json={"name": "History-Uruguay", "description": "History of Uruguay only"}, headers=ana)
+    client.patch(f"/api/categories/{cats['Science']['id']}", json={"description": "Physics and chemistry"}, headers=ana)
+    _set_keys(client, root, world["acme"]["id"])
+    client.post(f"/api/decks/{acme['deck']['id']}/generation", json=_body(acme, count=10), headers=ana)
+    _wait(client, ana, acme["deck"]["id"])
+    history = next(p for p in fake.prompts if p.split("\n")[1].startswith('Category: "History-Uruguay"'))
+    assert 'Category: "History-Uruguay": History of Uruguay only' in history
+    others = history[history.index("Other categories") :]
+    # The other requested category and the deck's other categories (its cards use all four), never itself
+    assert '- "Science": Physics and chemistry' in others and '- "Art" (no description)' in others
+    assert "History-Uruguay" not in others.split("Write exactly")[0]
+    assert "the description wins over the name" in generation.SYSTEM_PROMPT

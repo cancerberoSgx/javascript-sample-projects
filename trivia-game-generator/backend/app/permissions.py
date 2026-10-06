@@ -38,6 +38,19 @@ def can_view_organization(me: CurrentUser, org_id: int) -> bool:
     return me.is_root or me.organization_id == org_id
 
 
+MEMBER_ORGANIZATION_FIELDS = frozenset({"openai_model", "gemini_model"})
+
+
+def check_update_organization(me: CurrentUser, org_id: int, fields: set[str]) -> None:
+    """Root changes anything. Members only choose their own organization's LLM models (not keys or name)."""
+    if me.is_root:
+        return
+    if me.organization_id != org_id:
+        raise not_found("Organization not found")
+    if fields - MEMBER_ORGANIZATION_FIELDS:
+        raise forbidden("Members can only change their organization's models")
+
+
 def can_view_user(me: CurrentUser, target: User) -> bool:
     return me.is_root or me.organization_id == target.organization_id
 

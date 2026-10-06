@@ -85,12 +85,17 @@ class OrganizationOut(BaseModel):
     openai_api_key_masked: str | None  # e.g. "sk-…a1b2"; the full key is never returned
     has_gemini_api_key: bool
     gemini_api_key_masked: str | None
+    openai_model: str | None  # null = the app's default, below
+    gemini_model: str | None
+    default_openai_model: str
+    default_gemini_model: str
     user_count: int
     created_at: datetime
     updated_at: datetime
 
 
 ApiKey = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
+ModelName = Annotated[str, StringConstraints(strip_whitespace=True, pattern=r"^[A-Za-z0-9._:/-]{1,100}$")]
 
 
 class OrganizationCreate(BaseModel):
@@ -100,11 +105,14 @@ class OrganizationCreate(BaseModel):
 
 
 class OrganizationUpdate(BaseModel):
-    """Send a key as null to remove it; leave it out to keep it unchanged."""
+    """Send a key as null to remove it, a model as null to go back to the default; leave a field out to keep it.
+    Members may only change the models of their own organization."""
 
     name: Name | None = None
     openai_api_key: ApiKey | None = None
     gemini_api_key: ApiKey | None = None
+    openai_model: ModelName | None = None
+    gemini_model: ModelName | None = None
 
 
 # ---------- shared ----------

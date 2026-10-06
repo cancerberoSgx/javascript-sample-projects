@@ -23,6 +23,11 @@ export interface Organization {
   openai_api_key_masked: string | null;
   has_gemini_api_key: boolean;
   gemini_api_key_masked: string | null;
+  /** null = the app's default (default_*_model). */
+  openai_model: string | null;
+  gemini_model: string | null;
+  default_openai_model: string;
+  default_gemini_model: string;
   user_count: number;
   created_at: string;
   updated_at: string;
@@ -287,8 +292,11 @@ export const api = {
   listOrganizations: () => request<Organization[]>("GET", "/organizations"),
   createOrganization: (body: { name: string; openai_api_key?: string | null; gemini_api_key?: string | null }) =>
     request<Organization>("POST", "/organizations", body),
-  /** Keys: omit to keep, null to remove, string to replace. */
-  updateOrganization: (id: number, body: { name?: string; openai_api_key?: string | null; gemini_api_key?: string | null }) =>
+  /** Keys: omit to keep, null to remove, string to replace. Models: null = back to the default. Members may only send models. */
+  updateOrganization: (
+    id: number,
+    body: { name?: string; openai_api_key?: string | null; gemini_api_key?: string | null; openai_model?: string | null; gemini_model?: string | null },
+  ) =>
     request<Organization>("PATCH", `/organizations/${id}`, body),
   deleteOrganization: (id: number) => request<void>("DELETE", `/organizations/${id}`),
 

@@ -6,7 +6,7 @@ A React + Vite app. After login it shows:
 - **Boards**: a visual board editor (see [Board editor](#board-editor)), with live validation that points at the spaces involved. New boards can start blank or from an example.
 - **Decks**: questions and answers (open or multiple choice, difficulty, grand prize), written by hand or generated with OpenAI / Gemini (see [Generating cards](#generating-cards)).
 - **Categories**: name, description, color.
-- **Organizations** (root) / **My organization** (member): CRUD for organizations and their users, and the organization's OpenAI / Gemini keys (root only, shown masked). Root users also get an organization picker on the content tabs.
+- **Organizations** (root) / **My organization** (member): CRUD for organizations and their users, the organization's OpenAI / Gemini keys (root only, shown masked) and models (any user of the organization; empty = default, checked when saved). Root users also get an organization picker on the content tabs.
 - **Boards demo** (root only): loads board definitions from JSON and lets you play turns on them (hot-seat, 1–4 players). The game logic follows [`../rules.md`](../rules.md). Code comments cite its rule IDs.
 
 ## URLs
@@ -79,7 +79,7 @@ Games are played live, each player on their own device (rules.md §2.7). The ser
 
 ## Generating cards
 
-On a deck, **✨ Generate** (rules.md §2.2.1) opens a form: provider (a choice only when the organization has both keys), number of cards (≤ 200), categories with % shares, difficulty and question-type % shares, and free-text instructions (audience, language, theme). Each mix shows the exact card counts it becomes (`largestRemainder`, the same split the backend uses); shares that don't add up to 100% are scaled. The button is disabled, with a tooltip, when the organization has no key or a generation is already open.
+On a deck, **✨ Generate** (rules.md §2.2.1) opens a form: provider (a choice only when the organization has both keys), number of cards (≤ 200), categories with % shares, difficulty and question-type % shares, and free-text instructions (audience, language, theme). Each mix shows the exact card counts it becomes (`largestRemainder`, the same split the backend uses); shares that don't add up to 100% are scaled. Chosen categories without a description get a warning, since the description is what tells the model what belongs in a category. The button is disabled, with a tooltip, when the organization has no key or a generation is already open.
 
 The generation runs on the server, so the page can be left and reopened. The panel polls `GET /decks/:id/generation` every 1.5 s and shows progress and the cards so far; **Stop and discard** cancels it. When it's done, the review list has every card ticked: untick some, **Edit** one (the regular `CardForm`, editing the local copy), then **Add N cards to deck**. Nothing is in the deck until then. **Discard all** throws the generation away.
 

@@ -40,7 +40,8 @@ def list_providers(deck_id: int, me: Me, conn: Conn):
     """The providers this deck's organization has a key for (GEN-1). Empty: generating isn't possible."""
     deck = _deck(me, conn, deck_id)
     keys = generation.org_keys(conn, deck.organization_id)
-    return [ProviderOut(id=p, name=llm.PROVIDER_NAMES[p], model=llm.model_for(p)) for p in generation.available_providers(keys)]
+    available = generation.available_providers(keys)
+    return [ProviderOut(id=p, name=llm.PROVIDER_NAMES[p], model=generation.org_model(conn, deck.organization_id, p)) for p in available]
 
 
 @router.get("", response_model=GenerationJobOut | None)
@@ -65,7 +66,7 @@ def start_generation(deck_id: int, body: GenerationRequest, me: Me, conn: Conn):
 
     spec = GenerationSpec(**body.model_dump(exclude={"provider"}))
     batches = generation.plan_batches(generation.plan(spec), get_settings().generation_batch_size)
-    new = NewGenerationJob(deck_id=deck_id, creator_id=me.id, provider=provider, model=llm.model_for(provider), request=spec)
+    new = NewGenerationJob(deck_id=deck_id, creator_id=me.id, provider=provider, model=generation.org_model(conn, deck.organization_id, provider), request=spec)
     try:
         with conn.transaction():
             job_id = generation_jobs.create(conn, new, len(batches))

@@ -293,3 +293,4 @@ tr.unpicked td:first-child { opacity: 1; }
   .grid-form.generate-form > span:empty { display: none; }
 }
 .table-scroll, .generated-cards { overflow-x: auto; }
+.models-form { margin-top: 6px; padding-top: 10px; border-top: 1px solid var(--border); }

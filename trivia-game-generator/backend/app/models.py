@@ -41,6 +41,8 @@ class Organization(Row):
     name: str
     openai_api_key_encrypted: str | None
     gemini_api_key_encrypted: str | None
+    openai_model: str | None  # None = the app's default (llm.default_model)
+    gemini_model: str | None
     user_count: int  # computed by the query
     created_at: datetime
     updated_at: datetime
@@ -50,6 +52,8 @@ class OrganizationChanges(Changes):
     name: str | None = None
     openai_api_key_encrypted: str | None = None
     gemini_api_key_encrypted: str | None = None
+    openai_model: str | None = None
+    gemini_model: str | None = None
 
 
 # ---------- trivia_users ----------

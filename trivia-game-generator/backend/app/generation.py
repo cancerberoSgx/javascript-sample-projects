@@ -19,7 +19,7 @@ import re
 import threading
 import unicodedata
 from collections import Counter, defaultdict
-from collections.abc import Callable, Hashable, Iterable
+from collections.abc import Callable, Hashable, Iterable, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import Any, Literal
@@ -219,15 +219,26 @@ SYSTEM_PROMPT = f"""You write cards for a trivia board game. Players answer on t
 Every card has exactly one correct answer that is factual, unambiguous, and won't change over time.
 - multiple_choice: exactly {MC_OPTIONS} distinct, plausible options; `answer` is copied character for character from `options`.
 - open: `options` is []; `answer` is the short canonical answer a player would type (1 to 4 words, or a number). Answers are matched ignoring case, accents and punctuation, so avoid answers with several accepted spellings, lists, and yes/no.
+- A category is defined by its description when it has one: the description wins over the name. Every card must fit its category's description, and no card may belong better to one of the deck's other categories (they're listed so you can tell similar categories apart, e.g. "History" of two different countries).
 - easy: most adults know it. medium: someone who follows the topic knows it. hard: experts or keen fans know it.
 - Questions are self-contained, at most 200 characters, and never give away the answer.
 - Never repeat or reword a question from the "Already used" list, and never ask about the same fact twice.
 - Write exactly the number of cards asked for each difficulty and type. Follow the organizer's instructions when they don't conflict with these rules (they decide the language)."""
 
 
-def user_prompt(category: Category, batch: Batch, deck_name: str, deck_description: str, instructions: str, avoid: list[str]) -> str:
+def _describe(category: Category) -> str:
+    return f'"{category.name}"' + (f": {category.description}" if category.description.strip() else " (no description)")
+
+
+def user_prompt(
+    category: Category, batch: Batch, deck_name: str, deck_description: str, instructions: str, avoid: list[str], others: Sequence[Category] = ()
+) -> str:
+    """`others`: the deck's other categories (this request's and those its cards use), to keep similar categories apart."""
     lines = [f'Deck: "{deck_name}"' + (f" — {deck_description}" if deck_description else "")]
-    lines.append(f'Category: "{category.name}"' + (f" — {category.description}" if category.description else ""))
+    lines.append(f"Category: {_describe(category)}")
+    if others:
+        lines.append("Other categories in this deck (don't write cards that belong to them):")
+        lines.extend(f"- {_describe(c)}" for c in others)
     if instructions:
         lines.append(f"Organizer's instructions: {instructions}")
     lines.append(f"\nWrite exactly {batch.size} cards in this category:")
@@ -289,6 +300,13 @@ def pick_provider(org_keys: dict[Provider, str | None], requested: Provider | No
     return requested
 
 
+def org_model(conn: db.DbConn, organization_id: int, provider: Provider) -> str:
+    """The organization's model for `provider`, or the app's default (GEN-1)."""
+    org = organizations.get(conn, organization_id)
+    chosen = (org.openai_model if provider == "openai" else org.gemini_model) if org else None
+    return chosen or llm.default_model(provider)
+
+
 def org_keys(conn: db.DbConn, organization_id: int) -> dict[Provider, str | None]:
     org = organizations.get(conn, organization_id)
     if org is None:
@@ -312,6 +330,7 @@ class _JobRun:
     categories: dict[int, Category]
     deduper: Deduper
     avoid: dict[int, list[str]]  # per category: questions to list as already used
+    in_deck: set[int]  # categories of this request and of the deck's cards
     rng: random.Random
     lock: threading.Lock = field(default_factory=threading.Lock)
     fatal: str | None = None
@@ -379,6 +398,7 @@ def run_job(job_id: int, stopping: Callable[[], bool] = lambda: False) -> None:
         categories=cats,
         deduper=Deduper(),
         avoid=defaultdict(list),
+        in_deck={c.category_id for c in job.request.categories if c.weight > 0} | {card.category_id for card in existing},
         rng=random.Random(),
     )
     for card in existing:
@@ -445,9 +465,10 @@ def _run_batch(run: _JobRun, batch: Batch, stopping: Callable[[], bool]) -> Coun
     category = run.categories[batch.category_id]
     with run.lock:
         avoid = list(run.avoid[category.id])
-    prompt = user_prompt(category, batch, run.deck_name, run.deck_description, run.job.request.instructions, avoid)
+    others = sorted((run.categories[i] for i in run.in_deck if i != category.id and i in run.categories), key=lambda c: c.name.lower())
+    prompt = user_prompt(category, batch, run.deck_name, run.deck_description, run.job.request.instructions, avoid, others)
     try:
-        reply = llm.complete_json(run.job.provider, run.api_key, SYSTEM_PROMPT, prompt, CARD_SCHEMA)
+        reply = llm.complete_json(run.job.provider, run.job.model, run.api_key, SYSTEM_PROMPT, prompt, CARD_SCHEMA)
     except llm.LlmError as e:
         if not e.retryable:
             run.fatal = str(e)

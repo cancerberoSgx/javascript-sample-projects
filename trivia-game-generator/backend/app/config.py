@@ -33,10 +33,9 @@ class Settings(BaseSettings):
     cors_origins: list[str] = []
 
     # Card generation (rules.md §2.2.1). The API keys come from each organization, never from here.
+    # Defaults for organizations that didn't pick their own models
     openai_model: str = "gpt-5.4-mini"
-    openai_reasoning_effort: str = "low"  # empty for models without reasoning (e.g. gpt-4.1)
     gemini_model: str = "gemini-3.5-flash"
-    gemini_thinking_level: str = "low"  # empty for models without thinking levels (e.g. gemini-2.5)
     generation_batch_size: int = 20  # cards asked for in one LLM call
     generation_parallel_calls: int = 3  # calls in flight per job (one per category at a time)
     llm_timeout_seconds: float = 180

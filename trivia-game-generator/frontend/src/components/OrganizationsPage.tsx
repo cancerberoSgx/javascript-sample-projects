@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { api, type Organization, type Role, type User, type UserInput } from "../api";
 import { useAuth } from "../auth";
 import { NotFound, useRouteSelection } from "./common";
@@ -205,7 +205,75 @@ function OrganizationPanel({
         </dl>
       )}
       {msg && <div className={msg.ok ? "ok" : "error"}>{msg.text}</div>}
+      <ModelsForm org={org} onChanged={onChanged} />
     </section>
+  );
+}
+
+// Suggestions only: any model the provider accepts can be typed (it's checked on save)
+const MODEL_SUGGESTIONS = {
+  openai: ["gpt-5.4-mini", "gpt-5.4-nano", "gpt-5.4", "gpt-5.5", "gpt-4.1-mini"],
+  gemini: ["gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-3.1-pro-preview"],
+};
+
+/** The organization's LLM models (rules.md GEN-1). Any user of the organization can change them. */
+function ModelsForm({ org, onChanged }: { org: Organization; onChanged: () => Promise<void> }) {
+  const [openai, setOpenai] = useState(org.openai_model ?? "");
+  const [gemini, setGemini] = useState(org.gemini_model ?? "");
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const changes = {
+    ...((openai.trim() || null) !== org.openai_model ? { openai_model: openai.trim() || null } : {}),
+    ...((gemini.trim() || null) !== org.gemini_model ? { gemini_model: gemini.trim() || null } : {}),
+  };
+  const dirty = Object.keys(changes).length > 0;
+  return (
+    <form
+      className="grid-form models-form"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        setBusy(true);
+        setMsg(null);
+        try {
+          await api.updateOrganization(org.id, changes);
+          setMsg({ ok: true, text: "Models saved." });
+          await onChanged();
+        } catch (err) {
+          setMsg({ ok: false, text: (err as Error).message });
+        } finally {
+          setBusy(false);
+        }
+      }}
+    >
+      <strong className="span">Models for generating cards</strong>
+      {(
+        [
+          ["openai", "OpenAI model", openai, setOpenai, org.default_openai_model, org.has_openai_api_key],
+          ["gemini", "Gemini model", gemini, setGemini, org.default_gemini_model, org.has_gemini_api_key],
+        ] as const
+      ).map(([id, label, value, set, fallback, hasKey]) => (
+        <Fragment key={id}>
+          <label htmlFor={`model-${id}`}>{label}</label>
+          <div className="row">
+            <input id={`model-${id}`} list={`models-${id}`} value={value} placeholder={`default (${fallback})`} onChange={(e) => set(e.target.value)} />
+            {!hasKey && <span className="muted small">no key yet</span>}
+            <datalist id={`models-${id}`}>
+              {MODEL_SUGGESTIONS[id].map((m) => (
+                <option key={m} value={m} />
+              ))}
+            </datalist>
+          </div>
+        </Fragment>
+      ))}
+      <span className="span muted small">Leave empty for the default. A model is tried with the organization's key when saved, so typos and retired models are caught here.</span>
+      <span />
+      <div className="row">
+        <button className="primary small" disabled={!dirty || busy}>
+          {busy ? "Checking…" : "Save models"}
+        </button>
+      </div>
+      {msg && <div className={`span ${msg.ok ? "ok" : "error"}`}>{msg.text}</div>}
+    </form>
   );
 }
 

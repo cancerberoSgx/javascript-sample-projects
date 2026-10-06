@@ -101,6 +101,7 @@ export function GenerateForm({
     count,
     TYPES.map(([k]) => types[k]),
   );
+  const undescribed = chosen.filter((c) => shares[c.id] > 0 && !c.description.trim());
   const validCount = Number.isInteger(count) && count >= 1 && count <= MAX_GENERATED_CARDS;
   const problems = [
     !provider && "Pick a provider.",
@@ -227,6 +228,12 @@ export function GenerateForm({
       />
 
       <div className="span">
+        {undescribed.length > 0 && (
+          <p className="warn-text small">
+            {undescribed.map((c) => c.name).join(", ")} {undescribed.length === 1 ? "has" : "have"} no description, so the model only sees the name. A
+            description (Categories tab) says what belongs in a category, e.g. to tell "History-Uruguay" from "History-Argentina".
+          </p>
+        )}
         {problems.length > 0 && <p className="muted small">{problems.join(" ")}</p>}
         <ErrorBox error={start.error} />
       </div>
