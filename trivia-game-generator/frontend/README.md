@@ -3,7 +3,7 @@
 A React + Vite app. After login it shows:
 - **Games**: set up a game (board, deck, a category for each board slot), share its link, watch players join live, start it. A running game shows the live board with host controls (skip a turn, remove a player, end the game). See [Multiplayer](#multiplayer).
 - **Player page** (`/games/:id?code=…`): what players open on their own devices. No login: pick a name, wait in the lobby, play your turns.
-- **Boards**: edit a board's JSON definition, with live validation and a canvas preview. New boards can start from an example.
+- **Boards**: a visual board editor (see [Board editor](#board-editor)), with live validation that points at the spaces involved. New boards can start blank or from an example.
 - **Decks**: questions and answers (open or multiple choice, difficulty, grand prize).
 - **Categories**: name, description, color.
 - **Organizations** (root) / **My organization** (member): CRUD for organizations and their users. Root users also get an organization picker on the content tabs.
@@ -53,11 +53,14 @@ Impersonation: root users get an **Impersonate** button on member users (Organiz
 | `src/engine/` | Pure TypeScript game engine, no React. The backend runs a Python port of it (`backend/app/engine/`) for multiplayer games; `engine.test.ts` writes the conformance fixture that keeps them identical |
 | `src/engine/engine.ts` | `createGame` / `applyAction(state, action, now)`: a pure state machine (§3–§7) |
 | `src/engine/movement.ts` | Legal destinations for a roll (MOV-*, FRK-*) |
-| `src/engine/board.ts` | Default config and board/deck validation (BRD-*, CRD-*) |
-| `src/engine/resolve.ts` | Board file (slots) + slot→category mapping + deck file → the engine's board and cards. Also used for game snapshots from the backend |
+| `src/engine/board.ts` | Default config and board validation: `validateBoardFile` returns issues (rules.md §2.1.1). `board.test.ts` writes the fixture that keeps the Python port identical |
+| `src/engine/resolve.ts` | Board file (slots) + slot→category mapping + deck file → the engine's board and cards, plus the mapping and deck checks (BRD-5, CRD-*). Also used for game snapshots from the backend |
 | `src/engine/loader.ts` | Fetches the example JSON for the boards demo. The demo plays slot A, B, … with the deck's categories in order |
 | `src/components/` | Canvas board renderer, game panels, login and Organizations pages |
 | `src/BoardsDemo.tsx` | The boards demo tab |
+| `src/boardEditor/ops.ts` | Pure board edit operations (add, insert, delete with healing, arrows, forks, types, slots, settings) and `normalize` (path-order numbering). Tested in `ops.test.ts` |
+| `src/boardEditor/EditorCanvas.tsx` | The editor's grid canvas: hit tests for spaces and arrows, dragging, problem highlights. Draws tiles and arrows with the helpers exported by `BoardCanvas.tsx` |
+| `src/boardEditor/BoardEditor.tsx` | The editor page: undo/redo reducer, halo, selection inspector, checks, slots, settings and the advanced JSON panel |
 | `src/api.ts` | REST client for the backend |
 | `src/App.tsx` | Header, tabs and routes |
 | `src/components/PlayTable.tsx` | The play UI shared by the Boards demo and live games: `useGamePlay` (dispatch + toasts; `useLocalGamePlay` runs the engine in the browser), `BoardView`, `GamePanels` |
@@ -72,6 +75,19 @@ Games are played live, each player on their own device (rules.md §2.7). The ser
 - **Players** open the link: name → lobby → game. The device keeps a player token in `localStorage` (`trivia.player.<gameId>`), so a reload or a dropped connection comes back as the same player. Opening the link without joining (or after the start) just watches.
 - `useLiveGame(gameId, code)` opens `ws(s)://<host>/api/games/:id/ws` (Vite proxies it, `ws: true`), sends the hello (login token, player token, code), keeps the latest message, and reconnects with backoff. `canActNow()` decides whether this screen plays the current turn; others see "Waiting for … to roll" and the question read-only.
 - Question timers run on server time (`server_now` → `clockOffset`), and the server times out unanswered questions itself, so the browser never sends a timeout in multiplayer.
+
+## Board editor
+
+`/boards/:id` edits a board visually. Boards with problems save as drafts (rules.md SER-5).
+
+- **Click an empty cell** to add a space. With a space selected, the new space is chained after it: it takes over the selected space's arrow, so it is inserted into the track. After the finish, the finish moves forward to the new space. After a fork, it becomes a new branch. With an arrow selected, the new space goes on that arrow.
+- **Click a space** to open its halo: type ◆, slot (choose, add, rename), arrow → (replaces the arrow out), fork ⑂ (adds another arrow out), make start ▶ / finish ⚑, delete 🗑 (arrows into it pass on to its next space), and label ✎. The inspector panel shows the same, plus the arrows in and out.
+- **Click an arrow** to reverse or delete it. **Drag a space** to move it; dropping it on another space swaps the two.
+- Keys: Del, A (arrow), B (branch), Esc, Ctrl+Z / Ctrl+Shift+Z.
+- After every visual edit, `normalize` renumbers the spaces in path order (start 0, each fork branch in turn, finish last), and the selection follows. JSON edits in the Advanced panel are kept as typed.
+- **Playable?** shows a checklist and every issue. Pointing at an issue makes its spaces glow, clicking it selects the space, and spaces with problems keep a red (error) or dashed amber (warning) outline.
+- Settings store only overrides of the defaults. Switching to a loop turns the finish into a space that leads back to the start, and turns off the finish win.
+- Arrows that would cross another tile are drawn bent around it, on the play board too.
 
 ## Example boards
 

@@ -1,6 +1,6 @@
 // Loads board/deck JSON files from public/ for the boards demo.
 
-import { placeholderMapping, resolveBoard, resolveGame, validateBoardFile, validateSlots } from "./resolve";
+import { placeholderMapping, resolveBoard, resolveGame } from "./resolve";
 import type { BoardDefinition, BoardFile, DeckDefinition, DeckFile, SlotMapping } from "./types";
 
 export interface ManifestEntry {
@@ -18,7 +18,7 @@ export interface LoadedBoard {
   file: BoardFile;
   deckFile: DeckFile;
   mapping: SlotMapping;
-  /** For drawing, even when there are errors (unmapped slots get placeholder colors). null if slots are broken. */
+  /** For drawing, even when there are errors (unmapped slots get placeholder colors). null if the file has no slots/spaces. */
   preview: BoardDefinition | null;
   /** Ready to play; null when there are errors */
   board: BoardDefinition | null;
@@ -57,9 +57,8 @@ export function prepareBoard(rawJson: string, deckFile: DeckFile): LoadedBoard {
   const mapping: SlotMapping = Object.fromEntries(
     (file.slots ?? []).flatMap((slot, i) => (deckFile.categories[i] ? [[slot, deckFile.categories[i]]] : [])),
   );
-  const boardErrors = validateBoardFile(file);
-  const game = boardErrors.length ? { errors: boardErrors, board: null, deck: null } : resolveGame(file, mapping, deckFile);
-  const preview = validateSlots(file).length ? null : resolveBoard(file, { ...placeholderMapping(file), ...mapping });
+  const game = resolveGame(file, mapping, deckFile);
+  const preview = Array.isArray(file.slots) && Array.isArray(file.spaces) ? resolveBoard(file, { ...placeholderMapping(file), ...mapping }) : null;
   return { file, deckFile, mapping, rawJson, preview, ...game };
 }
 

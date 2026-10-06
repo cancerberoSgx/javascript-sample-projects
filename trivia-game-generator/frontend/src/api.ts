@@ -1,7 +1,7 @@
 // REST client for the backend. Requests go to /api on the same origin; Vite proxies them
 // to FastAPI in dev (see vite.config.ts).
 
-import type { BoardFile, DeckFile, GameConfig, GameView, SpaceType } from "./engine/types";
+import type { BoardFile, BoardIssue, DeckFile, GameConfig, GameView, SpaceType } from "./engine/types";
 
 export type Role = "root" | "member";
 
@@ -83,6 +83,8 @@ export interface Board {
   name: string;
   description: string;
   definition: BoardDefinition;
+  /** Validation results (rules.md §2.1.1). Any error makes the board a draft that games can't start with. */
+  issues: BoardIssue[];
 }
 
 export type GameStatus = "awaiting" | "running" | "finished";

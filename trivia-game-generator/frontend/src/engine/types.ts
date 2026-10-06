@@ -50,6 +50,16 @@ export interface DeckFile {
   cards: DeckCard[];
 }
 
+/** One problem found by validateBoardFile (rules.md §2.1.1). Errors make a board unplayable;
+ *  warnings are only advice. `spaces` and `slot` say what to highlight in the editor. */
+export interface BoardIssue {
+  code: string; // rule ID, e.g. "BRD-2"
+  severity: "error" | "warning";
+  message: string;
+  spaces: number[];
+  slot: string | null;
+}
+
 /** Which category plays each board slot. */
 export type SlotMapping = Record<string, Category>;
 

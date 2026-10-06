@@ -267,7 +267,7 @@ function SetupForm({ game, boards, decks, onSave }: { game: GameDetail; boards: 
         <option value="">Choose a board…</option>
         {boards.map((b) => (
           <option key={b.id} value={b.id}>
-            {b.name} ({b.definition.slots.length} slots)
+            {b.name} ({b.definition.slots.length} slots){b.issues.some((i) => i.severity === "error") ? " · draft, has problems" : ""}
           </option>
         ))}
       </select>

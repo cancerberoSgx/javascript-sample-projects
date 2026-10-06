@@ -46,7 +46,9 @@ function computeLayout(spaces: Space[], width: number): Layout {
   };
 }
 
-function readTheme() {
+export type Theme = ReturnType<typeof readTheme>;
+
+export function readTheme() {
   const css = getComputedStyle(document.documentElement);
   const v = (name: string) => css.getPropertyValue(name).trim();
   return {
@@ -55,6 +57,9 @@ function readTheme() {
     muted: v("--muted"),
     edge: v("--edge"),
     accent: v("--accent"),
+    border: v("--border"),
+    error: v("--error-text"),
+    warning: v("--warning"),
     tileText: "#ffffff",
     special: {
       start: v("--space-start"),
@@ -66,32 +71,111 @@ function readTheme() {
   };
 }
 
-function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+export function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath();
   ctx.roundRect(x, y, w, h, r);
 }
 
-function arrow(ctx: CanvasRenderingContext2D, from: { x: number; y: number }, to: { x: number; y: number }, trim: number, head: number) {
-  const dx = to.x - from.x;
-  const dy = to.y - from.y;
-  const len = Math.hypot(dx, dy);
-  if (len < trim * 2) return;
-  const ux = dx / len;
-  const uy = dy / len;
-  const sx = from.x + ux * trim;
-  const sy = from.y + uy * trim;
-  const ex = to.x - ux * trim;
-  const ey = to.y - uy * trim;
+type Pt = { x: number; y: number };
+
+/** Distance from p to the segment a-b. */
+export function segmentDistance(p: Pt, a: Pt, b: Pt) {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy || 1)));
+  return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+}
+
+/** An arrow that would cross another tile bends around it: returns the two control points
+ *  of that curve, or null when the straight line is clear. */
+export function arrowBend(from: Pt, to: Pt, centers: Pt[], tile: number): [Pt, Pt] | null {
+  const len = Math.hypot(to.x - from.x, to.y - from.y);
+  const away = (c: Pt, p: Pt) => Math.hypot(c.x - p.x, c.y - p.y) > 1;
+  if (!len || !centers.some((c) => away(c, from) && away(c, to) && segmentDistance(c, from, to) < tile * 0.55)) return null;
+  const h = tile * 1.6;
+  const [px, py] = [((to.y - from.y) / len) * h, (-(to.x - from.x) / len) * h];
+  return [
+    { x: from.x + px, y: from.y + py },
+    { x: to.x + px, y: to.y + py },
+  ];
+}
+
+/** Points along an arrow (straight or bent), trimmed by `trim` at both ends: for drawing and hit tests. */
+export function arrowPoints(from: Pt, to: Pt, trim: number, bend: [Pt, Pt] | null, steps = 24): Pt[] {
+  const unit = (a: Pt, b: Pt) => {
+    const l = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+    return { x: (b.x - a.x) / l, y: (b.y - a.y) / l };
+  };
+  const [c1, c2] = bend ?? [to, from];
+  const u1 = unit(from, c1);
+  const u2 = unit(to, c2);
+  const a = { x: from.x + u1.x * trim, y: from.y + u1.y * trim };
+  const b = { x: to.x + u2.x * trim, y: to.y + u2.y * trim };
+  if (!bend) return [a, b];
+  return Array.from({ length: steps + 1 }, (_, i) => {
+    const t = i / steps;
+    const [k0, k1, k2, k3] = [(1 - t) ** 3, 3 * (1 - t) ** 2 * t, 3 * (1 - t) * t ** 2, t ** 3];
+    return { x: k0 * a.x + k1 * c1.x + k2 * c2.x + k3 * b.x, y: k0 * a.y + k1 * c1.y + k2 * c2.y + k3 * b.y };
+  });
+}
+
+export function arrow(ctx: CanvasRenderingContext2D, from: Pt, to: Pt, trim: number, head: number, bend: [Pt, Pt] | null = null) {
+  if (!bend && Math.hypot(to.x - from.x, to.y - from.y) < trim * 2) return;
+  const pts = arrowPoints(from, to, trim, bend);
+  const e = pts[pts.length - 1];
+  const p = pts[pts.length - 2];
+  const l = Math.hypot(e.x - p.x, e.y - p.y) || 1;
+  const [ux, uy] = [(e.x - p.x) / l, (e.y - p.y) / l];
   ctx.beginPath();
-  ctx.moveTo(sx, sy);
-  ctx.lineTo(ex, ey);
+  pts.forEach((q, i) => (i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y)));
   ctx.stroke();
   ctx.beginPath();
-  ctx.moveTo(ex, ey);
-  ctx.lineTo(ex - ux * head - uy * head * 0.6, ey - uy * head + ux * head * 0.6);
-  ctx.lineTo(ex - ux * head + uy * head * 0.6, ey - uy * head - ux * head * 0.6);
+  ctx.moveTo(e.x, e.y);
+  ctx.lineTo(e.x - ux * head - uy * head * 0.6, e.y - uy * head + ux * head * 0.6);
+  ctx.lineTo(e.x - ux * head + uy * head * 0.6, e.y - uy * head - ux * head * 0.6);
   ctx.closePath();
   ctx.fill();
+}
+
+/** Draws one space: its color, number, fork mark, main label and optional label. Shared by the
+ *  play board and the board editor. */
+export function drawTile(
+  ctx: CanvasRenderingContext2D,
+  theme: Theme,
+  s: Space,
+  { x, y }: { x: number; y: number },
+  tile: number,
+  categoryColor: string | undefined,
+  categoryName: string | undefined,
+) {
+  const half = tile / 2;
+  roundRect(ctx, x - half, y - half, tile, tile, tile * 0.16);
+  ctx.fillStyle = (s.category ? categoryColor : theme.special[s.type]) ?? theme.muted;
+  ctx.fill();
+
+  ctx.fillStyle = theme.tileText;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+  ctx.font = `600 ${Math.max(9, tile * 0.15)}px system-ui, sans-serif`;
+  ctx.fillText(String(s.index), x - half + tile * 0.08, y - half + tile * 0.07);
+  if (isFork(s)) {
+    ctx.textAlign = "right";
+    ctx.fillText("⑂", x + half - tile * 0.08, y - half + tile * 0.07);
+  }
+
+  const main = s.type === "hq" ? `★ HQ\n${categoryName ?? ""}` : s.category ? (categoryName ?? s.category) : (SPECIAL_LABEL[s.type] ?? s.type);
+  const lines = main.split("\n");
+  const size = Math.max(8, tile * (lines.some((l) => l.length > 8) ? 0.13 : 0.16));
+  const lift = s.label ? tile * 0.06 : 0;
+  ctx.font = `700 ${size}px system-ui, sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  lines.forEach((line, i) => ctx.fillText(line, x, y + tile * 0.08 - lift + (i - (lines.length - 1) / 2) * size * 1.15, tile * 0.92));
+  if (s.label) {
+    ctx.font = `italic 500 ${Math.max(8, tile * 0.12)}px system-ui, sans-serif`;
+    ctx.textBaseline = "bottom";
+    ctx.fillText(s.label, x, y + half - tile * 0.05, tile * 0.9);
+  }
 }
 
 export function BoardCanvas({ board, game, onSpaceClick, onHover }: Props) {
@@ -180,13 +264,14 @@ export function BoardCanvas({ board, game, onSpaceClick, onHover }: Props) {
     // Edges
     const head = Math.max(5, tile * 0.1);
     ctx.lineWidth = Math.max(1.5, tile * 0.03);
+    const centers = board.spaces.map(center);
     for (const s of board.spaces) {
       const fork = isFork(s);
       for (const n of s.next) {
         const target = byIndex.get(n);
         if (!target) continue;
         ctx.strokeStyle = ctx.fillStyle = fork ? theme.accent : theme.edge;
-        arrow(ctx, center(s), center(target), tile * 0.5, head);
+        arrow(ctx, center(s), center(target), tile * 0.5, head, arrowBend(center(s), center(target), centers, tile));
       }
     }
 
@@ -223,40 +308,12 @@ export function BoardCanvas({ board, game, onSpaceClick, onHover }: Props) {
         ctx.fill();
         ctx.restore();
       }
-      const color = s.category ? categoryColor[s.category] : theme.special[s.type];
-      roundRect(ctx, x - half, y - half, tile, tile, tile * 0.16);
-      ctx.fillStyle = color ?? theme.muted;
-      ctx.fill();
-
+      drawTile(ctx, theme, s, { x, y }, tile, s.category ? categoryColor[s.category] : undefined, s.category ? categoryName[s.category] : undefined);
       if (hovered === s.index) {
         roundRect(ctx, x - half, y - half, tile, tile, tile * 0.16);
         ctx.fillStyle = "rgba(255,255,255,0.18)";
         ctx.fill();
       }
-
-      // Labels
-      ctx.fillStyle = theme.tileText;
-      ctx.textAlign = "left";
-      ctx.textBaseline = "top";
-      ctx.font = `600 ${Math.max(9, tile * 0.15)}px system-ui, sans-serif`;
-      ctx.fillText(String(s.index), x - half + tile * 0.08, y - half + tile * 0.07);
-      if (isFork(s)) {
-        ctx.textAlign = "right";
-        ctx.fillText("⑂", x + half - tile * 0.08, y - half + tile * 0.07);
-      }
-
-      const main =
-        s.type === "hq"
-          ? `★ HQ\n${categoryName[s.category!] ?? ""}`
-          : s.category
-            ? (categoryName[s.category] ?? s.category)
-            : (SPECIAL_LABEL[s.type] ?? s.type);
-      const lines = main.split("\n");
-      const size = Math.max(8, tile * (lines.some((l) => l.length > 8) ? 0.13 : 0.16));
-      ctx.font = `700 ${size}px system-ui, sans-serif`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      lines.forEach((line, i) => ctx.fillText(line, x, y + tile * 0.08 + (i - (lines.length - 1) / 2) * size * 1.15, tile * 0.92));
 
       if (legal) {
         // "Move here" badge on the top edge (corners are used by the index, fork icon and tokens)

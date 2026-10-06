@@ -3,7 +3,10 @@ with the same rule IDs (rules.md). Each function returns human-readable errors; 
 list means valid."""
 
 from collections import deque
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
+from typing import Literal
+
+from pydantic import BaseModel
 
 from .formats import BoardDefinition, BoardSpace
 
@@ -23,92 +26,162 @@ def _reachable(spaces: list[BoardSpace], start: int, reverse: bool = False) -> s
     return seen
 
 
-def validate_board(board: BoardDefinition) -> list[str]:
-    errors: list[str] = []
-    err = errors.append
+SPACE_TYPE_NAMES = {
+    "start": "Start",
+    "category": "Category",
+    "hq": "HQ",
+    "wildcard": "Wildcard",
+    "roll_again": "Roll again",
+    "penalty": "Skip turn",
+    "finish": "Finish",
+}
+WIN_CONDITION_NAMES = {"finish": "Reach the finish", "collection": "Collect every category", "turn_limit": "Round limit"}
+
+
+class BoardIssue(BaseModel):
+    """One problem found by validate_board (rules.md §2.1.1). Errors make a board unplayable;
+    warnings are only advice. `spaces` and `slot` say what the editor highlights."""
+
+    code: str
+    severity: Literal["error", "warning"]
+    message: str
+    spaces: list[int]
+    slot: str | None
+
+
+def _spaces_text(items: list[int]) -> str:
+    return f"{'Space' if len(items) == 1 else 'Spaces'} {_join(items)}"
+
+
+def validate_board(board: BoardDefinition) -> list[BoardIssue]:
+    """Line-by-line port of validateBoardFile (frontend/src/engine/board.ts).
+    tests/fixtures/board_validation.json, written by the frontend tests, checks they agree."""
+    issues: list[BoardIssue] = []
+
+    def add(code: str, message: str, spaces: list[int] | None = None, slot: str | None = None, severity: str = "error") -> None:
+        issues.append(BoardIssue(code=code, severity=severity, message=message, spaces=spaces or [], slot=slot))  # type: ignore[arg-type]
+
     config = board.effective_config()
     spaces = board.spaces
     slots = board.slots
 
-    # Slots
-    if len(set(slots)) != len(slots):
-        err("Slot names must be unique")
+    # Slots (BRD-6)
+    if not slots:
+        add("BRD-6", "Add at least one slot.")
+    for slot in dict.fromkeys(s for i, s in enumerate(slots) if slots.index(s) != i):
+        add("BRD-6", f'Slot "{slot}" is listed more than once. Slot names must be unique.', [], slot)
     if any(not s.strip() for s in slots):
-        err("Slot names can't be empty")
+        add("BRD-6", "Slot names can't be empty.")
 
-    # Indices must be exactly 0..N-1
+    if not spaces:
+        add("BRD-1", "The board has no spaces. Add a start space.")
+        return issues
+
+    # Structure (BRD-7, BRD-8). The graph checks further down need these to hold.
+    broken = False
     if sorted(s.index for s in spaces) != list(range(len(spaces))):
-        err("Space indices must be unique and run 0..N-1")
+        add("BRD-7", f"Space numbers must run 0..{len(spaces) - 1} with no gaps or repeats.")
+        broken = True
     by_index = {s.index: s for s in spaces}
-
-    if by_index.get(0) is None or by_index[0].type != "start":
-        err("BRD-1: space 0 must be of type 'start'")
-    if sum(s.type == "start" for s in spaces) > 1:
-        err("Only one 'start' space is allowed")
-
-    positions: set[tuple[float, float]] = set()
     for s in spaces:
-        where = f"space {s.index}"
-        if s.type in ("category", "hq"):
-            if s.slot not in slots:
-                err(f"{where}: '{s.type}' needs one of the slots {', '.join(slots)} (got {s.slot})")
-        elif s.slot is not None:
-            err(f"{where}: '{s.type}' spaces must have slot null")
         for n in s.next:
             if n not in by_index:
-                err(f"{where}: next points to missing space {n}")
+                add("BRD-8", f"Space {s.index} has an arrow to space {n}, which doesn't exist.", [s.index])
             if n == s.index:
-                err(f"{where}: next points to itself")
+                add("BRD-8", f"Space {s.index} has an arrow to itself.", [s.index])
+            broken = broken or n not in by_index or n == s.index
         if len(set(s.next)) != len(s.next):
-            err(f"{where}: duplicate entries in next")
+            add("BRD-8", f"Space {s.index} has two arrows to the same space.", [s.index])
+            broken = True
+
+    # Start (BRD-1)
+    starts = [s.index for s in spaces if s.type == "start"]
+    if not starts:
+        add("BRD-1", "The board needs a start space.")
+    elif len(starts) > 1:
+        add("BRD-1", f"Only one start space is allowed (found spaces {_join(starts)}).", starts)
+    elif starts[0] != 0:
+        add("BRD-1", f"The start must be space 0 (it is space {starts[0]}).", starts)
+
+    # Each space: slot (BRD-9), position (BRD-11), arrows out (BRD-10)
+    dead_ends: list[int] = []
+    positions: dict[tuple[float, float], list[int]] = {}
+    for s in spaces:
+        kind = SPACE_TYPE_NAMES.get(s.type, s.type)
+        if s.type in ("category", "hq"):
+            if not s.slot:
+                add("BRD-9", f"Space {s.index} is a {kind} space, so it needs a slot.", [s.index])
+            elif s.slot not in slots:
+                add("BRD-9", f'Space {s.index} uses slot "{s.slot}", which isn\'t one of the board\'s slots ({_join(slots) or "none"}).', [s.index], s.slot)
+        elif s.slot is not None:
+            add("BRD-9", f"Space {s.index} is a {kind} space, so it can't have a slot.", [s.index])
         if s.type != "finish" and not s.next:
-            err(f"{where}: dead end (empty next) on a non-finish space")
-        key = (s.pos.x, s.pos.y)
-        if key in positions:
-            err(f"{where}: pos {s.pos.x},{s.pos.y} is already used by another space")
-        positions.add(key)
-    if errors:
-        return errors  # the graph checks below assume a well-formed board
+            dead_ends.append(s.index)
+        positions.setdefault((s.pos.x, s.pos.y), []).append(s.index)
+    if dead_ends:
+        add("BRD-10", f"{_spaces_text(dead_ends)} {'has' if len(dead_ends) == 1 else 'have'} no arrow out. Only the finish can be a dead end.", dead_ends)
+    for same in positions.values():
+        if len(same) > 1:
+            add("BRD-11", f"{_spaces_text(same)} are on the same spot.", same)
 
-    # Track shape: BRD-2 / BRD-3, FRK-4
-    finishes = [s for s in spaces if s.type == "finish"]
-    from_start = _reachable(spaces, 0)
-    unreachable = [s.index for s in spaces if s.index not in from_start]
-    if unreachable:
-        err(f"Spaces not reachable from start: {_join(unreachable)}")
-    if config["track_type"] == "linear":
-        if len(finishes) != 1:
-            err(f"BRD-2: a linear track needs exactly one 'finish' space (found {len(finishes)})")
+    if not broken and len(starts) == 1:
+        # Reachability (BRD-12) and track shape (BRD-2, BRD-3, FRK-4)
+        start = starts[0]
+        from_start = _reachable(spaces, start)
+        unreachable = [s.index for s in spaces if s.index not in from_start]
+        if unreachable:
+            add("BRD-12", f"{_spaces_text(unreachable)} can never be reached: no path leads there from the start.", unreachable)
+
+        finishes = [s.index for s in spaces if s.type == "finish"]
+        if config["track_type"] == "linear":
+            if not finishes:
+                add("BRD-2", "A linear track needs a finish space.")
+            elif len(finishes) > 1:
+                add("BRD-2", f"A linear track has exactly one finish (found spaces {_join(finishes)}).", finishes)
+            else:
+                if by_index[finishes[0]].next:
+                    add("BRD-2", f"The finish (space {finishes[0]}) can't have arrows out.", finishes)
+                to_finish = _reachable(spaces, finishes[0], reverse=True)
+                trapped = [s.index for s in spaces if s.index not in to_finish and s.index not in dead_ends]
+                if trapped:
+                    them = "it" if len(trapped) == 1 else "them"
+                    add("FRK-4", f"{_spaces_text(trapped)} can't reach the finish: every path from {them} ends in a dead end or a circle.", trapped)
         else:
-            if finishes[0].next:
-                err("BRD-2: the 'finish' space must have an empty next")
-            to_finish = _reachable(spaces, finishes[0].index, reverse=True)
-            trapped = [s.index for s in spaces if s.index not in to_finish]
+            if finishes:
+                add("BRD-3", f"A loop track has no finish: change {_spaces_text(finishes).lower()} to another type, or make the track linear.", finishes)
+            to_start = _reachable(spaces, start, reverse=True)
+            trapped = [s.index for s in spaces if s.index not in to_start and s.index not in dead_ends]
             if trapped:
-                err(f"FRK-4: 'finish' cannot be reached from spaces: {_join(trapped)}")
-    else:
-        if finishes:
-            err("BRD-3: a loop track cannot have a 'finish' space")
-        to_start = _reachable(spaces, 0, reverse=True)
-        trapped = [s.index for s in spaces if s.index not in to_start]
-        if trapped:
-            err(f"BRD-3: these spaces never loop back to start: {_join(trapped)}")
+                add("BRD-3", f"{_spaces_text(trapped)} never {'leads' if len(trapped) == 1 else 'lead'} back to the start.", trapped)
 
-    # Config sanity
+    # Settings (CFG-*)
     wins = config["win_conditions"]
     if not wins:
-        err("At least one win condition is required")
+        add("CFG-1", "Choose at least one way to win.")
     if "finish" in wins and config["track_type"] != "linear":
-        err("Win condition 'finish' needs track_type 'linear'")
-    if "turn_limit" in wins and not config["max_rounds"]:
-        err("Win condition 'turn_limit' needs a positive max_rounds")
+        add("CFG-2", f'"{WIN_CONDITION_NAMES["finish"]}" needs a linear track.')
+    if "turn_limit" in wins and not (config["max_rounds"] and config["max_rounds"] > 0):
+        add("CFG-3", f'"{WIN_CONDITION_NAMES["turn_limit"]}" needs a number of rounds.')
+    if config["dice_sides"] < 1:
+        add("CFG-4", "The dice need at least 1 side.")
+    if config["max_rolls_per_turn"] < 1:
+        add("CFG-4", "Allow at least 1 roll per turn.")
 
-    # BRD-4
-    if "collection" in wins:
-        for slot in slots:
-            if not any(s.type == "hq" and s.slot == slot for s in spaces):
-                err(f"BRD-4: slot {slot} has no 'hq' space, so the collection win is impossible")
-    return errors
+    # HQs (BRD-4) and slot use (BRD-W1, BRD-W2)
+    for slot in dict.fromkeys(s for s in slots if s.strip()):
+        hqs = sum(s.type == "hq" and s.slot == slot for s in spaces)
+        plain = sum(s.type == "category" and s.slot == slot for s in spaces)
+        if "collection" in wins and not hqs:
+            add("BRD-4", f'Slot {slot} has no HQ space, so nobody can collect it ("{WIN_CONDITION_NAMES["collection"]}" needs one).', [], slot)
+        if not hqs and not plain:
+            add("BRD-W1", f"Slot {slot} isn't used by any space. A game still has to choose a category for it.", [], slot, "warning")
+        elif not plain:
+            add("BRD-W2", f"Slot {slot} has no category spaces, so its questions only come up on HQ and wildcard spaces.", [], slot, "warning")
+    return issues
+
+
+def board_errors(issues: list[BoardIssue]) -> list[BoardIssue]:
+    return [i for i in issues if i.severity == "error"]
 
 
 def validate_game_setup(
@@ -119,7 +192,7 @@ def validate_game_setup(
     player_count: int,
 ) -> list[str]:
     """Everything that must hold before a game can start (BRD-5, WIN-F*, mapping, players)."""
-    errors = [f"Board: {e}" for e in validate_board(board)]
+    errors = [f"Board: {i.message}" for i in board_errors(validate_board(board))]
     missing = [s for s in board.slots if s not in mapping]
     if missing:
         errors.append(f"No category chosen for slot(s): {', '.join(missing)}")
@@ -141,6 +214,6 @@ def validate_game_setup(
     return errors
 
 
-def _join(items: list[int], limit: int = 15) -> str:
+def _join(items: Sequence[int | str], limit: int = 15) -> str:
     shown = ", ".join(map(str, items[:limit]))
     return shown + (f" (+{len(items) - limit} more)" if len(items) > limit else "")

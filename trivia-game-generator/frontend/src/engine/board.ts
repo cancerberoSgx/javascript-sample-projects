@@ -1,4 +1,4 @@
-import { GRAND_PRIZE, type BoardDefinition, type DeckDefinition, type GameConfig, type Space } from "./types";
+import type { BoardFile, BoardIssue, GameConfig, SpaceType } from "./types";
 
 export const DEFAULT_CONFIG: GameConfig = {
   track_type: "linear",
@@ -12,14 +12,27 @@ export const DEFAULT_CONFIG: GameConfig = {
   reuse_cards: false,
 };
 
-export function resolveConfig(board: BoardDefinition): GameConfig {
+export function resolveConfig(board: { config?: Partial<GameConfig> }): GameConfig {
   return { ...DEFAULT_CONFIG, ...board.config };
 }
 
-export const isFork = (space: Space) => space.next.length > 1;
+export const isFork = (space: { next: number[] }) => space.next.length > 1;
+
+/** Names shown to people (the JSON uses the keys). */
+export const SPACE_TYPE_NAMES: Record<SpaceType, string> = {
+  start: "Start",
+  category: "Category",
+  hq: "HQ",
+  wildcard: "Wildcard",
+  roll_again: "Roll again",
+  penalty: "Skip turn",
+  finish: "Finish",
+};
+
+export const WIN_CONDITION_NAMES = { finish: "Reach the finish", collection: "Collect every category", turn_limit: "Round limit" };
 
 /** Indices reachable from `from` by following `next` edges (or reversed edges). */
-function reachable(spaces: Space[], from: number, reverse = false): Set<number> {
+function reachable(spaces: { index: number; next: number[] }[], from: number, reverse = false): Set<number> {
   const edges = new Map<number, number[]>();
   for (const s of spaces) {
     for (const n of s.next) {
@@ -40,109 +53,133 @@ function reachable(spaces: Space[], from: number, reverse = false): Set<number> 
   return seen;
 }
 
+/** "3, 4, 5", cut short after `limit` items. */
+function joinList(items: (number | string)[], limit = 15): string {
+  const shown = items.slice(0, limit).join(", ");
+  return shown + (items.length > limit ? ` (+${items.length - limit} more)` : "");
+}
+
+/** "Space 3" or "Spaces 3, 4". */
+const spacesText = (items: number[]) => `${items.length === 1 ? "Space" : "Spaces"} ${joinList(items)}`;
+/** Picks the verb form for spacesText(): one(items) = true for a single space. */
+const one = (items: unknown[]) => items.length === 1;
+
 /**
- * Checks a board (and its deck) against the BRD-* / CRD-* rules.
- * Returns human-readable errors; an empty array means the board is playable.
+ * Checks a board file against the board rules (rules.md §2.1.1). Returns every issue found;
+ * a board is playable when no issue is an error. Line-by-line port: backend/app/validation.py
+ * (validate_board). backend/tests/fixtures/board_validation.json checks they agree.
  */
-export function validateBoard(board: BoardDefinition, deck: DeckDefinition | null): string[] {
-  // deck = null checks the board alone (e.g. in the board editor, before a deck is chosen)
-  const errors: string[] = [];
-  const err = (msg: string) => errors.push(msg);
+export function validateBoardFile(board: BoardFile): BoardIssue[] {
+  const issues: BoardIssue[] = [];
+  const add = (code: string, message: string, spaces: number[] = [], slot: string | null = null, severity: BoardIssue["severity"] = "error") =>
+    issues.push({ code, severity, message, spaces, slot });
   const config = resolveConfig(board);
   const spaces = board.spaces ?? [];
+  const slots = board.slots ?? [];
 
-  if (!spaces.length) return [...errors, "Board has no spaces"];
+  // Slots (BRD-6)
+  if (!slots.length) add("BRD-6", "Add at least one slot.");
+  for (const slot of new Set(slots.filter((s, i) => slots.indexOf(s) !== i)))
+    add("BRD-6", `Slot "${slot}" is listed more than once. Slot names must be unique.`, [], slot);
+  if (slots.some((s) => !s.trim())) add("BRD-6", "Slot names can't be empty.");
 
-  // Indices must be exactly 0..N-1
+  if (!spaces.length) {
+    add("BRD-1", "The board has no spaces. Add a start space.");
+    return issues;
+  }
+
+  // Structure (BRD-7, BRD-8). The graph checks further down need these to hold.
+  let broken = false;
   const indices = spaces.map((s) => s.index).sort((a, b) => a - b);
-  if (indices.some((idx, i) => idx !== i)) err("Space indices must be unique and run 0..N-1");
+  if (indices.some((idx, i) => idx !== i)) {
+    add("BRD-7", `Space numbers must run 0..${spaces.length - 1} with no gaps or repeats.`);
+    broken = true;
+  }
   const byIndex = new Map(spaces.map((s) => [s.index, s]));
-
-  const categoryIds = new Set(board.categories.map((c) => c.id));
-  if (categoryIds.size !== board.categories.length) err("Category ids must be unique");
-  if (categoryIds.has(GRAND_PRIZE)) err(`"${GRAND_PRIZE}" is reserved and cannot be a board category`);
-
-  // BRD-1
-  if (byIndex.get(0)?.type !== "start") err("BRD-1: space 0 must be of type 'start'");
-  if (spaces.filter((s) => s.type === "start").length > 1) err("Only one 'start' space is allowed");
-
-  const positions = new Set<string>();
   for (const s of spaces) {
-    const where = `space ${s.index}`;
-    if (s.type === "category" || s.type === "hq") {
-      if (!s.category || !categoryIds.has(s.category)) err(`${where}: '${s.type}' needs a valid slot (got ${s.category})`);
-    } else if (s.category !== null) {
-      err(`${where}: '${s.type}' spaces must have slot null`);
-    }
     for (const n of s.next) {
-      if (!byIndex.has(n)) err(`${where}: next points to missing space ${n}`);
-      if (n === s.index) err(`${where}: next points to itself`);
+      if (!byIndex.has(n)) add("BRD-8", `Space ${s.index} has an arrow to space ${n}, which doesn't exist.`, [s.index]);
+      if (n === s.index) add("BRD-8", `Space ${s.index} has an arrow to itself.`, [s.index]);
+      broken ||= !byIndex.has(n) || n === s.index;
     }
-    if (new Set(s.next).size !== s.next.length) err(`${where}: duplicate entries in next`);
-    if (s.type !== "finish" && s.next.length === 0) err(`${where}: dead end (empty next) on a non-finish space`);
-    if (!s.pos || !Number.isFinite(s.pos.x) || !Number.isFinite(s.pos.y)) err(`${where}: missing pos`);
+    if (new Set(s.next).size !== s.next.length) {
+      add("BRD-8", `Space ${s.index} has two arrows to the same space.`, [s.index]);
+      broken = true;
+    }
+  }
+
+  // Start (BRD-1)
+  const starts = spaces.filter((s) => s.type === "start").map((s) => s.index);
+  if (!starts.length) add("BRD-1", "The board needs a start space.");
+  else if (starts.length > 1) add("BRD-1", `Only one start space is allowed (found spaces ${joinList(starts)}).`, starts);
+  else if (starts[0] !== 0) add("BRD-1", `The start must be space 0 (it is space ${starts[0]}).`, starts);
+
+  // Each space: slot (BRD-9), position (BRD-11), arrows out (BRD-10)
+  const deadEnds: number[] = [];
+  const positions = new Map<string, number[]>();
+  for (const s of spaces) {
+    const kind = SPACE_TYPE_NAMES[s.type] ?? s.type;
+    if (s.type === "category" || s.type === "hq") {
+      if (!s.slot) add("BRD-9", `Space ${s.index} is a ${kind} space, so it needs a slot.`, [s.index]);
+      else if (!slots.includes(s.slot))
+        add("BRD-9", `Space ${s.index} uses slot "${s.slot}", which isn't one of the board's slots (${joinList(slots) || "none"}).`, [s.index], s.slot);
+    } else if (s.slot != null) add("BRD-9", `Space ${s.index} is a ${kind} space, so it can't have a slot.`, [s.index]);
+    if (s.type !== "finish" && !s.next.length) deadEnds.push(s.index);
+    if (!s.pos || !Number.isFinite(s.pos.x) || !Number.isFinite(s.pos.y)) add("BRD-11", `Space ${s.index} has no position.`, [s.index]);
     else {
       const key = `${s.pos.x},${s.pos.y}`;
-      if (positions.has(key)) err(`${where}: pos ${key} is already used by another space`);
-      positions.add(key);
+      positions.set(key, [...(positions.get(key) ?? []), s.index]);
+    }
+  }
+  if (deadEnds.length)
+    add("BRD-10", `${spacesText(deadEnds)} ${one(deadEnds) ? "has" : "have"} no arrow out. Only the finish can be a dead end.`, deadEnds);
+  for (const same of positions.values()) if (same.length > 1) add("BRD-11", `${spacesText(same)} are on the same spot.`, same);
+
+  if (!broken && starts.length === 1) {
+    // Reachability (BRD-12) and track shape (BRD-2, BRD-3, FRK-4)
+    const start = starts[0];
+    const fromStart = reachable(spaces, start);
+    const unreachable = spaces.filter((s) => !fromStart.has(s.index)).map((s) => s.index);
+    if (unreachable.length) add("BRD-12", `${spacesText(unreachable)} can never be reached: no path leads there from the start.`, unreachable);
+
+    const finishes = spaces.filter((s) => s.type === "finish").map((s) => s.index);
+    if (config.track_type === "linear") {
+      if (!finishes.length) add("BRD-2", "A linear track needs a finish space.");
+      else if (finishes.length > 1) add("BRD-2", `A linear track has exactly one finish (found spaces ${joinList(finishes)}).`, finishes);
+      else {
+        if (byIndex.get(finishes[0])!.next.length) add("BRD-2", `The finish (space ${finishes[0]}) can't have arrows out.`, finishes);
+        const toFinish = reachable(spaces, finishes[0], true);
+        const trapped = spaces.filter((s) => !toFinish.has(s.index) && !deadEnds.includes(s.index)).map((s) => s.index);
+        if (trapped.length)
+          add("FRK-4", `${spacesText(trapped)} can't reach the finish: every path from ${one(trapped) ? "it" : "them"} ends in a dead end or a circle.`, trapped);
+      }
+    } else {
+      if (finishes.length) add("BRD-3", `A loop track has no finish: change ${spacesText(finishes).toLowerCase()} to another type, or make the track linear.`, finishes);
+      const toStart = reachable(spaces, start, true);
+      const trapped = spaces.filter((s) => !toStart.has(s.index) && !deadEnds.includes(s.index)).map((s) => s.index);
+      if (trapped.length) add("BRD-3", `${spacesText(trapped)} never ${one(trapped) ? "leads" : "lead"} back to the start.`, trapped);
     }
   }
 
-  // Track shape: BRD-2 / BRD-3, FRK-4
-  const finishes = spaces.filter((s) => s.type === "finish");
-  const fromStart = reachable(spaces, 0);
-  const unreachable = spaces.filter((s) => !fromStart.has(s.index)).map((s) => s.index);
-  if (unreachable.length) err(`Spaces not reachable from start: ${unreachable.join(", ")}`);
+  // Settings (CFG-*)
+  const wins = config.win_conditions;
+  if (!wins.length) add("CFG-1", "Choose at least one way to win.");
+  if (wins.includes("finish") && config.track_type !== "linear") add("CFG-2", `"${WIN_CONDITION_NAMES.finish}" needs a linear track.`);
+  if (wins.includes("turn_limit") && !(config.max_rounds && config.max_rounds > 0))
+    add("CFG-3", `"${WIN_CONDITION_NAMES.turn_limit}" needs a number of rounds.`);
+  if (config.dice_sides < 1) add("CFG-4", "The dice need at least 1 side.");
+  if (config.max_rolls_per_turn < 1) add("CFG-4", "Allow at least 1 roll per turn.");
 
-  if (config.track_type === "linear") {
-    if (finishes.length !== 1) err(`BRD-2: a linear track needs exactly one 'finish' space (found ${finishes.length})`);
-    else {
-      if (finishes[0].next.length) err("BRD-2: the 'finish' space must have an empty next");
-      const toFinish = reachable(spaces, finishes[0].index, true);
-      const trapped = spaces.filter((s) => !toFinish.has(s.index)).map((s) => s.index);
-      if (trapped.length) err(`FRK-4: 'finish' cannot be reached from spaces: ${trapped.join(", ")}`);
-    }
-  } else {
-    if (finishes.length) err("BRD-3: a loop track cannot have a 'finish' space");
-    const toStart = reachable(spaces, 0, true);
-    const trapped = spaces.filter((s) => !toStart.has(s.index)).map((s) => s.index);
-    if (trapped.length) err(`BRD-3: these spaces never loop back to start: ${trapped.join(", ")}`);
+  // HQs (BRD-4) and slot use (BRD-W1, BRD-W2)
+  for (const slot of new Set(slots.filter((s) => s.trim()))) {
+    const hqs = spaces.filter((s) => s.type === "hq" && s.slot === slot).length;
+    const plain = spaces.filter((s) => s.type === "category" && s.slot === slot).length;
+    if (wins.includes("collection") && !hqs)
+      add("BRD-4", `Slot ${slot} has no HQ space, so nobody can collect it ("${WIN_CONDITION_NAMES.collection}" needs one).`, [], slot);
+    if (!hqs && !plain) add("BRD-W1", `Slot ${slot} isn't used by any space. A game still has to choose a category for it.`, [], slot, "warning");
+    else if (!plain) add("BRD-W2", `Slot ${slot} has no category spaces, so its questions only come up on HQ and wildcard spaces.`, [], slot, "warning");
   }
-
-  // Config sanity
-  if (config.win_conditions.includes("finish") && config.track_type !== "linear")
-    err("Win condition 'finish' needs track_type 'linear'");
-  if (config.win_conditions.includes("turn_limit") && !(config.max_rounds && config.max_rounds > 0))
-    err("Win condition 'turn_limit' needs a positive max_rounds");
-  if (!config.win_conditions.length) err("At least one win condition is required");
-  if (config.dice_sides < 1) err("dice_sides must be >= 1");
-  if (config.max_rolls_per_turn < 1) err("max_rolls_per_turn must be >= 1");
-
-  // BRD-4
-  if (config.win_conditions.includes("collection")) {
-    for (const c of board.categories) {
-      if (!spaces.some((s) => s.type === "hq" && s.category === c.id))
-        err(`BRD-4: ${c.name} has no 'hq' space, so the collection win is impossible`);
-    }
-  }
-
-  // BRD-5 and card checks
-  if (deck) {
-    for (const card of deck.cards) {
-      const where = `card ${card.id}`;
-      if (card.options) {
-        if (typeof card.correct_answer !== "number" || card.correct_answer < 0 || card.correct_answer >= card.options.length)
-          err(`${where}: correct_answer must be an index into options (CRD-1)`);
-      } else if (typeof card.correct_answer !== "string") err(`${where}: open-ended correct_answer must be a string`);
-      if (![1, 2, 3].includes(card.difficulty)) err(`${where}: difficulty must be 1, 2 or 3`);
-    }
-    // Every category may be drawn (wildcards let the player pick any), so each needs cards.
-    for (const c of board.categories) {
-      if (!deck.cards.some((card) => card.category === c.id)) err(`BRD-5: deck has no cards for category '${c.name}'`);
-    }
-    if (config.win_conditions.includes("finish") && !deck.cards.some((card) => card.category === GRAND_PRIZE))
-      err("Deck has no grand prize cards, required by the 'finish' win condition");
-  }
-
-  return errors;
+  return issues;
 }
+
+export const boardErrors = (issues: BoardIssue[]) => issues.filter((i) => i.severity === "error");

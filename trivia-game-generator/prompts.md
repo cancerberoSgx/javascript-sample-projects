@@ -141,11 +141,7 @@ there's a /games/1234/play page which displays the game play experience, right n
 Also we want to save a game state (current user's space, scores, tokens, logs, etc). Member is able to save / load games. use a db table games_instances to store/load games. The objective is that a game can be interrupted to day, saved and load it by the member in the future to continue it 
 
 
-
-
-# multiplayer
-
-multiplayer game experience
+# multiplayer game experience
 
 the creator of a game, can create a game without players
 the creator then can share a game like foo.com/games/123?code=12345 and if other players open the link in their own devices, the the app ask them for their name and if they want to enter (game's player names must be unique)
@@ -156,3 +152,24 @@ the /game/123 screen must use websockets or polling so each player has a "real t
 
 Before implementing this multiplayer game play in both frontend and backend analyze the problem and ask any question you'd have.
 
+
+
+# FUTURE
+
+
+# board editor
+currently the only way of editing board spaces and directions (graph) is by editing json. Instead users must be able to edit the board graph visually. 
+users must be able to:
+ * define all slots A, B, C, D or whatever names they want
+ * create new nodes bu clicking on a space
+ * select one node which display a "Halo" with actions: delete node, create arrow / edge, create fork, edit slot name
+ * define which is the start and finish node.
+Can you think on anything else users might need to completly define a custom board ? Can you also think if we need to change the current validation so it's more visible / understandable?
+
+
+# generate deck with openai or gemini
+organization members can also set up a gemini apikey besides the openai apikey so they can use both
+in decks -> new deck, users are able to generate
+
+the user must be able to say, generate a deck questions and answers, 50% 
+Also they can add more questions and answers to an existing game and the system should not repeat the current questions. 

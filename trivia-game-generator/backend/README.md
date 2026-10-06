@@ -53,7 +53,7 @@ Tests also run inside the container: `docker compose -f docker/docker-compose.ym
 | `app/engine/` | **The game engine, ported from `frontend/src/engine`** (`engine.ts`, `movement.ts`, `rng.ts`, `resolve.ts`). Same states, same rule IDs, same error messages. `tests/test_engine.py` replays the conformance fixture the TS tests write (`tests/fixtures/engine_conformance.json`). Change one engine, change the other |
 | `app/play.py` | Multiplayer play: deals a started game's opening state and applies actions (turn checks, auto-finish). The only code that changes a live state |
 | `app/live.py` | The in-memory WebSocket hub: who watches which game, broadcasts, presence and the server-side question timer |
-| `app/validation.py` | Board and game-setup checks. Python port of `frontend/src/engine/board.ts` + `resolve.ts`, using the same rule IDs from `rules.md` |
+| `app/validation.py` | Board issues (`validate_board`, a line-by-line port of `validateBoardFile` in `frontend/src/engine/board.ts`) and game-setup checks (port of `resolve.ts`). `tests/test_validation.py` replays the frontend's fixture to keep them identical |
 | `migrations/`, `seeds/` | Numbered `.sql` files |
 
 ## Conventions
@@ -93,7 +93,7 @@ Other rules: the last root user can't be demoted or deleted, an organization tha
 |---|---|
 | `/api/categories` | `name`, `description`, `color`. Can't be deleted while cards or an awaiting game use it |
 | `/api/decks`, `/api/decks/{id}/cards` | A card has `category_id`, `question`, `options` (null = open-ended), `answer` (for multiple choice, one of the options), `difficulty` 1–3, `grand_prize` |
-| `/api/boards` | `definition` = `{config, slots, spaces}` (rules.md §2.1). Spaces use **slots**, not categories. Invalid boards are rejected with a list of errors |
+| `/api/boards` | `definition` = `{config, slots, spaces}` (rules.md §2.1). Spaces use **slots**, not categories. Only the shape is checked on save: boards with problems are saved as **drafts** (SER-5). Every board in a response has `issues`: `[{code, severity, message, spaces, slot}]` (rules.md §2.1.1); any `error` keeps games from starting with it |
 | `/api/games` | `board_id`, `deck_id`, `categories` (`{slot: category_id}`); `players` (`[{name}]`) only on create. Every game has a `join_code`; players have `joined` (from their own device) and `removed`. `GET /api/games/{id}` includes `setup_errors`, the list of what still blocks starting |
 | `POST /api/games/{id}/start` | `awaiting → running`. Validates the setup, stores a `snapshot` (`{board, deck, mapping}`) so later edits don't affect the game, and deals the opening play state (table `trivia_game_states`) |
 | `POST /api/games/{id}/finish` | `running → finished`: the host ends the game early. Reaching GAME_OVER finishes it by itself (MPL-10) |

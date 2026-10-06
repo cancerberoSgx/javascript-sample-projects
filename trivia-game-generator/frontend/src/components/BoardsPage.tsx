@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api, type Board, type BoardDefinition } from "../api";
-import { resolveConfig } from "../engine/board";
+import { BoardEditor } from "../boardEditor/BoardEditor";
 import { loadManifest, type ManifestEntry } from "../engine/loader";
-import { validateBoardFile } from "../engine/resolve";
 import type { BoardFile } from "../engine/types";
-import { BoardPreview, ErrorBox, NotFound, boardFile, useAction, useList, useRouteSelection } from "./common";
+import { ErrorBox, NotFound, useList, useRouteSelection } from "./common";
 import { NameForm } from "./DecksPage";
 
 const BLANK: BoardDefinition = {
@@ -19,15 +18,18 @@ const BLANK: BoardDefinition = {
   ],
 };
 
-/** Pretty-prints a definition with one space per line, like the example files. */
-export function formatDefinition(d: BoardDefinition): string {
-  const spaces = d.spaces.map((s) => "    " + JSON.stringify(s)).join(",\n");
-  return `{\n  "config": ${JSON.stringify(d.config)},\n  "slots": ${JSON.stringify(d.slots)},\n  "spaces": [\n${spaces}\n  ]\n}`;
-}
+export const hasErrors = (b: Board) => b.issues.some((i) => i.severity === "error");
 
 export function BoardsPage({ orgId }: { orgId: number }) {
   const boards = useList(() => api.listBoards(orgId), [orgId]);
-  const { selectedId, selected, select, missing } = useRouteSelection("/boards", boards, orgId);
+  const { selectedId, selected, select: navigateTo, missing } = useRouteSelection("/boards", boards, orgId);
+  // Leaving a board with unsaved edits asks first
+  const dirty = useRef(false);
+  const onDirtyChange = useCallback((d: boolean) => void (dirty.current = d), []);
+  const leaveOk = () => !dirty.current || confirm("This board has unsaved changes. Leave without saving?");
+  const select = (id: number) => {
+    if (id !== selectedId && leaveOk()) navigateTo(id);
+  };
   const [creating, setCreating] = useState(false);
   const [examples, setExamples] = useState<ManifestEntry[]>([]);
   const [template, setTemplate] = useState("blank");
@@ -41,7 +43,7 @@ export function BoardsPage({ orgId }: { orgId: number }) {
       <section className="panel org-list">
         <div className="row between">
           <h2>Boards</h2>
-          <button className="small" onClick={() => setCreating(true)}>
+          <button className="small" onClick={() => leaveOk() && setCreating(true)}>
             + New
           </button>
         </div>
@@ -59,7 +61,7 @@ export function BoardsPage({ orgId }: { orgId: number }) {
               const b = await api.createBoard({ organization_id: orgId, name, description, definition });
               setCreating(false);
               await boards.reload();
-              select(b.id);
+              navigateTo(b.id);
             }}
           >
             <select value={template} onChange={(e) => setTemplate(e.target.value)}>
@@ -78,7 +80,7 @@ export function BoardsPage({ orgId }: { orgId: number }) {
               <button className={b.id === selectedId ? "on" : ""} onClick={() => select(b.id)}>
                 <span>{b.name}</span>
                 <span className="muted small">
-                  {b.definition.spaces.length} spaces · {b.definition.slots.length} slots
+                  {hasErrors(b) && <span className="chip draft">draft</span>} {b.definition.spaces.length} spaces · {b.definition.slots.length} slots
                 </span>
               </button>
             </li>
@@ -89,98 +91,21 @@ export function BoardsPage({ orgId }: { orgId: number }) {
         {missing ? (
           <NotFound what="Board" back="/boards" />
         ) : selected ? (
-          <BoardEditor key={selected.id} board={selected} onChanged={boards.reload} onDeleted={async () => (await boards.reload(), select(null, true))} />
+          <BoardEditor
+            key={selected.id}
+            board={selected}
+            onChanged={boards.reload}
+            onDirtyChange={onDirtyChange}
+            onDeleted={async () => {
+              dirty.current = false;
+              await boards.reload();
+              navigateTo(null, true);
+            }}
+          />
         ) : (
           boards.loaded && !boards.items.length && <p className="muted">Create a board to get started.</p>
         )}
       </div>
     </div>
-  );
-}
-
-function BoardEditor({ board, onChanged, onDeleted }: { board: Board; onChanged: () => Promise<void>; onDeleted: () => Promise<void> }) {
-  const [name, setName] = useState(board.name);
-  const [description, setDescription] = useState(board.description);
-  const [json, setJson] = useState(() => formatDefinition(board.definition));
-  const action = useAction();
-  const [saved, setSaved] = useState(false);
-
-  // Parse + validate as you type (same rules as the backend, rules.md BRD-*)
-  const parsed = useMemo((): { file: BoardFile | null; errors: string[] } => {
-    try {
-      const d = JSON.parse(json) as BoardDefinition;
-      if (!Array.isArray(d.slots) || !Array.isArray(d.spaces)) return { file: null, errors: ["Needs \"slots\" and \"spaces\" arrays"] };
-      const file = boardFile(name, d, description);
-      return { file, errors: validateBoardFile(file) };
-    } catch (e) {
-      return { file: null, errors: [`Invalid JSON: ${(e as Error).message}`] };
-    }
-  }, [json, name, description]);
-
-  const config = parsed.file ? resolveConfig({ ...parsed.file, categories: [], spaces: [] }) : null;
-
-  return (
-    <>
-      <section className="panel">
-        <h2>Board</h2>
-        <div className="grid-form">
-          <label>Name</label>
-          <input required value={name} onChange={(e) => setName(e.target.value)} />
-          <label>Description</label>
-          <input value={description} onChange={(e) => setDescription(e.target.value)} />
-        </div>
-        {parsed.file && <BoardPreview board={parsed.file} />}
-        {config && (
-          <p className="muted small">
-            {config.track_type} track · {parsed.file!.spaces.length} spaces · slots {parsed.file!.slots.join(", ")} · wins: {config.win_conditions.join(", ")}. A game
-            chooses which category plays each slot.
-          </p>
-        )}
-      </section>
-      <section className="panel">
-        <div className="row between">
-          <h2>Definition (JSON)</h2>
-          <span className={`small ${parsed.errors.length ? "error-text" : "ok-text"}`}>
-            {parsed.errors.length ? `${parsed.errors.length} problem(s)` : "✓ valid"}
-          </span>
-        </div>
-        <p className="muted small">
-          <code>config</code> overrides the defaults in rules.md §1. Each space has a <code>type</code>, a <code>slot</code> (for category and hq spaces),{" "}
-          <code>next</code> (more than one = fork) and a grid <code>pos</code>.
-        </p>
-        <textarea className="json-edit" spellCheck={false} value={json} onChange={(e) => setJson(e.target.value)} rows={18} />
-        {parsed.errors.length > 0 && (
-          <div className="error">
-            <ul>
-              {parsed.errors.slice(0, 10).map((e) => (
-                <li key={e}>{e}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-        <ErrorBox error={action.error} />
-        {saved && !action.error && <div className="ok">Saved.</div>}
-        <div className="row between">
-          <button
-            className="primary"
-            disabled={!parsed.file || parsed.errors.length > 0 || action.busy}
-            onClick={async () => {
-              setSaved(false);
-              const d = JSON.parse(json) as BoardDefinition;
-              const ok = await action.run(async () => (await api.updateBoard(board.id, { name, description, definition: d }), onChanged()));
-              setSaved(ok);
-            }}
-          >
-            Save board
-          </button>
-          <button
-            className="danger"
-            onClick={() => confirm(`Delete board "${board.name}"?`) && action.run(async () => (await api.deleteBoard(board.id), onDeleted()))}
-          >
-            Delete board
-          </button>
-        </div>
-      </section>
-    </>
   );
 }

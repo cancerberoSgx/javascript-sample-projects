@@ -51,12 +51,27 @@ interface Board {
 }
 ```
 
-- `BRD-1` Space `0` MUST be of type `start`.
-- `BRD-2` Linear track: space `N-1` MUST be of type `finish`, with `next = []`.
-- `BRD-3` Loop track: following `next` from space `N-1` returns to `0`. A loop has no `finish` space.
-- `BRD-4` Each slot MUST have at least one `hq` space, or the `collection` win can never happen.
+- `BRD-1` There is exactly one `start` space, and it is space `0`.
+- `BRD-2` Linear track: exactly one `finish` space, with `next = []`. The board editor numbers it `N-1`, but the engine doesn't need that.
+- `BRD-3` Loop track: following `next` from any space returns to the start. A loop has no `finish` space.
+- `BRD-4` With the `collection` win, each slot MUST have at least one `hq` space, or that win can never happen.
 - `BRD-5` The category that plays each slot MUST have at least one (non-grand-prize) card in the game's deck (§2.2).
-- `BRD-6` Slot names MUST be unique. A game MUST map every slot, each to a different category.
+- `BRD-6` There is at least one slot. Slot names MUST be unique and not blank. A game MUST map every slot, each to a different category.
+- `BRD-7` Space indices run `0..N-1`, with no gaps or repeats.
+- `BRD-8` Every entry of `next` points to an existing space other than itself, at most once.
+- `BRD-9` `category` and `hq` spaces have one of the board's slots. Other spaces have `slot = null`.
+- `BRD-10` Only the `finish` may have an empty `next` (no dead ends).
+- `BRD-11` Every space has a `pos`, and no two spaces share one.
+- `BRD-12` Every space can be reached from the start.
+
+#### 2.1.1 Board validation
+`validateBoardFile` (`frontend/src/engine/board.ts`) and its Python port `validate_board` (`backend/app/validation.py`) check a board and return **issues**: `{ code, severity, message, spaces, slot }`. `code` is the rule ID, `message` is plain language, and `spaces` / `slot` say what the board editor highlights. A shared fixture keeps both ports identical (`backend/tests/fixtures/board_validation.json`).
+
+- **Errors** make a board unplayable: BRD-1…4, BRD-6…12, FRK-4 and the settings checks below. A board with errors is a **draft** (SER-5).
+- When BRD-7 or BRD-8 fails, or there isn't exactly one start, the path checks (BRD-2, BRD-3, BRD-12, FRK-4) are skipped, because they would only add noise.
+- Dead ends (BRD-10) are left out of the FRK-4 / BRD-3 "can't reach" lists, so one dead end isn't reported twice.
+- `CFG-1` At least one win condition. `CFG-2` The `finish` win needs a linear track. `CFG-3` The `turn_limit` win needs `max_rounds > 0`. `CFG-4` `dice_sides >= 1` and `max_rolls_per_turn >= 1`.
+- **Warnings** are advice and never block anything: `BRD-W1` a slot no space uses (a game still has to map it), `BRD-W2` a slot with HQ spaces but no category spaces.
 
 ### 2.2 Categories, decks and cards
 A **category** belongs to an organization: `{ name, description, color }`. A **deck** is a named collection of cards, and each card belongs to one category.
@@ -115,7 +130,7 @@ interface GameState {
 A stored game belongs to an organization and has: a name, a `status`, a creator (an organization user), a board, a deck, a category for each board slot, a join code, and players (just names; they don't need accounts, and their order is the turn order).
 
 - `GAM-1` `status` goes `awaiting → running → finished`, never backwards. `awaiting` is the lobby: players join while the game waits for its host to start it.
-- `GAM-2` While `awaiting`, the board, deck, slot mapping and players can change. A game can only start once BRD-*, BRD-5, BRD-6, CRD-4 hold and it has at least one player. Starting is up to the host (any user of the game's organization).
+- `GAM-2` While `awaiting`, the board, deck, slot mapping and players can change. A game can only start once its board has no errors (§2.1.1), BRD-5, BRD-6 and CRD-4 hold, and it has at least one player. Starting is up to the host (any user of the game's organization).
 - `GAM-3` Starting copies the board, deck and categories into the game (a *snapshot*). Later edits or deletes of the originals never change a running or finished game.
 - `GAM-4` A board, deck or category can't be deleted while an awaiting game uses it. A category can't be deleted while cards use it.
 - `GAM-5` Only a `running` game can be played. It is played live and multiplayer (§2.7) at `/games/:id`.
@@ -284,7 +299,7 @@ Boards and decks are plain data, so the generator can produce new games without 
 - `SER-2` A **board file** is `{ schema_version: 2, id?, name, description?, config, slots, spaces }` (§2.1). The backend stores `{config, slots, spaces}` as a board's `definition`.
 - `SER-3` A **deck file** is `{ schema_version: 2, id?, name, description?, categories: [{id, name, description, color}], cards: Card[] }` (§2.2). The categories travel with the deck, so a file is self-contained.
 - `SER-4` A **game snapshot** is `{ board: BoardFile, deck: DeckFile, mapping: { slot: categoryId } }`. `frontend/src/engine/resolve.ts` (`resolveGame`) turns it into the engine's internal board (each space's slot replaced by its category) and cards.
-- `SER-5` Boards are validated on save (backend) and as you type (frontend), with the same rules: BRD-*, FRK-4, slots, config sanity. A board that fails can be viewed but not saved or played.
+- `SER-5` Boards are validated as you edit (frontend) and on every read (backend), with the same rules (§2.1.1). A board with errors can still be saved, as a **draft**: the API returns its `issues`, lists mark it, and a game can't start with it (GAM-2). Only the shape (field names, types, space types, sizes) is rejected on save.
 - `SER-6` `schema_version` changes whenever the format changes in a breaking way. Version 1 had categories on the board and `correct_answer` indices on cards.
 
 ---
@@ -314,3 +329,5 @@ Answers to gaps or conflicts in the original draft. Change any of them and updat
 11. **Multiplayer is server-authoritative** (MPL-*): players are anonymous guests, so the server runs the engine, checks turns, keeps answers and upcoming cards hidden, and runs the timer. The hot-seat play page and named saves were replaced by one live state per game, saved after every action.
 12. **Players without a device** (added by the host) are played from the host's screen, so a game can mix phones and a shared screen.
 13. **Absent players**: the game waits for them. The question timer still runs on the server, and the host can skip their turn or remove them.
+14. **Draft boards**: boards are built in a visual editor, so half-finished boards can be saved (SER-5). Validity is checked when a game starts, not when a board is saved.
+15. **Numbering is the editor's job**: the editor renumbers spaces in path order after every visual edit (start `0`, each fork branch in turn, the finish last), so authors never manage indices. Raw JSON edits are kept as typed.

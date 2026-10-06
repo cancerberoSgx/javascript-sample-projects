@@ -81,23 +81,40 @@ def test_deck_and_card_rules(client, root, world, acme):
 # ---------- boards ----------
 
 
-def test_board_validation(client, acme):
+def test_boards_save_as_drafts_with_issues(client, acme):
     ana = acme["auth"]
     broken = board_definition("linear-basic")
     broken["spaces"][-1].update(type="category", slot="A", next=[0])  # no finish anymore
     r = client.post("/api/boards", json={"name": "Broken", "definition": broken}, headers=ana)
-    assert r.status_code == 422
-    assert any("BRD-2" in e for e in r.json()["detail"]), r.json()
+    assert r.status_code == 201, r.text  # drafts are allowed (SER-5)
+    board = r.json()
+    assert [i["code"] for i in board["issues"]] == ["BRD-2"]
+    assert board["issues"][0] == {"code": "BRD-2", "severity": "error", "message": "A linear track needs a finish space.", "spaces": [], "slot": None}
 
     unknown_slot = board_definition("linear-basic")
     unknown_slot["spaces"][1]["slot"] = "Z"
-    r = client.post("/api/boards", json={"name": "Broken", "definition": unknown_slot}, headers=ana)
-    assert r.status_code == 422 and "got Z" in r.json()["detail"][0]
+    r = client.patch(f"/api/boards/{board['id']}", json={"definition": unknown_slot}, headers=ana)
+    assert r.status_code == 200 and r.json()["issues"][0]["spaces"] == [1] and r.json()["issues"][0]["slot"] == "Z"
 
-    # Every example board from the frontend is valid on the backend too
+    # A draft can't start a game: its errors show up in the game's setup errors
+    game = client.post(
+        "/api/games",
+        json={"name": "G", "board_id": board["id"], "deck_id": acme["deck"]["id"], "categories": acme["mapping"], "players": [{"name": "P"}]},
+        headers=ana,
+    ).json()
+    assert game["setup_errors"] == ['Board: Space 1 uses slot "Z", which isn\'t one of the board\'s slots (A, B, C, D).']
+    assert client.post(f"/api/games/{game['id']}/start", headers=ana).status_code == 422
+
+    # The shape is still checked: unknown fields and space types are rejected
+    shape = board_definition("linear-basic")
+    shape["spaces"][1]["type"] = "teleport"
+    assert client.post("/api/boards", json={"name": "Bad shape", "definition": shape}, headers=ana).status_code == 422
+
+    # Every example board from the frontend has no errors on the backend too
     for name in ["loop-classic", "linear-forks", "loop-shortcut", "special-sandbox"]:
         r = client.post("/api/boards", json={"name": name, "definition": board_definition(name)}, headers=ana)
         assert r.status_code == 201, (name, r.text)
+        assert not [i for i in r.json()["issues"] if i["severity"] == "error"], (name, r.json()["issues"])
 
 
 def test_board_config_stays_partial(client, acme):

@@ -11,7 +11,7 @@ Read first:
 
 | Path | What |
 |---|---|
-| `frontend/` | React 19 + Vite 8 + TypeScript 7. `src/engine/` is the pure game engine; `src/components/` holds the pages |
+| `frontend/` | React 19 + Vite 8 + TypeScript 7. `src/engine/` is the pure game engine; `src/components/` holds the pages; `src/boardEditor/` is the visual board editor |
 | `backend/` | FastAPI + psycopg 3 on Postgres 18, Python 3.14, managed with `uv`. Plain SQL, no ORM |
 | `docker/docker-compose.yml` | db + backend (uvicorn `--reload`) + frontend (Vite dev server), with source bind-mounted |
 | `.env` / `.env.example` | All config. `.env` is gitignored; `docker/.env` is a committed symlink to it, because that's where Compose looks |
@@ -61,7 +61,8 @@ npx tsc -b && npx vitest run                            # engine tests run again
 - Pooled connections are **autocommit**. Every write goes inside `with conn.transaction():`.
 - **All access rules live in `permissions.py`.** A resource outside the caller's organization returns **404**, not 403. A forbidden action on something they can see returns 403.
 - Every table name starts with `trivia_`. Migrations are numbered SQL files and **never edited after being applied**: add a new one instead. Data the app needs in every environment goes in migrations; demo data goes in `seeds/`. Startup order: migrations → root bootstrap → seeds.
-- `validation.py` is a **Python port** of `frontend/src/engine/board.ts` + `resolve.ts`, using the same rule IDs. Change one, change the other.
+- `validation.py` is a **Python port** of `frontend/src/engine/board.ts` (`validateBoardFile` → `validate_board`, same issue codes, messages and highlights) + `resolve.ts`. `board.test.ts` writes `backend/tests/fixtures/board_validation.json` and `tests/test_validation.py` replays it. Change one, change the other.
+- Boards are saved even with errors (**drafts**, SER-5): `BoardOut.issues` is computed on every read, and `validate_game_setup` blocks the start.
 - Secrets: passwords use bcrypt. Organization OpenAI keys are Fernet-encrypted with `ENCRYPTION_KEY` and only ever returned masked. JWTs carry a `jti`; logout revokes it in `trivia_revoked_tokens`. The role is re-read from the DB on every request.
 - **Impersonation:** root calls `POST /api/auth/impersonate/{member_id}` and gets a short-lived token. Its `sub` is the member and its `imp` claim is the root user. All permission checks see the member, and `CurrentUser.impersonator` holds the root user. The token dies as soon as the impersonator stops being root, and impersonation can't be nested.
 - Don't run `ruff format` over the codebase. It was never applied, and a mass reformat would bury real diffs.
@@ -73,12 +74,13 @@ npx tsc -b && npx vitest run                            # engine tests run again
 - The UI only *hides* actions a user can't take. The backend enforces everything.
 - Content pages (`GamesPage`, `BoardsPage`, `DecksPage`, `CategoriesPage`) take an `orgId`. Root users pick one in the toolbar; members always use their own. The **Boards demo** tab (root only) plays the example JSON files locally.
 - The play UI (`PlayTable.tsx`: `useGamePlay`, `BoardView`, `GamePanels`, `TurnPanel` with `canAct`/`dev`/`clockOffset`) is shared by the Boards demo and live games (`LiveGame.tsx`: `useLiveGame`, `LiveTable`, lobby, share link, host controls). Change it once.
-- `BoardCanvas` draws any resolved board. `BoardPreview` (in `common.tsx`) wraps it for boards that may have unmapped slots.
+- `BoardCanvas` draws any resolved board. `BoardPreview` (in `common.tsx`) wraps it for boards that may have unmapped slots. Its `drawTile` / `arrow` / `arrowBend` helpers are shared with the editor canvas.
+- **Board editor** (`src/boardEditor/`): `ops.ts` holds the pure edit operations, and `normalize` renumbers spaces in path order after every visual edit. `EditorCanvas` handles the grid, hit tests and drag. `BoardEditor` holds the undo/redo reducer, halo and panels. Issues drive the highlights (`spaces`, `slot`). Details in `frontend/README.md`.
 
 ### Keep in sync (checklist)
 - **Engine change** (rules, `GameState`, actions, log text): `frontend/src/engine/*` → the same change in `backend/app/engine/*` → `UPDATE_CONFORMANCE=1 npx vitest run src/engine` → `uv run pytest tests/test_engine.py` must pass → `formats.EngineState` if a typed field changed. Live states in `trivia_game_states` must still load.
 - **New table:** migration → row models in `models.py` → repository → API schemas → router (+ `permissions.py`) → tests → `backend/README.md`.
-- **Game or format rule change:** `rules.md` → `engine/board.ts` / `resolve.ts` → `backend/app/validation.py` / `formats.py` → tests on both sides.
+- **Game or format rule change:** `rules.md` → `engine/board.ts` / `resolve.ts` → `backend/app/validation.py` / `formats.py` → `UPDATE_CONFORMANCE=1 npx vitest run src/engine` (also rewrites the validation fixture) → `uv run pytest tests/test_validation.py` → tests on both sides.
 - **Example JSON change:** `python backend/scripts/generate_example_seed.py`, and regenerate the engine conformance fixture (it plays every example board). Seed `0002` is already applied in existing databases, so changes for those need a new seed file.
 
 ## Working with this user
@@ -96,10 +98,12 @@ npx tsc -b && npx vitest run                            # engine tests run again
 8. URL routes for every tab and item (`/games/1`, `/organizations/4`, …), with deep links surviving login.
 9. Playing stored games (`/games/:id/play`, hot-seat on the snapshot) with named saves in `trivia_game_instances` (save, save as new, continue, delete).
 10. Multiplayer (replaces 9): lobby with join link and unique names, `awaiting` status, server-authoritative play over WebSockets, a Python engine port with a TS conformance fixture, presence, server-side question timer, host skip/remove/end, auto-finish on game over.
+11. Visual board editor: click to add, halo actions, arrows and forks, start/finish, slots, settings form, drag, undo/redo, path-order numbering, advanced JSON. Validation now returns structured issues (rules §2.1.1, new IDs BRD-7…12, CFG-*, BRD-W*) that the editor highlights. Boards save as drafts.
 
 ## Known gaps and likely next steps
 - The WebSocket hub is in-process memory: fine for one uvicorn process, but several workers would need shared broadcasts (Postgres `LISTEN/NOTIFY`). Sockets check the login token only on connect.
 - The board canvas is small on phones (tiles about 22px wide), which makes tapping moves fiddly. A zoom, or a list of legal moves as buttons, would help.
+- The board editor is desktop-first. On phones, dragging inside the grid moves spaces instead of panning (`touch-action: none`). Leaving a board with unsaved edits asks only when switching boards in the list (and on reload/close), not on tab changes (`BrowserRouter` has no `useBlocker`).
 - No rate limit on `join` (8-hex join codes) or login.
 - LLM features from `readme.md`: lenient answer checking (EVL-3, needs the backend and the organization's key), generating categories, decks and boards.
 - Tokens (login and player) live in `localStorage`.

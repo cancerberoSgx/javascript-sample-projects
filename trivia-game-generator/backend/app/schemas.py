@@ -13,6 +13,7 @@ from pydantic import (
 
 from .formats import BoardDefinition, GameSnapshot
 from .models import GameStatus, Role, User
+from .validation import BoardIssue
 
 Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
 # bcrypt only uses the first 72 bytes, so longer passwords are rejected rather than silently truncated
@@ -202,6 +203,7 @@ class BoardOut(BaseModel):
     name: str
     description: str
     definition: BoardDefinition
+    issues: list[BoardIssue]  # validation results (rules.md §2.1.1); any error = draft, can't start a game
     created_at: datetime
     updated_at: datetime
 

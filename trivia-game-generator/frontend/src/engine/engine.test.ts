@@ -3,7 +3,8 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { activePlayer, applyAction, createGame, normalizeAnswer } from "./engine";
 import { legalDestinations } from "./movement";
-import { resolveGame, validateBoardFile } from "./resolve";
+import { boardErrors, validateBoardFile } from "./board";
+import { resolveGame } from "./resolve";
 import type { Action, BoardDefinition, BoardFile, DeckFile, GameState, SlotMapping } from "./types";
 
 const PUBLIC = join(__dirname, "../../public");
@@ -43,7 +44,7 @@ function act(s: GameState, action: Action, now = NOW): GameState {
 describe("example boards", () => {
   it.each(manifest.boards.map((b) => b.file))("%s is valid on its own and with the sample deck", (file) => {
     const board = readJson<BoardFile>(file);
-    expect(validateBoardFile(board)).toEqual([]);
+    expect(boardErrors(validateBoardFile(board))).toEqual([]);
     expect(resolveGame(board, mappingFor(board), deckFile).errors).toEqual([]);
   });
 
@@ -53,16 +54,26 @@ describe("example boards", () => {
     board.spaces[0].type = "category";
     board.spaces[0].slot = "A";
     board.config.track_type = "loop";
-    const errors = validateBoardFile(board).join("\n");
-    expect(errors).toMatch(/BRD-1/);
-    expect(errors).toMatch(/missing space 99/);
-    expect(errors).toMatch(/loop track cannot have a 'finish'/);
+    const issues = validateBoardFile(board);
+    expect(issues.map((i) => i.code)).toEqual(expect.arrayContaining(["BRD-8", "BRD-1"]));
+    expect(issues.find((i) => i.code === "BRD-8")).toMatchObject({ spaces: [3], message: "Space 3 has an arrow to space 99, which doesn't exist." });
+    // a missing arrow target skips the graph checks; fix it to see them
+    board.spaces[3].next = [4];
+    board.spaces[0].type = "start";
+    board.spaces[0].slot = null;
+    expect(validateBoardFile(board).find((i) => i.code === "BRD-3")).toMatchObject({ spaces: [19] });
   });
 
   it("reports slot and mapping problems", () => {
     const board = structuredClone(loadBoardFile("linear-basic"));
     board.spaces[1].slot = "Z";
-    expect(validateBoardFile(board).join()).toMatch(/needs one of the slots A, B, C, D \(got Z\)/);
+    expect(validateBoardFile(board)).toContainEqual({
+      code: "BRD-9",
+      severity: "error",
+      message: 'Space 1 uses slot "Z", which isn\'t one of the board\'s slots (A, B, C, D).',
+      spaces: [1],
+      slot: "Z",
+    });
 
     const ok = loadBoardFile("linear-basic");
     const sameTwice = { ...mappingFor(ok), B: deckFile.categories[0] };

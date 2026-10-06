@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { ApiError, type Board, type BoardDefinition, type GameSnapshot } from "../api";
-import { placeholderMapping, resolveBoard, validateSlots } from "../engine/resolve";
+import { placeholderMapping, resolveBoard } from "../engine/resolve";
 import type { BoardFile, Category, SlotMapping } from "../engine/types";
 import { BoardCanvas } from "./BoardCanvas";
 
@@ -123,7 +123,6 @@ export const toBoardFile = (b: Board) => boardFile(b.name, b.definition, b.descr
 
 /** Draws a board. Slots without a category in `mapping` get placeholder colors ("Slot A"). */
 export function BoardPreview({ board, mapping = {} }: { board: BoardFile; mapping?: SlotMapping }) {
-  if (validateSlots(board).length) return <p className="muted small">Fix the slots to see a preview.</p>;
   let resolved;
   try {
     resolved = resolveBoard(board, { ...placeholderMapping(board), ...mapping });

@@ -1,7 +1,7 @@
 // Converts the file/API formats (board with slots, deck with categories) into the engine
 // formats (board with categories, engine cards). See rules.md §2.1 and SER-*.
 
-import { validateBoard } from "./board";
+import { boardErrors, resolveConfig, validateBoardFile } from "./board";
 import {
   GRAND_PRIZE,
   type BoardDefinition,
@@ -22,26 +22,13 @@ export function placeholderMapping(board: BoardFile): SlotMapping {
   );
 }
 
-/** Slot-level checks that only make sense on the file format. */
-export function validateSlots(board: BoardFile): string[] {
-  const errors: string[] = [];
-  const slots = board.slots ?? [];
-  if (!slots.length) errors.push("Board needs at least one slot");
-  if (new Set(slots).size !== slots.length) errors.push("Slot names must be unique");
-  if (slots.some((s) => !s.trim())) errors.push("Slot names can't be empty");
-  for (const s of board.spaces ?? []) {
-    const needsSlot = s.type === "category" || s.type === "hq";
-    if (needsSlot && (!s.slot || !slots.includes(s.slot))) errors.push(`space ${s.index}: '${s.type}' needs one of the slots ${slots.join(", ")} (got ${s.slot})`);
-    if (!needsSlot && s.slot != null) errors.push(`space ${s.index}: '${s.type}' spaces must have slot null`);
-  }
-  return errors;
-}
-
 export function validateMapping(board: BoardFile, mapping: SlotMapping): string[] {
   const errors: string[] = [];
-  const missing = board.slots.filter((s) => !mapping[s]);
+  const slots = board.slots ?? [];
+  const missing = slots.filter((s) => !mapping[s]);
+  if (slots.some((s) => mapping[s]?.id === GRAND_PRIZE)) errors.push(`"${GRAND_PRIZE}" is reserved and can't be a category id`);
   if (missing.length) errors.push(`No category chosen for slot(s): ${missing.join(", ")}`);
-  const ids = board.slots.map((s) => mapping[s]?.id).filter(Boolean);
+  const ids = slots.map((s) => mapping[s]?.id).filter(Boolean);
   if (new Set(ids).size !== ids.length) errors.push("Each slot needs a different category");
   return errors;
 }
@@ -52,8 +39,9 @@ export function resolveBoard(board: BoardFile, mapping: SlotMapping): BoardDefin
     name: board.name,
     description: board.description,
     config: board.config ?? {},
-    categories: board.slots.map((slot): Category => mapping[slot]),
-    spaces: board.spaces.map(({ slot, ...s }) => ({ ...s, category: slot ? mapping[slot].id : null })),
+    // Tolerates unknown slots (category null), so a board being edited can still be drawn
+    categories: board.slots.flatMap((slot): Category[] => (mapping[slot] ? [mapping[slot]] : [])),
+    spaces: board.spaces.map(({ slot, ...s }) => ({ ...s, category: slot ? (mapping[slot]?.id ?? null) : null })),
   };
 }
 
@@ -85,18 +73,26 @@ export function validateDeck(deck: DeckFile): string[] {
   return errors;
 }
 
-/** Validates a board on its own: slot checks plus the structural BRD-* checks. */
-export function validateBoardFile(board: BoardFile): string[] {
-  const slotErrors = validateSlots(board);
-  if (slotErrors.length) return slotErrors;
-  return validateBoard(resolveBoard(board, placeholderMapping(board)), null);
+/** BRD-5 and CRD-4: the deck must have cards for every slot's category, and grand prize
+ *  cards for the finish win. Port: validate_game_setup in backend/app/validation.py. */
+export function validateDeckForBoard(board: BoardFile, mapping: SlotMapping, deck: DeckFile): string[] {
+  const errors: string[] = [];
+  for (const slot of board.slots) {
+    const c = mapping[slot];
+    if (c && !deck.cards.some((card) => card.category === c.id && !card.grand_prize)) errors.push(`BRD-5: the deck has no cards for ${c.name} (slot ${slot})`);
+  }
+  if (resolveConfig(board).win_conditions.includes("finish") && !deck.cards.some((card) => card.grand_prize))
+    errors.push("The board's 'finish' win needs at least one grand prize card in the deck");
+  return errors;
 }
+
+/** Board errors as the plain strings a game setup shows. */
+export const boardErrorStrings = (board: BoardFile) => boardErrors(validateBoardFile(board)).map((i) => `Board: ${i.message}`);
 
 /** Everything a game needs: board + mapping + deck, ready for createGame(). */
 export function resolveGame(board: BoardFile, mapping: SlotMapping, deck: DeckFile) {
-  const errors = [...validateSlots(board), ...validateMapping(board, mapping), ...validateDeck(deck)];
+  const errors = [...boardErrorStrings(board), ...validateMapping(board, mapping), ...validateDeck(deck)];
+  if (!errors.length) errors.push(...validateDeckForBoard(board, mapping, deck));
   if (errors.length) return { errors, board: null, deck: null };
-  const resolvedBoard = resolveBoard(board, mapping);
-  const resolvedDeck = resolveDeck(deck);
-  return { errors: validateBoard(resolvedBoard, resolvedDeck), board: resolvedBoard, deck: resolvedDeck };
+  return { errors, board: resolveBoard(board, mapping), deck: resolveDeck(deck) };
 }

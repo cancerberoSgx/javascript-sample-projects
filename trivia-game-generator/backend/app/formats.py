@@ -81,8 +81,8 @@ class BoardDefinition(Strict):
     """What a board stores: everything except its name/description. Spaces point to slots, not categories."""
 
     config: BoardConfig = Field(default_factory=BoardConfig)
-    slots: list[str] = Field(min_length=1, max_length=12)
-    spaces: list[BoardSpace] = Field(min_length=2, max_length=500)
+    slots: list[str] = Field(max_length=12)
+    spaces: list[BoardSpace] = Field(max_length=500)
 
     def effective_config(self) -> dict:
         return {**DEFAULT_CONFIG, **self.config.model_dump()}

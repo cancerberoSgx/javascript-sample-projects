@@ -38,7 +38,7 @@ export function JsonPanel({ loaded, file }: { loaded: LoadedBoard; file: string 
           <p className="muted small">
             The board file's <code>config</code> merged over the defaults from rules.md §1. This is what the engine uses.
           </p>
-          <pre>{JSON.stringify(resolveConfig({ ...board, categories: [], spaces: [] }), null, 2)}</pre>
+          <pre>{JSON.stringify(resolveConfig(board), null, 2)}</pre>
         </>
       )}
       {tab === "deck" && (
