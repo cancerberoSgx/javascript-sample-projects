@@ -15,12 +15,14 @@ def to_out(org: Organization | None) -> OrganizationOut:
     """`org` is None only if the row vanished (e.g. deleted by a concurrent request)."""
     if org is None:
         raise not_found("Organization not found")
-    encrypted = org.openai_api_key_encrypted
+    openai, gemini = org.openai_api_key_encrypted, org.gemini_api_key_encrypted
     return OrganizationOut(
         id=org.id,
         name=org.name,
-        has_openai_api_key=encrypted is not None,
-        openai_api_key_masked=mask_secret(decrypt_secret(encrypted)) if encrypted else None,
+        has_openai_api_key=openai is not None,
+        openai_api_key_masked=mask_secret(decrypt_secret(openai)) if openai else None,
+        has_gemini_api_key=gemini is not None,
+        gemini_api_key_masked=mask_secret(decrypt_secret(gemini)) if gemini else None,
         user_count=org.user_count,
         created_at=org.created_at,
         updated_at=org.updated_at,
@@ -36,10 +38,11 @@ def list_organizations(me: Me, conn: Conn):
 @router.post("", response_model=OrganizationOut, status_code=status.HTTP_201_CREATED)
 def create_organization(body: OrganizationCreate, me: Me, conn: Conn):
     require_root(me)
-    key = encrypt_secret(body.openai_api_key) if body.openai_api_key else None
+    openai = encrypt_secret(body.openai_api_key) if body.openai_api_key else None
+    gemini = encrypt_secret(body.gemini_api_key) if body.gemini_api_key else None
     try:
         with conn.transaction():
-            org_id = orgs.create(conn, body.name, key)
+            org_id = orgs.create(conn, body.name, openai, gemini)
     except errors.UniqueViolation:
         raise conflict(f"An organization named '{body.name}' already exists")
     return to_out(orgs.get(conn, org_id))
@@ -61,6 +64,8 @@ def update_organization(org_id: int, body: OrganizationUpdate, me: Me, conn: Con
         changes.name = body.name
     if "openai_api_key" in body.model_fields_set:  # explicit null clears the key
         changes.openai_api_key_encrypted = encrypt_secret(body.openai_api_key) if body.openai_api_key else None
+    if "gemini_api_key" in body.model_fields_set:
+        changes.gemini_api_key_encrypted = encrypt_secret(body.gemini_api_key) if body.gemini_api_key else None
     try:
         with conn.transaction():
             found = orgs.update(conn, org_id, changes)

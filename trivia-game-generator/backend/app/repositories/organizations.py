@@ -7,7 +7,7 @@ from ..models import Organization, OrganizationChanges
 from ._sql import update_row
 
 _SELECT = """
-    SELECT o.id, o.name, o.openai_api_key_encrypted, o.created_at, o.updated_at,
+    SELECT o.id, o.name, o.openai_api_key_encrypted, o.gemini_api_key_encrypted, o.created_at, o.updated_at,
            (SELECT count(*) FROM trivia_users u WHERE u.organization_id = o.id) AS user_count
     FROM trivia_organizations o
 """
@@ -29,11 +29,11 @@ def get_by_name(conn: DbConn, name: str) -> Organization | None:
     return _rows(conn).execute(_SELECT + " WHERE lower(o.name) = lower(%s)", (name,)).fetchone()
 
 
-def create(conn: DbConn, name: str, openai_api_key_encrypted: str | None) -> int:
+def create(conn: DbConn, name: str, openai_api_key_encrypted: str | None, gemini_api_key_encrypted: str | None = None) -> int:
     return fetch_scalar(
         conn,
-        "INSERT INTO trivia_organizations (name, openai_api_key_encrypted) VALUES (%s, %s) RETURNING id",
-        (name, openai_api_key_encrypted),
+        "INSERT INTO trivia_organizations (name, openai_api_key_encrypted, gemini_api_key_encrypted) VALUES (%s, %s, %s) RETURNING id",
+        (name, openai_api_key_encrypted, gemini_api_key_encrypted),
     )
 
 

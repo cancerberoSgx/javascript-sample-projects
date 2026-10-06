@@ -12,7 +12,16 @@ from pydantic import (
 )
 
 from .formats import BoardDefinition, GameSnapshot
-from .models import GameStatus, Role, User
+from .models import (
+    MAX_GENERATED_CARDS,
+    GameStatus,
+    GeneratedCard,
+    GenerationSpec,
+    GenerationStatus,
+    Provider,
+    Role,
+    User,
+)
 from .validation import BoardIssue
 
 Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
@@ -74,21 +83,28 @@ class OrganizationOut(BaseModel):
     name: str
     has_openai_api_key: bool
     openai_api_key_masked: str | None  # e.g. "sk-…a1b2"; the full key is never returned
+    has_gemini_api_key: bool
+    gemini_api_key_masked: str | None
     user_count: int
     created_at: datetime
     updated_at: datetime
 
 
+ApiKey = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
+
+
 class OrganizationCreate(BaseModel):
     name: Name
-    openai_api_key: str | None = None
+    openai_api_key: ApiKey | None = None
+    gemini_api_key: ApiKey | None = None
 
 
 class OrganizationUpdate(BaseModel):
-    """Send openai_api_key: null to remove the key; leave it out to keep it unchanged."""
+    """Send a key as null to remove it; leave it out to keep it unchanged."""
 
     name: Name | None = None
-    openai_api_key: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)] | None = None
+    openai_api_key: ApiKey | None = None
+    gemini_api_key: ApiKey | None = None
 
 
 # ---------- shared ----------
@@ -370,3 +386,49 @@ PlayerAction = Annotated[RollIn | MoveIn | ChooseCategoryIn | AnswerIn | Timeout
 class SocketAction(BaseModel):
     type: Literal["action"]
     action: PlayerAction
+
+
+# ---------- card generation (rules.md §2.2.1) ----------
+
+
+class ProviderOut(BaseModel):
+    id: Provider
+    name: str  # "OpenAI"
+    model: str
+
+
+class GenerationRequest(GenerationSpec):
+    """GEN-1: `provider` may be left out when the organization has only one key."""
+
+    provider: Provider | None = None
+
+
+class GenerationJobOut(BaseModel):
+    id: int
+    deck_id: int
+    creator_name: str | None
+    provider: Provider
+    model: str
+    request: GenerationSpec
+    status: GenerationStatus
+    cards: list[GeneratedCard]
+    batches_total: int
+    batches_done: int
+    dropped_duplicates: int
+    dropped_invalid: int
+    messages: list[str]
+    error: str | None
+    created_at: datetime
+    finished_at: datetime | None
+
+
+class GenerationAccept(BaseModel):
+    """The reviewed cards to add. `job_id` guards against accepting a generation that was replaced meanwhile."""
+
+    job_id: int
+    cards: list[CardIn] = Field(max_length=MAX_GENERATED_CARDS)
+
+
+class GenerationAcceptOut(BaseModel):
+    added: int
+    skipped_duplicates: list[str]  # questions already in the deck (or twice in the list), not added

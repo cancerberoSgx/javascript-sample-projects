@@ -8,6 +8,7 @@ dependencies = [
     "cryptography>=50.0.2",
     "email-validator>=2.3.0",
     "fastapi>=0.142.2",
+    "httpx2>=2.13.1",
     "psycopg[binary,pool]>=3.3.6",
     "pydantic-settings>=2.15.0",
     "pyjwt>=2.15.1",
@@ -16,7 +17,6 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "httpx2>=2.13.1",
     "pytest>=9.1.1",
 ]
 

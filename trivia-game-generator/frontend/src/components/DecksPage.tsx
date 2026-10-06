@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, type Card, type CardInput, type Category, type Deck } from "../api";
 import { ErrorBox, NotFound, useAction, useList, useRouteSelection } from "./common";
+import { GenerateForm, GenerationPanel, useGeneration } from "./GenerateCards";
 
 export function DecksPage({ orgId }: { orgId: number }) {
   const decks = useList(() => api.listDecks(orgId), [orgId]);
@@ -115,6 +116,9 @@ function DeckEditor({
   const [cards, setCards] = useState<Card[]>([]);
   const [editing, setEditing] = useState<Card | "new" | null>(null);
   const [filter, setFilter] = useState<number | "all">("all");
+  const [generateForm, setGenerateForm] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const generation = useGeneration(deck.id);
   const action = useAction();
   const catById = new Map(categories.map((c) => [c.id, c]));
 
@@ -156,11 +160,11 @@ function DeckEditor({
       </section>
 
       <section className="panel">
-        <div className="row between">
+        <div className="row between wrap">
           <h2>
             Cards · {cards.length}
           </h2>
-          <div className="row">
+          <div className="row wrap">
             <select value={filter} onChange={(e) => setFilter(e.target.value === "all" ? "all" : Number(e.target.value))}>
               <option value="all">All categories</option>
               {categories.map((c) => (
@@ -172,9 +176,45 @@ function DeckEditor({
             <button className="small" disabled={!categories.length} title={categories.length ? "" : "Create a category first"} onClick={() => setEditing("new")}>
               + Add card
             </button>
+            <button
+              className="small"
+              disabled={!categories.length || !generation.providers?.length || !!generation.job || generateForm}
+              title={generateTitle(categories.length > 0, generation.providers, !!generation.job)}
+              onClick={() => (setGenerateForm(true), setNotice(null))}
+            >
+              ✨ Generate
+            </button>
           </div>
         </div>
         {!categories.length && <p className="muted small">Create categories first (Categories tab). Every card belongs to one.</p>}
+        {categories.length > 0 && generation.providers?.length === 0 && !cards.length && (
+          <p className="muted small">To generate cards with OpenAI or Gemini, a root user has to add an API key to this organization (Organizations tab).</p>
+        )}
+        <ErrorBox error={generation.error} />
+        {notice && <div className="ok">{notice}</div>}
+        {generateForm && generation.providers && !generation.job && (
+          <GenerateForm
+            deck={deck}
+            providers={generation.providers}
+            categories={categories}
+            onCancel={() => setGenerateForm(false)}
+            onStarted={(job) => (generation.setJob(job), setGenerateForm(false))}
+          />
+        )}
+        {generation.job && (
+          <GenerationPanel
+            deck={deck}
+            job={generation.job}
+            categories={categories}
+            onChanged={generation.setJob}
+            onAccepted={async (message) => {
+              generation.setJob(null);
+              setNotice(message);
+              await loadCards();
+              await onChanged();
+            }}
+          />
+        )}
         {editing && (
           <CardForm
             key={editing === "new" ? "new" : editing.id}
@@ -191,6 +231,7 @@ function DeckEditor({
             }}
           />
         )}
+        <div className="table-scroll">
         <table className="players users cards">
           <thead>
             <tr>
@@ -239,19 +280,28 @@ function DeckEditor({
             )}
           </tbody>
         </table>
+        </div>
       </section>
     </>
   );
 }
 
-function CardForm({
+function generateTitle(hasCategories: boolean, providers: unknown[] | null, hasJob: boolean) {
+  if (!hasCategories) return "Create a category first";
+  if (providers && !providers.length) return "This organization has no OpenAI or Gemini API key";
+  if (hasJob) return "Review or discard the generated cards first";
+  return "Generate cards with an LLM";
+}
+
+/** Creates or edits a card. Also edits generated cards before they're added (GenerateCards.tsx). */
+export function CardForm({
   card,
   categories,
   defaultCategory,
   onSave,
   onCancel,
 }: {
-  card: Card | null;
+  card: CardInput | null;
   categories: Category[];
   defaultCategory: number | undefined;
   onSave: (input: CardInput) => Promise<void>;

@@ -4,9 +4,9 @@ A React + Vite app. After login it shows:
 - **Games**: set up a game (board, deck, a category for each board slot), share its link, watch players join live, start it. A running game shows the live board with host controls (skip a turn, remove a player, end the game). See [Multiplayer](#multiplayer).
 - **Player page** (`/games/:id?code=…`): what players open on their own devices. No login: pick a name, wait in the lobby, play your turns.
 - **Boards**: a visual board editor (see [Board editor](#board-editor)), with live validation that points at the spaces involved. New boards can start blank or from an example.
-- **Decks**: questions and answers (open or multiple choice, difficulty, grand prize).
+- **Decks**: questions and answers (open or multiple choice, difficulty, grand prize), written by hand or generated with OpenAI / Gemini (see [Generating cards](#generating-cards)).
 - **Categories**: name, description, color.
-- **Organizations** (root) / **My organization** (member): CRUD for organizations and their users. Root users also get an organization picker on the content tabs.
+- **Organizations** (root) / **My organization** (member): CRUD for organizations and their users, and the organization's OpenAI / Gemini keys (root only, shown masked). Root users also get an organization picker on the content tabs.
 - **Boards demo** (root only): loads board definitions from JSON and lets you play turns on them (hot-seat, 1–4 players). The game logic follows [`../rules.md`](../rules.md). Code comments cite its rule IDs.
 
 ## URLs
@@ -65,6 +65,7 @@ Impersonation: root users get an **Impersonate** button on member users (Organiz
 | `src/App.tsx` | Header, tabs and routes |
 | `src/components/PlayTable.tsx` | The play UI shared by the Boards demo and live games: `useGamePlay` (dispatch + toasts; `useLocalGamePlay` runs the engine in the browser), `BoardView`, `GamePanels` |
 | `src/components/LiveGame.tsx` | Multiplayer: `useLiveGame` (the game's WebSocket), `LiveTable`, lobby list, join form, share link, host controls |
+| `src/components/GenerateCards.tsx` | Card generation: `useGeneration` (providers + the deck's open generation, polled while it runs), `GenerateForm`, `GenerationPanel` (progress, then the review list) |
 | `src/components/PlayerGamePage.tsx` | `/games/:id?code=…`: the player's own device |
 
 ## Multiplayer
@@ -75,6 +76,12 @@ Games are played live, each player on their own device (rules.md §2.7). The ser
 - **Players** open the link: name → lobby → game. The device keeps a player token in `localStorage` (`trivia.player.<gameId>`), so a reload or a dropped connection comes back as the same player. Opening the link without joining (or after the start) just watches.
 - `useLiveGame(gameId, code)` opens `ws(s)://<host>/api/games/:id/ws` (Vite proxies it, `ws: true`), sends the hello (login token, player token, code), keeps the latest message, and reconnects with backoff. `canActNow()` decides whether this screen plays the current turn; others see "Waiting for … to roll" and the question read-only.
 - Question timers run on server time (`server_now` → `clockOffset`), and the server times out unanswered questions itself, so the browser never sends a timeout in multiplayer.
+
+## Generating cards
+
+On a deck, **✨ Generate** (rules.md §2.2.1) opens a form: provider (a choice only when the organization has both keys), number of cards (≤ 200), categories with % shares, difficulty and question-type % shares, and free-text instructions (audience, language, theme). Each mix shows the exact card counts it becomes (`largestRemainder`, the same split the backend uses); shares that don't add up to 100% are scaled. The button is disabled, with a tooltip, when the organization has no key or a generation is already open.
+
+The generation runs on the server, so the page can be left and reopened. The panel polls `GET /decks/:id/generation` every 1.5 s and shows progress and the cards so far; **Stop and discard** cancels it. When it's done, the review list has every card ticked: untick some, **Edit** one (the regular `CardForm`, editing the local copy), then **Add N cards to deck**. Nothing is in the deck until then. **Discard all** throws the generation away.
 
 ## Board editor
 

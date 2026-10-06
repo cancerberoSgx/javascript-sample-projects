@@ -21,6 +21,8 @@ export interface Organization {
   name: string;
   has_openai_api_key: boolean;
   openai_api_key_masked: string | null;
+  has_gemini_api_key: boolean;
+  gemini_api_key_masked: string | null;
   user_count: number;
   created_at: string;
   updated_at: string;
@@ -69,6 +71,47 @@ export interface Card {
 }
 
 export type CardInput = Omit<Card, "id" | "deck_id" | "position">;
+
+// ---------- card generation (rules.md §2.2.1) ----------
+
+export type Provider = "openai" | "gemini";
+
+export interface ProviderInfo {
+  id: Provider;
+  name: string; // "OpenAI"
+  model: string;
+}
+
+/** What to generate (GEN-2). Weights are relative: 20 and 80 mean 20% and 80%. */
+export interface GenerationSpec {
+  count: number;
+  categories: { category_id: number; weight: number }[];
+  difficulty: { easy: number; medium: number; hard: number };
+  types: { multiple_choice: number; open: number };
+  instructions: string;
+}
+
+export type GeneratedCard = Pick<Card, "category_id" | "question" | "options" | "answer" | "difficulty">;
+
+export interface GenerationJob {
+  id: number;
+  deck_id: number;
+  creator_name: string | null;
+  provider: Provider;
+  model: string;
+  request: GenerationSpec;
+  status: "running" | "done" | "failed" | "accepted";
+  /** The cards waiting for review. Nothing is in the deck until they're accepted (GEN-6). */
+  cards: GeneratedCard[];
+  batches_total: number;
+  batches_done: number;
+  dropped_duplicates: number;
+  dropped_invalid: number;
+  messages: string[];
+  error: string | null;
+  created_at: string;
+  finished_at: string | null;
+}
 
 /** What a board stores: its file minus name/description (see BoardFile in engine/types.ts). */
 export interface BoardDefinition {
@@ -242,9 +285,10 @@ export const api = {
     request<{ access_token: string; expires_at: string; user: User }>("POST", `/auth/impersonate/${userId}`),
 
   listOrganizations: () => request<Organization[]>("GET", "/organizations"),
-  createOrganization: (body: { name: string; openai_api_key?: string | null }) => request<Organization>("POST", "/organizations", body),
-  /** openai_api_key: omit to keep, null to remove, string to replace. */
-  updateOrganization: (id: number, body: { name?: string; openai_api_key?: string | null }) =>
+  createOrganization: (body: { name: string; openai_api_key?: string | null; gemini_api_key?: string | null }) =>
+    request<Organization>("POST", "/organizations", body),
+  /** Keys: omit to keep, null to remove, string to replace. */
+  updateOrganization: (id: number, body: { name?: string; openai_api_key?: string | null; gemini_api_key?: string | null }) =>
     request<Organization>("PATCH", `/organizations/${id}`, body),
   deleteOrganization: (id: number) => request<void>("DELETE", `/organizations/${id}`),
 
@@ -271,6 +315,15 @@ export const api = {
   createCard: (deckId: number, body: CardInput) => request<Card>("POST", `/decks/${deckId}/cards`, body),
   updateCard: (deckId: number, cardId: number, body: Partial<CardInput>) => request<Card>("PATCH", `/decks/${deckId}/cards/${cardId}`, body),
   deleteCard: (deckId: number, cardId: number) => request<void>("DELETE", `/decks/${deckId}/cards/${cardId}`),
+
+  // Card generation (rules.md §2.2.1). A deck has at most one generation running or under review.
+  generationProviders: (deckId: number) => request<ProviderInfo[]>("GET", `/decks/${deckId}/generation/providers`),
+  getGeneration: (deckId: number) => request<GenerationJob | null>("GET", `/decks/${deckId}/generation`),
+  startGeneration: (deckId: number, body: GenerationSpec & { provider: Provider | null }) =>
+    request<GenerationJob>("POST", `/decks/${deckId}/generation`, body),
+  discardGeneration: (deckId: number) => request<void>("DELETE", `/decks/${deckId}/generation`),
+  acceptGeneration: (deckId: number, body: { job_id: number; cards: CardInput[] }) =>
+    request<{ added: number; skipped_duplicates: string[] }>("POST", `/decks/${deckId}/generation/accept`, body),
 
   listBoards: (orgId?: number) => request<Board[]>("GET", withOrg("/boards", orgId)),
   getBoard: (id: number) => request<Board>("GET", `/boards/${id}`),

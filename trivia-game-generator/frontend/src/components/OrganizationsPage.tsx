@@ -57,7 +57,7 @@ export function OrganizationsPage() {
                   <span>{o.name}</span>
                   <span className="muted small">
                     {o.user_count} user{o.user_count === 1 ? "" : "s"}
-                    {o.has_openai_api_key && " · 🔑"}
+                    {(o.has_openai_api_key || o.has_gemini_api_key) && " · 🔑"}
                   </span>
                 </button>
               </li>
@@ -89,6 +89,7 @@ export function OrganizationsPage() {
 function NewOrganizationForm({ onDone }: { onDone: (created: Organization | null) => void }) {
   const [name, setName] = useState("");
   const [key, setKey] = useState("");
+  const [geminiKey, setGeminiKey] = useState("");
   const [error, setError] = useState<string | null>(null);
   return (
     <form
@@ -96,7 +97,7 @@ function NewOrganizationForm({ onDone }: { onDone: (created: Organization | null
       onSubmit={async (e) => {
         e.preventDefault();
         try {
-          onDone(await api.createOrganization({ name, openai_api_key: key || null }));
+          onDone(await api.createOrganization({ name, openai_api_key: key || null, gemini_api_key: geminiKey || null }));
         } catch (err) {
           setError((err as Error).message);
         }
@@ -104,6 +105,7 @@ function NewOrganizationForm({ onDone }: { onDone: (created: Organization | null
     >
       <input placeholder="Organization name" required value={name} onChange={(e) => setName(e.target.value)} autoFocus />
       <input placeholder="OpenAI API key (optional)" type="password" autoComplete="off" value={key} onChange={(e) => setKey(e.target.value)} />
+      <input placeholder="Gemini API key (optional)" type="password" autoComplete="off" value={geminiKey} onChange={(e) => setGeminiKey(e.target.value)} />
       {error && <div className="error">{error}</div>}
       <div className="row">
         <button className="primary small">Create</button>
@@ -128,6 +130,7 @@ function OrganizationPanel({
 }) {
   const [name, setName] = useState(org.name);
   const [newKey, setNewKey] = useState("");
+  const [newGeminiKey, setNewGeminiKey] = useState("");
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const run = async (fn: () => Promise<unknown>, ok: string, after = onChanged) => {
@@ -135,6 +138,7 @@ function OrganizationPanel({
       await fn();
       setMsg({ ok: true, text: ok });
       setNewKey("");
+      setNewGeminiKey("");
       await after();
     } catch (e) {
       setMsg({ ok: false, text: (e as Error).message });
@@ -149,28 +153,29 @@ function OrganizationPanel({
           className="grid-form"
           onSubmit={(e) => {
             e.preventDefault();
-            run(() => api.updateOrganization(org.id, { name, ...(newKey ? { openai_api_key: newKey } : {}) }), "Saved.");
+            const keys = { ...(newKey ? { openai_api_key: newKey } : {}), ...(newGeminiKey ? { gemini_api_key: newGeminiKey } : {}) };
+            run(() => api.updateOrganization(org.id, { name, ...keys }), "Saved.");
           }}
         >
           <label>Name</label>
           <input required value={name} onChange={(e) => setName(e.target.value)} />
-          <label>OpenAI API key</label>
-          <div className="row">
-            <code className="key">{org.openai_api_key_masked ?? "not set"}</code>
-            {org.has_openai_api_key && (
-              <button type="button" className="small" onClick={() => run(() => api.updateOrganization(org.id, { openai_api_key: null }), "Key removed.")}>
-                Remove
-              </button>
-            )}
-          </div>
-          <label>Replace key</label>
-          <input
-            type="password"
-            autoComplete="off"
+          <KeyField
+            label="OpenAI API key"
+            masked={org.openai_api_key_masked}
             placeholder="sk-…  (stored encrypted, never shown again)"
             value={newKey}
-            onChange={(e) => setNewKey(e.target.value)}
+            onChange={setNewKey}
+            onRemove={() => run(() => api.updateOrganization(org.id, { openai_api_key: null }), "OpenAI key removed.")}
           />
+          <KeyField
+            label="Gemini API key"
+            masked={org.gemini_api_key_masked}
+            placeholder="AIza…  (stored encrypted, never shown again)"
+            value={newGeminiKey}
+            onChange={setNewGeminiKey}
+            onRemove={() => run(() => api.updateOrganization(org.id, { gemini_api_key: null }), "Gemini key removed.")}
+          />
+          <span className="span muted small">The keys are used to generate deck cards. With both set, users pick one each time.</span>
           <span />
           <div className="row between">
             <button className="primary">Save</button>
@@ -193,10 +198,46 @@ function OrganizationPanel({
           <dd>
             <code className="key">{org.openai_api_key_masked ?? "not set"}</code>
           </dd>
+          <dt>Gemini API key</dt>
+          <dd>
+            <code className="key">{org.gemini_api_key_masked ?? "not set"}</code>
+          </dd>
         </dl>
       )}
       {msg && <div className={msg.ok ? "ok" : "error"}>{msg.text}</div>}
     </section>
+  );
+}
+
+/** An organization's LLM key: the masked current one, Remove, and a field to replace it. */
+function KeyField({
+  label,
+  masked,
+  placeholder,
+  value,
+  onChange,
+  onRemove,
+}: {
+  label: string;
+  masked: string | null;
+  placeholder: string;
+  value: string;
+  onChange: (value: string) => void;
+  onRemove: () => void;
+}) {
+  return (
+    <>
+      <label>{label}</label>
+      <div className="row">
+        <code className="key">{masked ?? "not set"}</code>
+        {masked && (
+          <button type="button" className="small" onClick={onRemove}>
+            Remove
+          </button>
+        )}
+        <input type="password" autoComplete="off" aria-label={`${masked ? "Replace" : "Set"} ${label}`} placeholder={masked ? `Replace: ${placeholder}` : placeholder} value={value} onChange={(e) => onChange(e.target.value)} />
+      </div>
+    </>
   );
 }
 

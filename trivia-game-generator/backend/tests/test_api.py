@@ -51,6 +51,13 @@ def test_root_organization_crud_and_masked_key(client, root):
     r = client.patch(f"/api/organizations/{org['id']}", json={"openai_api_key": None}, headers=root)
     assert r.json()["has_openai_api_key"] is False
 
+    # The Gemini key works the same way, independently of the OpenAI one
+    r = client.patch(f"/api/organizations/{org['id']}", json={"gemini_api_key": "AIzaSyExampleGeminiKey5678"}, headers=root)
+    assert r.json()["has_gemini_api_key"] and r.json()["gemini_api_key_masked"] == "AIz…5678" and not r.json()["has_openai_api_key"]
+    assert "ExampleGemini" not in r.text
+    r = client.patch(f"/api/organizations/{org['id']}", json={"gemini_api_key": None}, headers=root)
+    assert r.json()["has_gemini_api_key"] is False
+
     names = [o["name"] for o in client.get("/api/organizations", headers=root).json()]
     assert names == ["Acme Inc", "Default"]
     assert client.delete(f"/api/organizations/{org['id']}", headers=root).status_code == 204

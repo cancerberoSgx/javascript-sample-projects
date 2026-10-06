@@ -52,6 +52,7 @@ Tests also run inside the container: `docker compose -f docker/docker-compose.ym
 | `app/formats.py` | Board definition, game snapshot and live play-state (`EngineState`) formats (match the frontend's `BoardFile` / `DeckFile` / `GameState`) |
 | `app/engine/` | **The game engine, ported from `frontend/src/engine`** (`engine.ts`, `movement.ts`, `rng.ts`, `resolve.ts`). Same states, same rule IDs, same error messages. `tests/test_engine.py` replays the conformance fixture the TS tests write (`tests/fixtures/engine_conformance.json`). Change one engine, change the other |
 | `app/play.py` | Multiplayer play: deals a started game's opening state and applies actions (turn checks, auto-finish). The only code that changes a live state |
+| `app/generation.py`, `app/llm.py` | Card generation (rules.md §2.2.1): exact-mix planning, batches, duplicate detection, the background runner; `llm.py` calls OpenAI / Gemini over HTTP with a JSON schema |
 | `app/live.py` | The in-memory WebSocket hub: who watches which game, broadcasts, presence and the server-side question timer |
 | `app/validation.py` | Board issues (`validate_board`, a line-by-line port of `validateBoardFile` in `frontend/src/engine/board.ts`) and game-setup checks (port of `resolve.ts`). `tests/test_validation.py` replays the frontend's fixture to keep them identical |
 | `migrations/`, `seeds/` | Numbered `.sql` files |
@@ -65,7 +66,7 @@ Tests also run inside the container: `docker compose -f docker/docker-compose.ym
   - Partial updates take a `...Changes` model. Only the fields you set get written, and its `extra="forbid"` config acts as the column allow-list for the dynamic `UPDATE` (built with `psycopg.sql.Identifier`, never string formatting).
 - A board's `definition` is stored as `jsonb` and typed in Python as `formats.BoardDefinition`. Its `config` is partial: only the settings that differ from the defaults are stored, so changing a default changes every board that doesn't override it.
 - New table → add its row model (and `New…` / `…Changes` models if it's writable) to `app/models.py` alongside the migration.
-- Secrets: passwords are bcrypt-hashed. Organization OpenAI keys are encrypted with Fernet (`ENCRYPTION_KEY`) and the API only ever returns them masked (`sk-…1234`). Changing `ENCRYPTION_KEY` makes stored keys unreadable.
+- Secrets: passwords are bcrypt-hashed. Organization OpenAI and Gemini keys are encrypted with Fernet (`ENCRYPTION_KEY`) and the API only ever returns them masked (`sk-…1234`). Changing `ENCRYPTION_KEY` makes stored keys unreadable.
 - Auth: `POST /api/auth/login` returns a JWT. Send it as `Authorization: Bearer <token>`. `POST /api/auth/logout` adds the token's `jti` to `trivia_revoked_tokens`, so it stops working right away. The user's role is read from the database on every request.
 - Impersonation: a root user calls `POST /api/auth/impersonate/{user_id}` (member users only) and gets a token that acts as that member. Its `sub` is the member and its `imp` claim is the root user. Every permission check sees the member; `CurrentUser.impersonator` holds the root user, and `/api/auth/me` returns it as `impersonator`. These tokens last `IMPERSONATION_EXPIRE_MINUTES`, stop working as soon as the impersonator is no longer root, and can't be nested. Exiting means `/logout` with that token. Every start is logged (`auth` logger).
 
@@ -82,6 +83,8 @@ Tests also run inside the container: `docker compose -f docker/docker-compose.ym
 | Impersonate a member user | ✔ any organization | ✘ |
 
 | Categories, decks, cards, boards, games; hosting a game (start, players, skip turn, new link, end) | every organization | own organization: full create / edit / delete |
+| Set an organization's OpenAI / Gemini key | ✔ | ✘ (sees them masked) |
+| Generate cards for a deck (with the organization's keys) | every organization | own organization |
 
 Players don't need an account (rules.md §2.7). The game's join code lets anyone join while it's awaiting, and the player token they get proves which player a device is. Who can watch a game's WebSocket: its organization's users (and root), its players, and anyone with its join code.
 
@@ -97,6 +100,18 @@ Other rules: the last root user can't be demoted or deleted, an organization tha
 | `/api/games` | `board_id`, `deck_id`, `categories` (`{slot: category_id}`); `players` (`[{name}]`) only on create. Every game has a `join_code`; players have `joined` (from their own device) and `removed`. `GET /api/games/{id}` includes `setup_errors`, the list of what still blocks starting |
 | `POST /api/games/{id}/start` | `awaiting → running`. Validates the setup, stores a `snapshot` (`{board, deck, mapping}`) so later edits don't affect the game, and deals the opening play state (table `trivia_game_states`) |
 | `POST /api/games/{id}/finish` | `running → finished`: the host ends the game early. Reaching GAME_OVER finishes it by itself (MPL-10) |
+
+## Generating cards (rules.md §2.2.1)
+
+| Endpoint | What |
+|---|---|
+| `GET /api/decks/{id}/generation/providers` | `[{id, name, model}]` for each key the deck's organization has. Empty: generating isn't possible |
+| `POST /api/decks/{id}/generation` | Starts a generation (201): `{provider?, count (1–200), categories: [{category_id, weight}], difficulty: {easy, medium, hard}, types: {multiple_choice, open}, instructions}`. Weights are relative. `provider` is required when both keys are set (422), 409 when the organization has no key for it, 409 when the deck already has a generation open |
+| `GET /api/decks/{id}/generation` | The open generation or `null`: `{status: running/done/failed, cards, batches_done, batches_total, dropped_duplicates, dropped_invalid, messages, error, …}`. The UI polls it while it runs |
+| `POST /api/decks/{id}/generation/accept` | `{job_id, cards: [CardIn]}`: the reviewed (possibly edited, possibly fewer) cards. Cards that repeat the deck are skipped: `{added, skipped_duplicates}`. 409 while running |
+| `DELETE /api/decks/{id}/generation` | Discards it. A running one stops after the calls in flight |
+
+How it works: the request is planned into exact counts per (category, difficulty, type) (`generation.plan`), split into calls of up to `GENERATION_BATCH_SIZE` cards per category (`plan_batches`), and run on a thread pool in this process (`generation.runner`): categories in parallel (`GENERATION_PARALLEL_CALLS`), each category's calls in order. Each reply is checked (`check_card`) and deduplicated (`Deduper`) against the deck and the job, appended to `trivia_generation_jobs.cards`, and missing cards are asked for again (2 rounds). Like the WebSocket hub, the runner lives in process memory: on startup, jobs still `running` are marked failed. Models come from `OPENAI_MODEL` / `GEMINI_MODEL`; the keys only ever come from the organization. The test suite replaces `llm.complete_json` with a fake; `RUN_LIVE_LLM=1 uv run pytest tests/test_generation_live.py -s` calls the real APIs with `OPENAI_API_KEY` / `GEMINI_API_KEY` from `.env`.
 
 ## Multiplayer (rules.md §2.7)
 

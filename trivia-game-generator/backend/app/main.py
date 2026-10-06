@@ -5,12 +5,13 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from . import db
+from . import db, generation
 from .auth import Conn
 from .bootstrap import ensure_root_user
 from .config import get_settings
 from .live import hub
 from .migrations import apply_pending
+from .repositories import generation_jobs
 from .routers import (
     auth,
     boards,
@@ -20,6 +21,9 @@ from .routers import (
     organizations,
     play,
     users,
+)
+from .routers import (
+    generation as generation_router,
 )
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
@@ -34,13 +38,18 @@ async def lifespan(_: FastAPI):
     try:
         with db.connection() as conn:
             ensure_root_user(conn, settings)
+            with conn.transaction():
+                if n := generation_jobs.fail_interrupted(conn):
+                    logging.getLogger(__name__).warning("Marked %d interrupted generation job(s) as failed", n)
         # After the root bootstrap, so seeds can reference the root user
         if settings.run_seeds:
             apply_pending(settings.database_url, "seed")
         hub.attach(asyncio.get_running_loop())
+        generation.runner.open()
         yield
     finally:
         await hub.close()
+        generation.runner.shutdown()
         db.close_pool()
 
 
@@ -57,7 +66,7 @@ def create_app() -> FastAPI:
     app.include_router(auth.router)
     app.include_router(organizations.router)
     app.include_router(users.router)
-    for content in (categories, decks, boards, games, play):
+    for content in (categories, decks, generation_router, boards, games, play):
         app.include_router(content.router)
 
     @app.get("/api/health", tags=["health"])

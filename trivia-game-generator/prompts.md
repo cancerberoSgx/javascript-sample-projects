@@ -154,9 +154,6 @@ Before implementing this multiplayer game play in both frontend and backend anal
 
 
 
-# FUTURE
-
-
 # board editor
 currently the only way of editing board spaces and directions (graph) is by editing json. Instead users must be able to edit the board graph visually. 
 users must be able to:
@@ -167,9 +164,25 @@ users must be able to:
 Can you think on anything else users might need to completly define a custom board ? Can you also think if we need to change the current validation so it's more visible / understandable?
 
 
+# FUTURE
+
+
 # generate deck with openai or gemini
 organization members can also set up a gemini apikey besides the openai apikey so they can use both
-in decks -> new deck, users are able to generate
+in decks -> new deck, currently users must manually create each card which is fine. But also we want users are able to generate N cards using openai or gemini defining:
+ * how many cards in total
+ * which categories to use and optionally the ratio of each category, for example, 20% of science category and 80% of history category
+ * the card generator never generates repeated questions (both in the generated set and in the current deck cards.)
+ * difficulty (and also with ratios, for example, 50% easy, 50% hard)
+ * question type ratio, multiple select ratio vs open answer
+Before implementing this, would you say it's viable to generate 100 cards in a single openai or gemini call, or should we somehow do it in batches. 
+Note: I've left apikeys available for you to test in .env OPENAI_API_KEY, GEMINI_API_KEY but remember that each organization must to set up them. Both keys in the organization are optional. If there are no apikeys then the user cannot generate. If bnoth apikeys are set, then the user must pick one LLM
+Do you think it's possible? Do you have any question before implementing this ? 
 
-the user must be able to say, generate a deck questions and answers, 50% 
-Also they can add more questions and answers to an existing game and the system should not repeat the current questions. 
+p2
+make sure the categories descriptions are given to the llm for more context, because we could have a category called history-uruguay and history-argentina and their semantics should be defined in their descriptions. 
+Also add the openai and gemini models in the organization record, let the user configure them optionally, by default use gpt-5.4-mini and gemini-3.5-flash,
+do you have any doubts about these two things?
+
+# categories metadata
+currently, categories consists on a name and a description. Nevertheless, we could have similar categories or subcategories, such as "history", "history-world", "history-uruguay", each with different descriptions so the LLM has more context when creating cards. Nevertheless, categories must also have a label, which is displayed in a game, since we don't want to display long names such as history-uruguay or geography-uruguay but just "history" and "geography" in a game that which every card is related to uruguay. Do you understand or have any question befor implementing this ? 

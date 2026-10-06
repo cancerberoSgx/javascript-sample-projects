@@ -1,6 +1,6 @@
 # Trivia Game Generator
 
-A web app where organizations build trivia board games: categories, decks of questions, board layouts, and games with players. The long-term goal is a **generator**: boards and decks are plain data (later generated with an LLM using each organization's OpenAI key), so new games need no code changes.
+A web app where organizations build trivia board games: categories, decks of questions, board layouts, and games with players. The long-term goal is a **generator**: boards and decks are plain data (decks can already be generated with an LLM using each organization's OpenAI or Gemini key; boards are next), so new games need no code changes.
 
 Read first:
 - `rules.md` is the game spec. Every rule has an ID (`MOV-2`, `BRD-4`, `GAM-3`, `SER-4`…). Code, tests and discussions cite these IDs. Update it whenever game behavior or a data format changes.
@@ -63,8 +63,9 @@ npx tsc -b && npx vitest run                            # engine tests run again
 - Every table name starts with `trivia_`. Migrations are numbered SQL files and **never edited after being applied**: add a new one instead. Data the app needs in every environment goes in migrations; demo data goes in `seeds/`. Startup order: migrations → root bootstrap → seeds.
 - `validation.py` is a **Python port** of `frontend/src/engine/board.ts` (`validateBoardFile` → `validate_board`, same issue codes, messages and highlights) + `resolve.ts`. `board.test.ts` writes `backend/tests/fixtures/board_validation.json` and `tests/test_validation.py` replays it. Change one, change the other.
 - Boards are saved even with errors (**drafts**, SER-5): `BoardOut.issues` is computed on every read, and `validate_game_setup` blocks the start.
-- Secrets: passwords use bcrypt. Organization OpenAI keys are Fernet-encrypted with `ENCRYPTION_KEY` and only ever returned masked. JWTs carry a `jti`; logout revokes it in `trivia_revoked_tokens`. The role is re-read from the DB on every request.
+- Secrets: passwords use bcrypt. Organization OpenAI and Gemini keys are Fernet-encrypted with `ENCRYPTION_KEY` and only ever returned masked. JWTs carry a `jti`; logout revokes it in `trivia_revoked_tokens`. The role is re-read from the DB on every request.
 - **Impersonation:** root calls `POST /api/auth/impersonate/{member_id}` and gets a short-lived token. Its `sub` is the member and its `imp` claim is the root user. All permission checks see the member, and `CurrentUser.impersonator` holds the root user. The token dies as soon as the impersonator stops being root, and impersonation can't be nested.
+- **Card generation** (rules.md §2.2.1, `GEN-*`): `app/generation.py` plans exact counts per (category, difficulty, type), batches them per category, dedupes (`Deduper`) and runs jobs on an in-process thread pool (`runner`), writing into `trivia_generation_jobs`. `app/llm.py` is the only code that calls OpenAI/Gemini (plain HTTP via `httpx2`, JSON-schema output). Keys come only from the organization, never from settings. Tests monkeypatch `llm.complete_json`; `tests/test_generation_live.py` hits the real APIs only with `RUN_LIVE_LLM=1`.
 - Don't run `ruff format` over the codebase. It was never applied, and a mass reformat would bury real diffs.
 
 ### Frontend
@@ -75,6 +76,7 @@ npx tsc -b && npx vitest run                            # engine tests run again
 - Content pages (`GamesPage`, `BoardsPage`, `DecksPage`, `CategoriesPage`) take an `orgId`. Root users pick one in the toolbar; members always use their own. The **Boards demo** tab (root only) plays the example JSON files locally.
 - The play UI (`PlayTable.tsx`: `useGamePlay`, `BoardView`, `GamePanels`, `TurnPanel` with `canAct`/`dev`/`clockOffset`) is shared by the Boards demo and live games (`LiveGame.tsx`: `useLiveGame`, `LiveTable`, lobby, share link, host controls). Change it once.
 - `BoardCanvas` draws any resolved board. `BoardPreview` (in `common.tsx`) wraps it for boards that may have unmapped slots. Its `drawTile` / `arrow` / `arrowBend` helpers are shared with the editor canvas.
+- **Card generation UI** (`GenerateCards.tsx`): form → progress (polling) → review list → accept. Nothing reaches the deck before accept. `CardForm` (DecksPage) is reused to edit generated cards.
 - **Board editor** (`src/boardEditor/`): `ops.ts` holds the pure edit operations, and `normalize` renumbers spaces in path order after every visual edit. `EditorCanvas` handles the grid, hit tests and drag. `BoardEditor` holds the undo/redo reducer, halo and panels. Issues drive the highlights (`spaces`, `slot`). Details in `frontend/README.md`.
 
 ### Keep in sync (checklist)
@@ -99,13 +101,16 @@ npx tsc -b && npx vitest run                            # engine tests run again
 9. Playing stored games (`/games/:id/play`, hot-seat on the snapshot) with named saves in `trivia_game_instances` (save, save as new, continue, delete).
 10. Multiplayer (replaces 9): lobby with join link and unique names, `awaiting` status, server-authoritative play over WebSockets, a Python engine port with a TS conformance fixture, presence, server-side question timer, host skip/remove/end, auto-finish on game over.
 11. Visual board editor: click to add, halo actions, arrows and forks, start/finish, slots, settings form, drag, undo/redo, path-order numbering, advanced JSON. Validation now returns structured issues (rules §2.1.1, new IDs BRD-7…12, CFG-*, BRD-W*) that the editor highlights. Boards save as drafts.
+12. LLM card generation: organizations get a Gemini key next to the OpenAI one. Decks → ✨ Generate N cards (≤ 200) with category / difficulty / type % mixes and instructions, using OpenAI or Gemini (user picks when both keys exist). Exact mix planned server-side, ~20-card batches per category, duplicate filtering vs. the deck and the batch, background job with progress, review-then-accept (migration 0005, `GEN-*`).
 
 ## Known gaps and likely next steps
 - The WebSocket hub is in-process memory: fine for one uvicorn process, but several workers would need shared broadcasts (Postgres `LISTEN/NOTIFY`). Sockets check the login token only on connect.
 - The board canvas is small on phones (tiles about 22px wide), which makes tapping moves fiddly. A zoom, or a list of legal moves as buttons, would help.
 - The board editor is desktop-first. On phones, dragging inside the grid moves spaces instead of panning (`touch-action: none`). Leaving a board with unsaved edits asks only when switching boards in the list (and on reload/close), not on tab changes (`BrowserRouter` has no `useBlocker`).
 - No rate limit on `join` (8-hex join codes) or login.
-- LLM features from `readme.md`: lenient answer checking (EVL-3, needs the backend and the organization's key), generating categories, decks and boards.
+- LLM features from `readme.md`: lenient answer checking (EVL-3, needs the backend and the organization's key), generating categories and boards. Card generation exists (12).
+- Generation jobs run in-process (like the WebSocket hub): a restart or `--reload` fails running jobs (their cards so far stay reviewable). No per-organization cost limit beyond 200 cards per request and one open generation per deck. Duplicate detection is lexical; heavy rewordings can pass (the user reviews).
+- Deleting an organization whose decks have cards fails with a FK error (`trivia_cards.category_id` blocks the cascade, despite the comment in migration 0002). Found while testing generation; not fixed yet.
 - Tokens (login and player) live in `localStorage`.
 - The backend suite once failed with 9 setup errors that never reproduced in 6+ reruns. Look into it if it recurs.
 - `frontend/tsconfig.tsbuildinfo` is tracked in git, and changes on every typecheck.
