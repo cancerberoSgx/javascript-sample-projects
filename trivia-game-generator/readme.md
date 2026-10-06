@@ -18,6 +18,53 @@ Open http://localhost:5173 and log in with `ROOT_EMAIL` / `ROOT_PASSWORD` from `
 | `.env.example` | All configuration; copy it to `.env` (or run `init-env.sh`) |
 
 
+## Play with friends over the internet (ngrok)
+
+You can host a game from your own machine and let friends join from their phones anywhere. Only the
+**frontend port** needs a tunnel: the Vite server already forwards `/api`, the game WebSockets and `/media`
+to the backend, so everything goes through one public URL.
+
+1. **Once:** create a free account at https://ngrok.com, install ngrok, and add your token:
+   ```bash
+   ngrok config add-authtoken <your-token>
+   ```
+2. **Start the app** as usual (Quick start above, or `npm run dev` + uvicorn). Check that http://localhost:5173 works.
+3. **Open the tunnel** to the frontend port (`FRONTEND_HOST_PORT`, 5173 by default):
+   ```bash
+   ngrok http 5173
+   ```
+   ngrok prints a `Forwarding https://<something>.ngrok-free.app` URL.
+   Tip: your free account includes one fixed domain (ngrok dashboard → Domains). Use it with
+   `ngrok http --url=<your-domain>.ngrok-free.app 5173` so the address stays the same between sessions.
+4. **Host from the ngrok URL, not from localhost.** Open the `https://….ngrok-free.app` address, log in, create
+   or open a game, and copy its join link. The link is built from the address in your browser, so a link copied
+   from `localhost` only works on your own computer.
+5. **Send the link to your friends.** They open it on their phones, pick a name and join the lobby (no account
+   needed). You start the game when everybody is in.
+
+Good to know:
+- **ngrok's warning page:** on the free plan, the first visit shows an "You are about to visit…" page. Friends
+  tap **Visit Site** once; after that the game works normally (including the live WebSocket updates).
+- **Your whole app is public while the tunnel runs**, including the login page and the API docs. Use a strong
+  `ROOT_PASSWORD` (`init-env.sh` generates one), and stop ngrok (Ctrl+C) when you're done. Games can only be
+  joined with their join code, which is in the link.
+- **Many players or a slow connection?** The dev server sends hundreds of small files on the first load. A
+  production build is much lighter and faster. With the backend running on port 8000:
+  ```bash
+  cd frontend
+  npm run build
+  npx vite preview --port 4173      # same /api and /media forwarding as the dev server
+  ngrok http 4173
+  ```
+  Rebuild after you change frontend code.
+- **Other tunnels** (Cloudflare Tunnel, Tailscale Funnel, your own domain): Vite only accepts known hostnames.
+  ngrok's are allowed in `frontend/vite.config.ts`. Add yours with `VITE_ALLOWED_HOSTS` (comma-separated, a
+  leading `.` allows all subdomains), for example
+  `VITE_ALLOWED_HOSTS=.trycloudflare.com npm run dev`. With Docker Compose, put `VITE_ALLOWED_HOSTS=…` in `.env`.
+- The tunnel only lasts while your computer, the app and ngrok keep running. For a permanent setup, see the
+  hosting notes at the end of this file.
+
+
 ## dev env fast notes
 
 make sure db is running - if not invoke above docker compose command and make sure container is running.

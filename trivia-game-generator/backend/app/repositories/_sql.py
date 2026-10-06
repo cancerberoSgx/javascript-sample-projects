@@ -6,7 +6,7 @@ from psycopg import sql
 from psycopg.types.json import Jsonb
 
 from ..db import DbConn
-from ..models import Changes
+from ..models import Changes, CopiedFrom
 
 
 def update_row(conn: DbConn, table: LiteralString, row_id: int, changes: Changes, json_columns: frozenset[str] = frozenset()) -> bool:
@@ -22,3 +22,7 @@ def update_row(conn: DbConn, table: LiteralString, row_id: int, changes: Changes
     assignments = sql.SQL(", ").join(sql.SQL("{} = %s").format(sql.Identifier(k)) for k in fields)
     query = sql.SQL("UPDATE {} SET {}, updated_at = now() WHERE id = %s").format(sql.Identifier(table), assignments)
     return conn.execute(query, (*values, row_id)).rowcount == 1
+
+
+def json_or_null(value: CopiedFrom | None) -> Jsonb | None:
+    return Jsonb(value.model_dump()) if value is not None else None

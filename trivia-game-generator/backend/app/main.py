@@ -19,6 +19,7 @@ from .routers import (
     decks,
     games,
     images,
+    library,
     organizations,
     play,
     users,
@@ -68,7 +69,7 @@ def create_app() -> FastAPI:
     app.include_router(auth.router)
     app.include_router(organizations.router)
     app.include_router(users.router)
-    for content in (categories, decks, generation_router, boards, games, play, images):
+    for content in (categories, decks, generation_router, boards, games, play, images, library):
         app.include_router(content.router)
 
     # Background images (BKG-8): static, immutable files. In production, serve settings.media_dir

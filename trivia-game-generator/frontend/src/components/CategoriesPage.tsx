@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { api, type Category } from "../api";
 import { SLOT_COLORS } from "../engine/resolve";
-import { ErrorBox, NotFound, useAction, useList, useRouteSelection } from "./common";
+import { CopiedFromNote, ErrorBox, NotFound, PublicChip, PublishControl, useAction, useList, useRouteSelection } from "./common";
 
 export function CategoriesPage({ orgId }: { orgId: number }) {
   const list = useList(() => api.listCategories(orgId), [orgId]);
@@ -51,11 +51,12 @@ export function CategoriesPage({ orgId }: { orgId: number }) {
           {items.map((c) => (
             <tr key={c.id} className={c.id === selected?.id ? "on" : ""}>
               <td>
-                <span className="dot" style={{ background: c.color }} /> {c.name}
+                <span className="dot" style={{ background: c.color }} /> {c.name} <PublicChip item={c} />
               </td>
               <td className="muted">{c.description}</td>
               <td>{c.card_count}</td>
               <td className="actions">
+                <PublishControl kind="categories" item={c} onChanged={reload} compact />
                 <button className="small" onClick={() => (setCreating(false), select(c.id))}>
                   Edit
                 </button>
@@ -110,6 +111,11 @@ function CategoryForm({
       }}
     >
       <strong className="span">{category ? `Edit ${category.name}` : "New category"}</strong>
+      {category?.copied_from && (
+        <div className="span">
+          <CopiedFromNote item={category} />
+        </div>
+      )}
       <label>Name</label>
       <input required value={name} onChange={(e) => setName(e.target.value)} autoFocus />
       <label>Description</label>

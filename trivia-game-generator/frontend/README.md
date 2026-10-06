@@ -6,6 +6,7 @@ A React + Vite app. After login it shows:
 - **Boards**: a visual board editor (see [Board editor](#board-editor)), with live validation that points at the spaces involved. New boards can start blank or from an example.
 - **Decks**: questions and answers (open or multiple choice, difficulty, grand prize), written by hand or generated with OpenAI / Gemini (see [Generating cards](#generating-cards)).
 - **Categories**: name, description, color.
+- **🌐 Library**: what every organization made public (boards, decks with their cards, categories, images). Copy anything into your organization, or add chosen cards to one of your decks. Boards, decks, categories and images get a **Publish to Library** / **Make private** control. See [Library](#library).
 - **Organizations** (root) / **My organization** (member): CRUD for organizations and their users, the organization's OpenAI / Gemini keys (root only, shown masked) and models (any user of the organization; empty = default, checked when saved). Root users also get an organization picker on the content tabs.
 - **Boards demo** (root only): loads board definitions from JSON and lets you play turns on them (hot-seat, 1–4 players). The game logic follows [`../rules.md`](../rules.md). Code comments cite its rule IDs.
 
@@ -21,6 +22,7 @@ Every tab has its own address ([React Router](https://reactrouter.com), `Browser
 | `/games/:id/play` | Old hot-seat URL: redirects to `/games/:id` |
 | `/categories`, `/categories/:id` | The categories table; with an id, that category's edit form |
 | `/organizations/:id` | That organization and its users. Members only ever see their own |
+| `/library/:kind/:id` | The Library (`boards`, `decks`, `categories`, `images`), with that public item selected. `/library` opens the boards |
 | `/demo` | Boards demo (root only; others are sent to `/games`) |
 
 - Logged out, the login page shows on the requested URL and opens it after login.
@@ -67,6 +69,7 @@ Impersonation: root users get an **Impersonate** button on member users (Organiz
 | `src/components/LiveGame.tsx` | Multiplayer: `useLiveGame` (the game's WebSocket), `LiveTable`, lobby list, join form, share link, host controls |
 | `src/components/GenerateCards.tsx` | Card generation: `useGeneration` (providers + the deck's open generation, polled while it runs), `GenerateForm`, `GenerationPanel` (progress, then the review list) |
 | `src/components/background.ts` | Backgrounds (rules.md §2.1.2): the pure layout math (`boardArea`, `cropRect`, `placeBackground`, tested in `background.test.ts`), `useBackgroundImage`, and `BackgroundLayer`, which renders the image once into an offscreen canvas that both board canvases copy every frame |
+| `src/components/LibraryPage.tsx` | The public Library (rules.md §2.8): search, a list + detail per kind, copy forms, the card picker for adding single cards to your decks |
 | `src/components/BackgroundEditor.tsx` | `BackgroundEditor` (fit, crop rectangle, sliders) and `ImageLibrary` (upload, drop, import from URL, rename, delete). Used by the board editor and the game setup |
 | `src/components/PlayerGamePage.tsx` | `/games/:id?code=…`: the player's own device. Lobby and join cards, then `PlayScreen` |
 | `src/play/PlayScreen.tsx` | The phone-first play screen (rules.md §2.7.1): full-screen board, floating identity / turn pill / zoom buttons, the action dock (roll, legal-move buttons, back to the question), sheet buttons |
@@ -106,6 +109,10 @@ The player page doesn't use the admin layout: `PlayScreen` draws the board full 
 On a deck, **✨ Generate** (rules.md §2.2.1) opens a form: provider (a choice only when the organization has both keys), number of cards (≤ 200), categories with % shares, difficulty and question-type % shares, and free-text instructions (audience, language, theme). Each mix shows the exact card counts it becomes (`largestRemainder`, the same split the backend uses); shares that don't add up to 100% are scaled. Chosen categories without a description get a warning, since the description is what tells the model what belongs in a category. The button is disabled, with a tooltip, when the organization has no key or a generation is already open.
 
 The generation runs on the server, so the page can be left and reopened. The panel polls `GET /decks/:id/generation` every 1.5 s and shows progress and the cards so far; **Stop and discard** cancels it. When it's done, the review list has every card ticked: untick some, **Edit** one (the regular `CardForm`, editing the local copy), then **Add N cards to deck**. Nothing is in the deck until then. **Discard all** throws the generation away.
+
+## Library
+
+Publishing and copying follow rules.md §2.8 (SHR-*). `PublishControl`, `PublicChip` and `CopiedFromNote` (in `components/common.tsx`) are shared by the board editor, the deck editor, the categories table and the image library (compact buttons there). `PublishControl` disables publishing with the reason shown when the backend would refuse it (drafts, empty decks), and asks for confirmation both ways. The Library page never edits anything: every action is a copy into the current organization (the member's own; for root, the toolbar's picker, labeled "Copies go to"). Copies are private, and the result message links to the new item. Categories and images you already have (same name / same file) show "✓" instead of a copy button.
 
 ## Board editor
 

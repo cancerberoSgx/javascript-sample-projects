@@ -6,7 +6,7 @@ import { useRef, useState } from "react";
 import { api, type LibraryImage } from "../api";
 import type { Background, BackgroundFit, BoardFile } from "../engine/types";
 import { AREA_MARGIN, BACKGROUND_DEFAULTS, mediaUrl } from "./background";
-import { ErrorBox, useAction, useList } from "./common";
+import { ErrorBox, PublicChip, PublishControl, useAction, useList } from "./common";
 
 type Crop = NonNullable<Background["crop"]>;
 /** `coalesce`: edits with the same key in a row (dragging a slider) can be one undo step. */
@@ -353,7 +353,7 @@ function LibraryItem({ img, selected, onPick, onChanged }: { img: LibraryImage; 
       <button className="thumb" onClick={onPick} title={`Use "${img.name}"`}>
         <img src={img.url} alt={img.name} loading="lazy" />
       </button>
-      <span className="small name" title={img.source_url ?? img.name}>
+      <span className="small name" title={img.copied_from ? `Copied from ${img.copied_from.organization_name}` : (img.source_url ?? img.name)}>
         {img.name}
       </span>
       <span className="muted tiny">
@@ -362,6 +362,8 @@ function LibraryItem({ img, selected, onPick, onChanged }: { img: LibraryImage; 
       <span className="row between">
         <span className="muted tiny">{usageText(img)}</span>
         <span className="row">
+          <PublicChip item={img} />
+          <PublishControl kind="images" item={img} onChanged={onChanged} compact />
           <button
             className="tiny"
             title="Rename"

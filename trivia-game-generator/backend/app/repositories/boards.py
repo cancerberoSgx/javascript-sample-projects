@@ -5,10 +5,10 @@ from psycopg.types.json import Jsonb
 
 from ..db import DbConn, fetch_scalar
 from ..models import Board, BoardChanges, NewBoard
-from ._sql import update_row
+from ._sql import json_or_null, update_row
 
 _SELECT = """
-    SELECT id, organization_id, name, description, definition, created_at, updated_at
+    SELECT id, organization_id, name, description, definition, visibility, published_at, copied_from, created_at, updated_at
     FROM trivia_boards
 """
 
@@ -28,8 +28,8 @@ def get(conn: DbConn, board_id: int) -> Board | None:
 def create(conn: DbConn, board: NewBoard) -> int:
     return fetch_scalar(
         conn,
-        "INSERT INTO trivia_boards (organization_id, name, description, definition) VALUES (%s, %s, %s, %s) RETURNING id",
-        (board.organization_id, board.name, board.description, Jsonb(board.definition.to_json())),
+        "INSERT INTO trivia_boards (organization_id, name, description, definition, copied_from) VALUES (%s, %s, %s, %s, %s) RETURNING id",
+        (board.organization_id, board.name, board.description, Jsonb(board.definition.to_json()), json_or_null(board.copied_from)),
     )
 
 

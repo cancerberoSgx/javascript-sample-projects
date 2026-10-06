@@ -3,7 +3,7 @@ import { api, type Board } from "../api";
 import { DEFAULT_CONFIG, SPACE_TYPE_NAMES, WIN_CONDITION_NAMES, resolveConfig, validateBoardFile } from "../engine/board";
 import { SLOT_COLORS, placeholderMapping, resolveBoard } from "../engine/resolve";
 import type { BoardIssue, GameConfig, SpaceType, WinCondition } from "../engine/types";
-import { ErrorBox, boardFile, useAction } from "../components/common";
+import { CopiedFromNote, ErrorBox, PublishControl, boardFile, hasErrors, useAction } from "../components/common";
 import { BackgroundEditor, boardAspect } from "../components/BackgroundEditor";
 import { EditorCanvas, type Pending, type Selection } from "./EditorCanvas";
 import * as ops from "./ops";
@@ -222,6 +222,7 @@ export function BoardEditor({
           <label>Description</label>
           <input value={description} onChange={(e) => setDescription(e.target.value)} />
         </div>
+        <CopiedFromNote item={board} />
         <ErrorBox error={action.error} />
         <div className="row between wrap">
           <div className="row wrap">
@@ -245,6 +246,12 @@ export function BoardEditor({
             Delete board
           </button>
         </div>
+        <PublishControl
+          kind="boards"
+          item={board}
+          onChanged={onChanged}
+          blocked={hasErrors(board) ? "Drafts can't be published: fix the errors and save first (SHR-2)." : null}
+        />
       </section>
 
       <div className="board-editor">

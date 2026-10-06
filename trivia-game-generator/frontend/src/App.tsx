@@ -8,12 +8,13 @@ import { CategoriesPage } from "./components/CategoriesPage";
 import type { RouteState } from "./components/common";
 import { DecksPage } from "./components/DecksPage";
 import { GamesPage } from "./components/GamesPage";
+import { LibraryPage } from "./components/LibraryPage";
 import { LoginPage } from "./components/LoginPage";
 import { OrganizationsPage } from "./components/OrganizationsPage";
 import { PlayerGamePage } from "./components/PlayerGamePage";
 
 // Every tab has its own URL: /games, /games/:id, /boards/:id, /decks/:id, /categories/:id,
-// /organizations/:id and /demo. The list URL opens the first item (see useRouteSelection).
+// /organizations/:id, /library/:kind/:id and /demo. The list URL opens the first item (see useRouteSelection).
 // A game's join link, /games/:id?code=…, is the player page: it works without logging in.
 
 type ContentKind = "games" | "boards" | "decks" | "categories";
@@ -63,7 +64,8 @@ function AppShell() {
   const navigate = useNavigate();
   const path = useLocation().pathname;
   const kind = path.split("/")[1] as ContentKind;
-  const showOrgPicker = CONTENT_KINDS.includes(kind);
+  // The Library copies into the picked organization, so root picks there too
+  const showOrgPicker = CONTENT_KINDS.includes(kind) || path.startsWith("/library");
   const isRoot = user?.role === "root";
 
   // Content belongs to one organization: members always work on theirs, root users pick one
@@ -82,6 +84,7 @@ function AppShell() {
     ["/boards", "Boards"],
     ["/decks", "Decks"],
     ["/categories", "Categories"],
+    ["/library", "🌐 Library"],
     ["/organizations", isRoot ? "Organizations" : "My organization"],
     ...(isRoot ? ([["/demo", "Boards demo"]] as [string, string][]) : []),
   ];
@@ -125,14 +128,15 @@ function AppShell() {
       {isRoot && showOrgPicker && (
         <div className="toolbar">
           <label className="small">
-            Organization:{" "}
+            {path.startsWith("/library") ? "Copies go to:" : "Organization:"}{" "}
             <select
               value={orgId ?? ""}
               onFocus={() => api.listOrganizations().then(setOrgs, () => {})}
               onChange={(e) => {
                 const id = Number(e.target.value);
                 setOrgId(id);
-                navigate(`/${kind}`, { state: { orgId: id } satisfies RouteState }); // the open item belongs to the old one
+                // The open item belongs to the old one (Library items belong to nobody here: stay)
+                if (kind !== ("library" as string)) navigate(`/${kind}`, { state: { orgId: id } satisfies RouteState });
               }}
             >
               {orgs.map((o) => (
@@ -154,6 +158,13 @@ function AppShell() {
             )),
           )}
           <Route path="/games/:id/play" element={<PlayRedirect />} />
+          {["/library", "/library/:kind", "/library/:kind/:id"].map((path) => (
+            <Route
+              key={path}
+              path={path}
+              element={<LibraryPage orgId={orgId} orgName={(isRoot && orgs.find((o) => o.id === orgId)?.name) || user.organization_name} />}
+            />
+          ))}
           <Route path="/organizations" element={<OrganizationsPage />} />
           <Route path="/organizations/:id" element={<OrganizationsPage />} />
           <Route path="/demo" element={isRoot ? <BoardsDemo /> : <Navigate to="/games" replace />} />

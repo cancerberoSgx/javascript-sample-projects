@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, type Card, type CardInput, type Category, type Deck } from "../api";
-import { ErrorBox, NotFound, useAction, useList, useRouteSelection } from "./common";
+import { CopiedFromNote, ErrorBox, NotFound, PublicChip, PublishControl, useAction, useList, useRouteSelection } from "./common";
 import { GenerateForm, GenerationPanel, useGeneration } from "./GenerateCards";
 
 export function DecksPage({ orgId }: { orgId: number }) {
@@ -36,7 +36,9 @@ export function DecksPage({ orgId }: { orgId: number }) {
             <li key={d.id}>
               <button className={d.id === selectedId ? "on" : ""} onClick={() => select(d.id)}>
                 <span>{d.name}</span>
-                <span className="muted small">{d.card_count} cards</span>
+                <span className="muted small">
+                  <PublicChip item={d} /> {d.card_count} cards
+                </span>
               </button>
             </li>
           ))}
@@ -156,7 +158,14 @@ function DeckEditor({
             </button>
           </div>
         </form>
+        <CopiedFromNote item={deck} />
         <ErrorBox error={action.error} />
+        <PublishControl
+          kind="decks"
+          item={deck}
+          onChanged={onChanged}
+          blocked={deck.card_count ? null : "Add cards before publishing the deck (SHR-2)."}
+        />
       </section>
 
       <section className="panel">

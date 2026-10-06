@@ -49,6 +49,8 @@ services:
     working_dir: /app
     environment:
       VITE_API_PROXY: http://backend:8000
+      # Extra hostnames the dev server accepts besides localhost and ngrok (comma-separated)
+      VITE_ALLOWED_HOSTS: ${VITE_ALLOWED_HOSTS:-}
     command: sh -c "npm ci && npm run dev -- --host 0.0.0.0 --port 5173"
     ports:
       - "${FRONTEND_HOST_PORT:-5173}:5173"

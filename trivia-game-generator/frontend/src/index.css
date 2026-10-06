@@ -329,3 +329,26 @@ button.tiny { padding: 1px 6px; }
 
 .game-look { display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: 16px; align-items: start; }
 @media (max-width: 1000px) { .game-look { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---------- sharing and the Library (rules.md §2.8) ---------- */
+.chip.public { color: #0e7490; border-color: #0e7490; margin-left: 0; }
+@media (prefers-color-scheme: dark) { .chip.public { color: #67e8f9; border-color: #67e8f9; } }
+.publish-control { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+.publish-control .chip { margin-left: 0; }
+.publish-control .muted { flex: 1 1 200px; }
+.copied-from { margin: 6px 0 0; }
+.library { display: flex; flex-direction: column; gap: 16px; }
+.library-head h2 { margin-bottom: 2px; }
+.library-head p { margin-top: 0; }
+.library-head .tabs { margin-top: 8px; }
+.library-search { flex: 0 1 320px; min-width: 0; }
+.library-preview { max-width: 100%; overflow: auto; margin: 8px 0; }
+.copy-form { margin-top: 10px; }
+.copy-form input { flex: 1 1 200px; min-width: 0; }
+.pick-bar { margin: 8px 0; }
+.cat-chip { display: inline-flex; align-items: center; gap: 4px; margin-left: 0; }
+.cards tbody tr { cursor: default; }
+.library .cards tbody tr { cursor: pointer; }
+.image-grid.library-images { max-height: none; }
+.image-grid a.thumb { display: block; }
+.image-grid li .chip.public { font-size: 10px; padding: 1px 5px; }

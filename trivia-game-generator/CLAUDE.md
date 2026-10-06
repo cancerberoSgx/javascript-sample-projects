@@ -39,6 +39,8 @@ npx tsc -b && npx vitest run                            # engine tests run again
 
 **On this machine:** host ports 5432 and 5173 are already taken (another Postgres, and the user's own Vite). That's why Postgres maps to **5433**. The user may also run their own uvicorn on 8000. To run a test stack next to them, use `BACKEND_HOST_PORT=8010 FRONTEND_HOST_PORT=5180 docker compose … up -d`, and stop it afterwards with `docker compose -f docker/docker-compose.yml down` (keep the volume, so no `-v`). Local root login: `ROOT_EMAIL` / `ROOT_PASSWORD` from `.env`.
 
+**Sharing a local game:** `ngrok http 5173` (readme.md "Play with friends over the internet"). `vite.config.ts` allows ngrok hostnames (`allowedHosts`); other tunnels go in `VITE_ALLOWED_HOSTS`. The host must open the app via the tunnel URL, since `joinLink` uses `location.origin`.
+
 **Verify UI changes in a real browser.** Drive the app with Playwright and headless Chromium (browsers are cached in `~/.cache/ms-playwright`; install `playwright` in a scratch folder, not in the repo). Take screenshots and look at them. This has caught real bugs that typecheck and unit tests missed (a canvas crash, a 401 race).
 
 ## Architecture and conventions
@@ -48,6 +50,7 @@ npx tsc -b && npx vitest run                            # engine tests run again
 - A **board** has category **slots** (`A`, `B`, …), never categories. A **game** maps each slot to a category, so one board works for any topic.
 - **Cards** store `answer` text. For multiple choice it must be one of `options`. `grand_prize: true` cards are only drawn for the final question.
 - **Game status:** `awaiting → running → finished`. `awaiting` is the lobby players join. Starting copies board, deck and categories into `trivia_games.snapshot`, so later edits never touch a started game (GAM-3).
+- **Sharing** (rules.md §2.8, `SHR-*`): boards, decks, categories and images have `visibility` (`private`/`public`), `published_at` and `copied_from`. Public items are listed in the **Library** (`/api/library/*`, `routers/library.py`, `LibraryPage.tsx`) for every logged-in user. They are **copied, never used in place**: a copy is an ordinary private item of the copier's organization, so every other endpoint keeps its own-organization rules (and keeps returning 404 for other organizations' public items). Deck copies match categories by name or create them; board copies add their background image to the target library.
 - **Multiplayer** (rules.md §2.7, `MPL-*`): each player plays on their own device. **The server is authoritative.** It runs a Python port of the engine (`backend/app/engine/`) on one live state per running game (`trivia_game_states`, saved after every action). Devices send actions over a WebSocket (`/api/games/:id/ws`), and the hub (`app/live.py`) broadcasts each change with the secrets stripped (`public_view`: no cards, piles, RNG or pending answer). Players are guests: the game's `join_code` (in the link `/games/:id?code=…`) lets them join while awaiting, and the player token they get (only its sha256 is stored) proves who a device is. The server runs the question timer. Players the host added by name play on the host's screen. Hot-seat play and named saves no longer exist (migration 0004 dropped them).
 
 ### Formats (version 2) and the engine
@@ -112,14 +115,16 @@ npx tsc -b && npx vitest run                            # engine tests run again
 
 15. Phone-first play screen (`src/play/`, rules.md §2.7.1 `PLY-UI-*`): full-screen pan/zoom board (`BoardCanvas` `viewport` mode, `camera.ts`, `useBoardCamera.ts`), floating status, dock and sheets, dice / question / answer / wildcard / game-over cards for every device, legal-move buttons, auto-focus camera, transposed boards on portrait phones, "Your turn!" alerts with vibration, wake lock, WebAudio sounds (off by default), fullscreen, PWA manifest and icons. The admin pages and Boards demo keep the old layout (`LiveTable`).
 
+16. Public Library (rules.md §2.8, `SHR-*`): boards, decks, categories and images can be published (private / public); every organization browses and searches them in a 🌐 Library tab and copies them in (decks with category matching, chosen single cards into one of your decks, boards with their background image). Copies remember `copied_from`. Root can unpublish anything. Migration 0008 (also cascades cards with their category, fixing organization deletion); seed 0003 publishes the example content.
+
 ## Known gaps and likely next steps
+- Library: copy-only, no "update available" when the original changes, no sharing with chosen organizations only (a third visibility level would fit), no reporting/flagging beyond root unpublishing, and the lists are capped at 500 per kind without paging.
 - The WebSocket hub is in-process memory: fine for one uvicorn process, but several workers would need shared broadcasts (Postgres `LISTEN/NOTIFY`). Sockets check the login token only on connect.
 - Play screen: verified in headless Chromium with phone emulation (touch events via CDP), not on real iOS Safari or Android devices yet. Sounds and vibration weren't heard/felt in tests. Background images are drawn at board resolution, so they soften when zoomed past 1x.
 - The board editor is desktop-first. On phones, dragging inside the grid moves spaces instead of panning (`touch-action: none`). Leaving a board with unsaved edits asks only when switching boards in the list (and on reload/close), not on tab changes (`BrowserRouter` has no `useBlocker`).
 - No rate limit on `join` (8-hex join codes) or login.
 - LLM features from `readme.md`: lenient answer checking (EVL-3, needs the backend and the organization's key), generating categories and boards. Card generation exists (12).
 - Generation jobs run in-process (like the WebSocket hub): a restart or `--reload` fails running jobs (their cards so far stay reviewable). No per-organization cost limit beyond 200 cards per request and one open generation per deck. Duplicate detection is lexical; heavy rewordings can pass (the user reviews).
-- Deleting an organization whose decks have cards fails with a FK error (`trivia_cards.category_id` blocks the cascade, despite the comment in migration 0002). Found while testing generation; not fixed yet.
 - Tokens (login and player) live in `localStorage`.
 - Background images: no per-organization storage quota, and no thumbnails (the library grid loads full images, ≤ 3000 px WebP). The app's `/media` mount is fine for dev; production should serve `MEDIA_DIR` from nginx/CDN and cap upload size there (the app only rejects oversized uploads after receiving them). The Boards demo doesn't show backgrounds (example files have none).
 - The backend suite once failed with 9 setup errors that never reproduced in 6+ reruns. Look into it if it recurs.

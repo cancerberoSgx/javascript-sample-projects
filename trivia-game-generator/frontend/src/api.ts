@@ -46,7 +46,28 @@ export interface UserInput {
   role?: Role;
 }
 
-export interface Category {
+// ---------- sharing (rules.md §2.8, SHR-*) ----------
+
+export type Visibility = "private" | "public";
+
+/** Where a copy came from, as it was then (SHR-3). The original may have changed or be gone. */
+export interface CopiedFrom {
+  id: number;
+  name: string;
+  organization_name: string;
+}
+
+/** Fields every shareable item has: boards, decks, categories and images. */
+export interface Sharing {
+  /** public: listed in the Library for every organization, which can copy it (SHR-1). */
+  visibility: Visibility;
+  published_at: string | null;
+  copied_from: CopiedFrom | null;
+}
+
+export type ShareableKind = "boards" | "decks" | "categories" | "images";
+
+export interface Category extends Sharing {
   id: number;
   organization_id: number;
   name: string;
@@ -55,7 +76,7 @@ export interface Category {
   card_count: number;
 }
 
-export interface Deck {
+export interface Deck extends Sharing {
   id: number;
   organization_id: number;
   name: string;
@@ -127,7 +148,7 @@ export interface BoardDefinition {
 }
 
 /** An image in an organization's library (rules.md §2.1.2). `key` is what a Background's `image` holds. */
-export interface LibraryImage {
+export interface LibraryImage extends Sharing {
   id: number;
   organization_id: number;
   key: string;
@@ -145,7 +166,7 @@ export interface LibraryImage {
   created_at: string;
 }
 
-export interface Board {
+export interface Board extends Sharing {
   id: number;
   organization_id: number;
   name: string;
@@ -153,6 +174,19 @@ export interface Board {
   definition: BoardDefinition;
   /** Validation results (rules.md §2.1.1). Any error makes the board a draft that games can't start with. */
   issues: BoardIssue[];
+}
+
+// ---------- the public Library (rules.md §2.8) ----------
+
+/** A public item, with the organization that published it (SHR-2). */
+export type Published<T> = T & { organization_name: string };
+
+export type PublicImage = Published<Sharing & Pick<LibraryImage, "id" | "organization_id" | "key" | "url" | "name" | "width" | "height" | "bytes">>;
+
+export interface PublicDeckDetail extends Published<Deck> {
+  /** The categories its cards use. */
+  categories: Pick<Category, "id" | "name" | "description" | "color">[];
+  cards: Card[];
 }
 
 export type GameStatus = "awaiting" | "running" | "finished";
@@ -305,6 +339,14 @@ function errorList(data: unknown): string[] {
   return [];
 }
 
+/** Where a copy goes (default: your organization) and its name (default: the original's, "(copy)" if taken). */
+export interface CopyInput {
+  organization_id?: number;
+  name?: string;
+}
+
+const query = (q: string) => (q.trim() ? `?q=${encodeURIComponent(q.trim())}` : "");
+
 const withOrg = (path: string, orgId?: number) => (orgId ? `${path}?organization_id=${orgId}` : path);
 
 export const api = {
@@ -378,6 +420,25 @@ export const api = {
   importImage: (url: string, orgId?: number) => request<LibraryImage>("POST", "/images/import", { url, organization_id: orgId }),
   renameImage: (id: number, name: string) => request<LibraryImage>("PATCH", `/images/${id}`, { name }),
   deleteImage: (id: number) => request<void>("DELETE", `/images/${id}`),
+
+  // Sharing (rules.md §2.8): publish or unpublish one of your items
+  setVisibility: <T extends Sharing>(kind: ShareableKind, id: number, visibility: Visibility) =>
+    request<T>("PUT", `/${kind}/${id}/visibility`, { visibility }),
+
+  // The Library: every organization's public items. Copies go into orgId (root) or your own organization.
+  libraryBoards: (q = "") => request<Published<Board>[]>("GET", `/library/boards${query(q)}`),
+  libraryBoard: (id: number) => request<Published<Board>>("GET", `/library/boards/${id}`),
+  libraryDecks: (q = "") => request<Published<Deck>[]>("GET", `/library/decks${query(q)}`),
+  libraryDeck: (id: number) => request<PublicDeckDetail>("GET", `/library/decks/${id}`),
+  libraryCategories: (q = "") => request<Published<Category>[]>("GET", `/library/categories${query(q)}`),
+  libraryImages: (q = "") => request<PublicImage[]>("GET", `/library/images${query(q)}`),
+  copyBoard: (id: number, body: CopyInput) => request<Board>("POST", `/library/boards/${id}/copy`, body),
+  copyDeck: (id: number, body: CopyInput) =>
+    request<{ deck: Deck; categories_created: string[]; categories_matched: string[] }>("POST", `/library/decks/${id}/copy`, body),
+  copyCards: (deckId: number, body: { deck_id: number; card_ids: number[] }) =>
+    request<{ added: number; skipped_duplicates: string[]; categories_created: string[] }>("POST", `/library/decks/${deckId}/cards/copy`, body),
+  copyCategory: (id: number, body: CopyInput) => request<Category>("POST", `/library/categories/${id}/copy`, body),
+  copyImage: (id: number, body: CopyInput) => request<LibraryImage>("POST", `/library/images/${id}/copy`, body),
 
   listGames: (orgId?: number) => request<Game[]>("GET", withOrg("/games", orgId)),
   getGame: (id: number) => request<GameDetail>("GET", `/games/${id}`),

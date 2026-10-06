@@ -207,8 +207,15 @@ Present ideas and doubts and plan before implementing any of this..
 
 
 
+# ngrok
+is it possible to "publish" this app from local server using ngrok so I can invite other / friends to join a game and play ? if so , in readme.md add instructions
+
+# export deck and cards
+
+once I generated a good deck with cards, I want to export to .json file save it in my machine and being able to share that file with others so they can load it in their own organizations, review, modify, etc programatically or manually. So implement save deck and cards as json and being able to import a .json file into a new deck.
 
 # FUTURE
+
 
 
 # public boards, decks, cards, bg images

@@ -44,7 +44,7 @@ def _invalid(message: str) -> HTTPException:
     return HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, detail=[message])
 
 
-def _lock_key(conn: DbConn, key: str) -> None:
+def lock_key(conn: DbConn, key: str) -> None:
     """Serializes adding and removing the same file (shared by key across organizations), so a
     delete never removes a file that a concurrent upload just added a row for."""
     conn.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s, 7))", (key,))
@@ -57,7 +57,7 @@ def _store(conn: DbConn, me: CurrentUser, org_id: int, raw: bytes, name: str, so
         except processing.ImageError as e:
             raise _invalid(str(e))
     with conn.transaction():
-        _lock_key(conn, image.key)
+        lock_key(conn, image.key)
         get_store().save(image.key, image.data)
         image_id = images.create(
             conn,
@@ -86,7 +86,7 @@ def delete_files_of(conn: DbConn, keys: list[str]) -> None:
     """Removes the files no organization has in its library anymore (after rows were deleted)."""
     for key in keys:
         with conn.transaction():
-            _lock_key(conn, key)
+            lock_key(conn, key)
             if not images.key_in_use(conn, key):
                 get_store().delete(key)
 
@@ -146,7 +146,7 @@ def delete_image(image_id: int, me: Me, conn: Conn):
     """BKG-7: not while a board, a game or a started game's snapshot uses it."""
     image = visible(me, images.get(conn, image_id), "Image")
     with conn.transaction():
-        _lock_key(conn, image.key)
+        lock_key(conn, image.key)
         if users := images.used_by(conn, image_id):
             shown = ", ".join(users[:5]) + (f" and {len(users) - 5} more" if len(users) > 5 else "")
             raise conflict(f"'{image.name}' is used by {shown}. Change their backgrounds first.")

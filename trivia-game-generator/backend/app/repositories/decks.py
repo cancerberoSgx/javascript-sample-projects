@@ -5,10 +5,11 @@ from psycopg.types.json import Jsonb
 
 from ..db import DbConn, fetch_scalar
 from ..models import Card, CardChanges, Deck, DeckChanges, NewCard, NewDeck
-from ._sql import update_row
+from ._sql import json_or_null, update_row
 
 _SELECT = """
     SELECT d.id, d.organization_id, d.name, d.description, d.created_at, d.updated_at,
+           d.visibility, d.published_at, d.copied_from,
            (SELECT count(*) FROM trivia_cards k WHERE k.deck_id = d.id) AS card_count
     FROM trivia_decks d
 """
@@ -40,8 +41,8 @@ def get(conn: DbConn, deck_id: int) -> Deck | None:
 def create(conn: DbConn, deck: NewDeck) -> int:
     return fetch_scalar(
         conn,
-        "INSERT INTO trivia_decks (organization_id, name, description) VALUES (%s, %s, %s) RETURNING id",
-        (deck.organization_id, deck.name, deck.description),
+        "INSERT INTO trivia_decks (organization_id, name, description, copied_from) VALUES (%s, %s, %s, %s) RETURNING id",
+        (deck.organization_id, deck.name, deck.description, json_or_null(deck.copied_from)),
     )
 
 

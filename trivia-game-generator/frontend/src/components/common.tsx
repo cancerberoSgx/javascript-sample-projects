@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import { ApiError, type Board, type BoardDefinition, type GameSnapshot } from "../api";
+import { api, ApiError, type Board, type BoardDefinition, type GameSnapshot, type ShareableKind, type Sharing } from "../api";
 import { placeholderMapping, resolveBoard } from "../engine/resolve";
 import type { Background, BoardFile, Category, SlotMapping } from "../engine/types";
 import { BoardCanvas } from "./BoardCanvas";
@@ -119,6 +119,9 @@ export function boardFile(name: string, definition: BoardDefinition, description
   return { schema_version: 2, name, description, ...definition };
 }
 
+/** Any validation error makes a board a draft (SER-5): no games, no publishing (SHR-2). */
+export const hasErrors = (b: Pick<Board, "issues">) => b.issues.some((i) => i.severity === "error");
+
 export const toBoardFile = (b: Board) => boardFile(b.name, b.definition, b.description);
 
 /** Draws a board. Slots without a category in `mapping` get placeholder colors ("Slot A").
@@ -152,4 +155,81 @@ export function snapshotMapping(snap: GameSnapshot): SlotMapping {
 
 export function StatusBadge({ status }: { status: string }) {
   return <span className={`chip status-${status}`}>{status}</span>;
+}
+
+// ---------- sharing (rules.md §2.8, SHR-*) ----------
+
+/** "public" marker for lists. */
+export function PublicChip({ item }: { item: Sharing }) {
+  return item.visibility === "public" ? (
+    <span className="chip public" title="Public: listed in the Library, where every organization can copy it">
+      🌐 public
+    </span>
+  ) : null;
+}
+
+/** "Copied from “General” by Default", for copies made from the Library (SHR-3). */
+export function CopiedFromNote({ item }: { item: Sharing }) {
+  if (!item.copied_from) return null;
+  return (
+    <p className="muted small copied-from">
+      ⧉ Copied from “{item.copied_from.name}” by {item.copied_from.organization_name}
+    </p>
+  );
+}
+
+/**
+ * Publishes an item to the Library or makes it private again (SHR-1). Copies others already made
+ * stay theirs. `blocked` says why it can't be published right now (SHR-2: drafts, empty decks).
+ */
+export function PublishControl<T extends Sharing & { id: number; name: string }>({
+  kind,
+  item,
+  onChanged,
+  blocked,
+  compact = false,
+}: {
+  kind: ShareableKind;
+  item: T;
+  onChanged: (updated: T) => unknown;
+  blocked?: string | null;
+  compact?: boolean;
+}) {
+  const action = useAction();
+  const isPublic = item.visibility === "public";
+  const toggle = () => {
+    const ok = isPublic
+      ? confirm(`Make “${item.name}” private? It leaves the Library. Copies other organizations already made stay theirs.`)
+      : confirm(`Publish “${item.name}” to the Library? Every organization will be able to see it and copy it.`);
+    if (ok) action.run(async () => onChanged(await api.setVisibility<T>(kind, item.id, isPublic ? "private" : "public")));
+  };
+  const button = (
+    <button
+      className={`small ${compact ? "tiny" : ""}`}
+      disabled={action.busy || (!isPublic && !!blocked)}
+      title={!isPublic && blocked ? blocked : isPublic ? "Remove it from the Library" : "List it in the Library for every organization"}
+      onClick={toggle}
+    >
+      {isPublic ? (compact ? "Unpublish" : "Make private") : compact ? "Publish" : "🌐 Publish to Library"}
+    </button>
+  );
+  if (compact)
+    return (
+      <>
+        {button}
+        <ErrorBox error={action.error} />
+      </>
+    );
+  return (
+    <div className="publish-control">
+      <span className={`chip ${isPublic ? "public" : ""}`}>{isPublic ? "🌐 Public" : "🔒 Private"}</span>
+      <span className="muted small">
+        {isPublic
+          ? `In the Library since ${new Date(item.published_at!).toLocaleDateString()}: every organization can copy it.`
+          : blocked ?? "Only your organization sees it."}
+      </span>
+      {button}
+      <ErrorBox error={action.error} />
+    </div>
+  );
 }

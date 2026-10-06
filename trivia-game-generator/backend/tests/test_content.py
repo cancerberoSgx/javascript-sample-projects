@@ -193,7 +193,7 @@ def test_start_needs_cards_for_every_slot(client, acme):
 
 def test_example_content_seed(client, root):
     applied = apply_pending(get_settings().database_url, "seed")
-    assert [f.name for f in applied] == ["demo_organizations", "example_content"]
+    assert [f.name for f in applied] == ["demo_organizations", "example_content", "public_examples"]
 
     assert len(client.get("/api/categories", headers=root).json()) == 4
     assert len(client.get("/api/boards", headers=root).json()) == 5

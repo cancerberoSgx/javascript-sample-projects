@@ -15,6 +15,7 @@ Role = Literal["root", "member"]
 GameStatus = Literal["awaiting", "running", "finished"]
 Provider = Literal["openai", "gemini"]
 GenerationStatus = Literal["running", "done", "failed", "accepted"]
+Visibility = Literal["private", "public"]  # rules.md §2.8, SHR-1
 
 
 class Row(BaseModel):
@@ -31,6 +32,22 @@ class Changes(BaseModel):
 
     def set_fields(self) -> dict[str, object]:
         return self.model_dump(exclude_unset=True)
+
+
+class CopiedFrom(BaseModel):
+    """Where a copy came from, as it was when copied (SHR-3). Not a link: the original may be gone."""
+
+    id: int
+    name: str
+    organization_name: str
+
+
+class Shareable(Row):
+    """The columns every shareable item has (boards, decks, categories, images; migration 0008)."""
+
+    visibility: Visibility
+    published_at: datetime | None  # set while public
+    copied_from: CopiedFrom | None
 
 
 # ---------- trivia_organizations ----------
@@ -90,7 +107,7 @@ class UserChanges(Changes):
 # ---------- trivia_categories ----------
 
 
-class Category(Row):
+class Category(Shareable):
     id: int
     organization_id: int
     name: str
@@ -106,6 +123,7 @@ class NewCategory(BaseModel):
     name: str
     description: str
     color: str
+    copied_from: CopiedFrom | None = None  # set on copies from the Library (SHR-3)
 
 
 class CategoryChanges(Changes):
@@ -117,7 +135,7 @@ class CategoryChanges(Changes):
 # ---------- trivia_decks + trivia_cards ----------
 
 
-class Deck(Row):
+class Deck(Shareable):
     id: int
     organization_id: int
     name: str
@@ -131,6 +149,7 @@ class NewDeck(BaseModel):
     organization_id: int
     name: str
     description: str
+    copied_from: CopiedFrom | None = None  # set on copies from the Library (SHR-3)
 
 
 class DeckChanges(Changes):
@@ -174,7 +193,7 @@ class CardChanges(Changes):
 # ---------- trivia_boards ----------
 
 
-class Board(Row):
+class Board(Shareable):
     id: int
     organization_id: int
     name: str
@@ -189,6 +208,7 @@ class NewBoard(BaseModel):
     name: str
     description: str
     definition: BoardDefinition
+    copied_from: CopiedFrom | None = None  # set on copies from the Library (SHR-3)
 
 
 class BoardChanges(Changes):
@@ -247,7 +267,7 @@ class GameChanges(Changes):
 # ---------- trivia_images (rules.md §2.1.2, BKG-*) ----------
 
 
-class Image(Row):
+class Image(Shareable):
     id: int
     organization_id: int
     key: str  # "<sha256>.webp": the file in MEDIA_DIR, served at /media/<key>
@@ -275,6 +295,7 @@ class NewImage(BaseModel):
     height: int
     bytes: int
     creator_id: int
+    copied_from: CopiedFrom | None = None  # set on copies from the Library (SHR-3)
 
 
 class ImageChanges(Changes):

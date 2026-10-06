@@ -48,7 +48,7 @@ Tests also run inside the container: `docker compose -f docker/docker-compose.ym
 | `app/schemas.py` | API request/response models. Separate from the row models so secrets like `password_hash` never reach a response |
 | `app/permissions.py` | Every root/member access rule, in one place |
 | `app/auth.py` | Bearer JWT → `CurrentUser` dependency, with a revocation check |
-| `app/routers/` | HTTP endpoints: `/api/auth`, `/api/organizations`, `/api/users`, `/api/categories`, `/api/decks` (+ `/cards`), `/api/boards`, `/api/games`, `/api/images`, and multiplayer play (`routers/play.py`: join, lobby, host controls, the game WebSocket) |
+| `app/routers/` | HTTP endpoints: `/api/auth`, `/api/organizations`, `/api/users`, `/api/categories`, `/api/decks` (+ `/cards`), `/api/boards`, `/api/games`, `/api/images`, the public Library (`routers/library.py`: publish, browse, copy), and multiplayer play (`routers/play.py`: join, lobby, host controls, the game WebSocket) |
 | `app/formats.py` | Board definition, game snapshot and live play-state (`EngineState`) formats (match the frontend's `BoardFile` / `DeckFile` / `GameState`) |
 | `app/engine/` | **The game engine, ported from `frontend/src/engine`** (`engine.ts`, `movement.ts`, `rng.ts`, `resolve.ts`). Same states, same rule IDs, same error messages. `tests/test_engine.py` replays the conformance fixture the TS tests write (`tests/fixtures/engine_conformance.json`). Change one engine, change the other |
 | `app/play.py` | Multiplayer play: deals a started game's opening state and applies actions (turn checks, auto-finish). The only code that changes a live state |
@@ -89,6 +89,9 @@ Tests also run inside the container: `docker compose -f docker/docker-compose.ym
 | Generate cards for a deck (with the organization's keys) | every organization | own organization |
 | Image library: upload, import, rename, delete | every organization | own organization |
 | Load an image file (`/media/<key>`) | anyone, no login (BKG-8) | anyone |
+| Publish / unpublish a board, deck, category or image (SHR-1) | every organization (moderation) | own organization |
+| Browse the Library (public items of every organization) | ✔ | ✔ (read-only: copying is the only way to use them) |
+| Copy a public item | into any organization | into own organization |
 
 Players don't need an account (rules.md §2.7). The game's join code lets anyone join while it's awaiting, and the player token they get proves which player a device is. Who can watch a game's WebSocket: its organization's users (and root), its players, and anyone with its join code.
 
@@ -131,6 +134,20 @@ How it works: the request is planned into exact counts per (category, difficulty
 A `Background` (`formats.Background`) is `{image?, fit?, crop?, position?, zoom?, tile_size?, opacity?, fade?, blur?, grayscale?, color?}`; only what was chosen is stored. Boards and games can only use images from their own organization's library (422, BKG-4). Starting a game copies the background it shows (its own, else its board's) into `snapshot.board.background`, and the live view sends it as `game.background`.
 
 **Why files and not rows.** Every player of a game loads the image, so serving it must cost nothing: the key is the SHA-256 of the stored file, so its URL never changes and devices cache it for a year without asking again. The database holds only the library rows, and organizations that upload the same image share one file. Decoding uploads runs at most two at a time (`routers/images.py`), so large images can't take over the API's threads. **In production**, let the web server or a CDN serve `MEDIA_DIR` at `/media` (the app's mount is then never reached), and put a body limit on uploads there too (e.g. nginx `client_max_body_size 11m`): the app only refuses an oversized upload after receiving it. Moving the files to S3-compatible storage means another `ImageStore` in `storage.py` plus a public base URL. In Docker the files live in the `media` volume.
+
+## The public Library (rules.md §2.8)
+
+| Endpoint | What |
+|---|---|
+| `PUT /api/{boards,decks,categories,images}/{id}/visibility` `{visibility}` | `private` / `public`. Returns the item. 422 for a board with errors or a deck without cards (SHR-2) |
+| `GET /api/library/{boards,decks,categories,images}?q=` | Every organization's public items, newest first, with `organization_name`. `q` searches name, description and organization. Images leave out who uploaded them and where they're used |
+| `GET /api/library/boards/{id}`, `GET /api/library/decks/{id}` | One public item. The deck comes with its `cards` and the `categories` they use |
+| `POST /api/library/boards/{id}/copy` `{organization_id?, name?}` | SHR-7: a private copy; the background image is added to the target library (201, `BoardOut`) |
+| `POST /api/library/decks/{id}/copy` `{organization_id?, name?}` | SHR-5: deck + cards; categories matched by name or created. `{deck, categories_created, categories_matched}` |
+| `POST /api/library/decks/{id}/cards/copy` `{deck_id, card_ids}` | SHR-6: chosen cards into one of your decks. `{added, skipped_duplicates, categories_created}` |
+| `POST /api/library/categories/{id}/copy`, `POST /api/library/images/{id}/copy` | A category (409 if the name exists) or an image (the existing one if the library has the file) |
+
+Boards, decks, categories and images all have `visibility`, `published_at` and `copied_from` (`{id, name, organization_name}`, kept as plain JSON, not a foreign key, so the original can go away). Copy names follow SHR-4 (`" (copy)"`, `" (copy 2)"`, …; a name you send must be free, 409). Public items are never used across organizations in place, so every other endpoint keeps its own-organization rules (rules.md §9.18). Migration `0008` also makes cards cascade with their category, which fixes deleting an organization whose decks have cards. Seed `0003` publishes the `Default` organization's example boards, sample deck and its categories.
 
 ## Multiplayer (rules.md §2.7)
 
@@ -209,7 +226,7 @@ uv run python -m app.migrations seed     # applies pending migrations, then pend
 
 They also run on startup when `RUN_SEEDS=true`. Set it to `false` for environments that shouldn't have demo data. Make seeds safe to re-run, for example with `INSERT … ON CONFLICT DO NOTHING`, because the target database may already have some of the rows.
 
-Current seeds: `0001` adds two demo organizations. `0002_example_content.sql` loads `frontend/public/boards/*.json` and `decks/general.json` into the `Default` organization. It was generated from those files by `python scripts/generate_example_seed.py`; existing databases keep the copy they already seeded.
+Current seeds: `0001` adds two demo organizations. `0003` publishes the example content in the Library. `0002_example_content.sql` loads `frontend/public/boards/*.json` and `decks/general.json` into the `Default` organization. It was generated from those files by `python scripts/generate_example_seed.py`; existing databases keep the copy they already seeded.
 
 Don't put user passwords in seeds; the first root user is created from `.env`. To seed users for local testing, create them through the API or the Organizations tab.
 

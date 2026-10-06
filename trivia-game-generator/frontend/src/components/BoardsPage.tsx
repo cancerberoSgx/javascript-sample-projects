@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, type Board, type BoardDefinition } from "../api";
+import { api, type BoardDefinition } from "../api";
 import { BoardEditor } from "../boardEditor/BoardEditor";
 import { loadManifest, type ManifestEntry } from "../engine/loader";
 import type { BoardFile } from "../engine/types";
-import { ErrorBox, NotFound, useList, useRouteSelection } from "./common";
+import { ErrorBox, hasErrors, NotFound, PublicChip, useList, useRouteSelection } from "./common";
 import { NameForm } from "./DecksPage";
 
 const BLANK: BoardDefinition = {
@@ -17,8 +17,6 @@ const BLANK: BoardDefinition = {
     { index: 4, type: "finish", slot: null, next: [], pos: { x: 4, y: 0 } },
   ],
 };
-
-export const hasErrors = (b: Board) => b.issues.some((i) => i.severity === "error");
 
 export function BoardsPage({ orgId }: { orgId: number }) {
   const boards = useList(() => api.listBoards(orgId), [orgId]);
@@ -80,7 +78,7 @@ export function BoardsPage({ orgId }: { orgId: number }) {
               <button className={b.id === selectedId ? "on" : ""} onClick={() => select(b.id)}>
                 <span>{b.name}</span>
                 <span className="muted small">
-                  {hasErrors(b) && <span className="chip draft">draft</span>} {b.definition.spaces.length} spaces · {b.definition.slots.length} slots
+                  {hasErrors(b) && <span className="chip draft">draft</span>} <PublicChip item={b} /> {b.definition.spaces.length} spaces · {b.definition.slots.length} slots
                 </span>
               </button>
             </li>

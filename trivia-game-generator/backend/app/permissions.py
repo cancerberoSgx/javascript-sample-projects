@@ -81,6 +81,12 @@ def check_update_user(me: CurrentUser, target: User, changes: UserChanges) -> No
 # do it for every organization.
 
 
+# The public Library (rules.md §2.8, SHR-*): publishing and unpublishing follow the item's edit
+# rule above (so root can unpublish anything). Every logged-in user can browse public items and
+# copy them into an organization they can add content to (target_org). Public items stay
+# read-only to everyone else: the ordinary endpoints keep returning 404 for them.
+
+
 def can_access_org(me: CurrentUser, organization_id: int) -> bool:
     return me.is_root or me.organization_id == organization_id
 

@@ -14,6 +14,7 @@ from pydantic import (
 from .formats import Background, BoardDefinition, GameSnapshot
 from .models import (
     MAX_GENERATED_CARDS,
+    CopiedFrom,
     GameStatus,
     GeneratedCard,
     GenerationSpec,
@@ -21,6 +22,7 @@ from .models import (
     Provider,
     Role,
     User,
+    Visibility,
 )
 from .validation import BoardIssue
 
@@ -122,10 +124,18 @@ Color = Annotated[str, StringConstraints(pattern=r"^#[0-9a-fA-F]{6}$")]
 Text = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)]
 
 
+class SharingOut(BaseModel):
+    """Fields every shareable item has (rules.md §2.8)."""
+
+    visibility: Visibility  # public: listed in the Library for every organization (SHR-1)
+    published_at: datetime | None
+    copied_from: CopiedFrom | None  # set on copies from the Library (SHR-3)
+
+
 # ---------- categories ----------
 
 
-class CategoryOut(BaseModel):
+class CategoryOut(SharingOut):
     id: int
     organization_id: int
     name: str
@@ -152,7 +162,7 @@ class CategoryUpdate(BaseModel):
 # ---------- decks + cards ----------
 
 
-class DeckOut(BaseModel):
+class DeckOut(SharingOut):
     id: int
     organization_id: int
     name: str
@@ -221,7 +231,7 @@ class CardUpdate(BaseModel):
 # ---------- boards ----------
 
 
-class BoardOut(BaseModel):
+class BoardOut(SharingOut):
     id: int
     organization_id: int
     name: str
@@ -248,7 +258,7 @@ class BoardUpdate(BaseModel):
 # ---------- image library (rules.md §2.1.2, BKG-*) ----------
 
 
-class ImageOut(BaseModel):
+class ImageOut(SharingOut):
     id: int
     organization_id: int
     key: str  # what a Background's `image` holds
@@ -473,3 +483,71 @@ class GenerationAccept(BaseModel):
 class GenerationAcceptOut(BaseModel):
     added: int
     skipped_duplicates: list[str]  # questions already in the deck (or twice in the list), not added
+
+
+# ---------- the public Library (rules.md §2.8, SHR-*) ----------
+
+
+class VisibilityIn(BaseModel):
+    visibility: Visibility
+
+
+class LibraryCategoryOut(CategoryOut):
+    organization_name: str  # the publisher (SHR-2)
+
+
+class LibraryDeckOut(DeckOut):
+    organization_name: str
+
+
+class LibraryCardCategory(BaseModel):
+    id: int
+    name: str
+    description: str
+    color: str
+
+
+class LibraryDeckDetailOut(LibraryDeckOut):
+    categories: list[LibraryCardCategory]  # the ones its cards use
+    cards: list[CardOut]
+
+
+class LibraryBoardOut(BoardOut):
+    organization_name: str
+
+
+class LibraryImageOut(SharingOut):
+    """Like ImageOut, minus who uploaded it and where it's used: that's the publisher's business."""
+
+    id: int
+    organization_id: int
+    organization_name: str
+    key: str
+    url: str
+    name: str
+    width: int
+    height: int
+    bytes: int
+
+
+class CopyIn(BaseModel):
+    organization_id: int | None = None  # where the copy goes; defaults to the caller's organization
+    name: Name | None = None  # defaults to the original's ("… (copy)" when taken, SHR-4)
+
+
+class DeckCopyOut(BaseModel):
+    deck: DeckOut
+    categories_created: list[str]  # SHR-5: made for this copy
+    categories_matched: list[str]  # SHR-5: already in the organization (same name), reused
+
+
+class CardsCopyIn(BaseModel):
+    deck_id: int  # one of the caller's decks
+    card_ids: list[int] = Field(min_length=1, max_length=500)
+
+
+class CardsCopyOut(BaseModel):
+    added: int
+    skipped_duplicates: list[str]  # questions the deck already has (SHR-6)
+    categories_created: list[str]
+

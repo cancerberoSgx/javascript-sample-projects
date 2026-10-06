@@ -5,7 +5,7 @@ from psycopg.rows import class_row, scalar_row
 
 from ..db import DbConn, fetch_scalar
 from ..models import Image, ImageChanges, NewImage
-from ._sql import update_row
+from ._sql import json_or_null, update_row
 
 # Where an image is used (BKG-7): board backgrounds, game backgrounds and started games' snapshots
 _BOARDS_USING = """
@@ -20,7 +20,7 @@ _GAMES_USING = """
 
 _SELECT = f"""
     SELECT i.id, i.organization_id, i.key, i.name, i.source_url, i.content_type, i.width, i.height, i.bytes,
-           i.creator_id, u.name AS creator_name,
+           i.creator_id, u.name AS creator_name, i.visibility, i.published_at, i.copied_from,
            (SELECT count(*) {_BOARDS_USING}) AS board_count,
            (SELECT count(*) {_GAMES_USING}) AS game_count,
            i.created_at, i.updated_at
@@ -56,8 +56,8 @@ def create(conn: DbConn, image: NewImage) -> int:
         conn,
         """
         WITH inserted AS (
-            INSERT INTO trivia_images (organization_id, key, name, source_url, content_type, width, height, bytes, creator_id)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO trivia_images (organization_id, key, name, source_url, content_type, width, height, bytes, creator_id, copied_from)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT (organization_id, key) DO NOTHING
             RETURNING id
         )
@@ -76,6 +76,7 @@ def create(conn: DbConn, image: NewImage) -> int:
             image.height,
             image.bytes,
             image.creator_id,
+            json_or_null(image.copied_from),
             image.organization_id,
             image.key,
         ),
