@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { activePlayer, applyAction, createGame, normalizeAnswer } from "./engine";
+import { activePlayer, applyAction, createGame, normalizeAnswer, resumeGame, suspendGame } from "./engine";
 import { legalDestinations } from "./movement";
 import { resolveGame, validateBoardFile } from "./resolve";
 import type { Action, BoardDefinition, BoardFile, DeckFile, GameState, SlotMapping } from "./types";
@@ -239,5 +239,42 @@ describe("turn flow", () => {
       return s;
     };
     expect(run()).toEqual(run());
+  });
+});
+
+describe("saved games", () => {
+  const play = (s: GameState, steps: number) => {
+    for (let i = 0; i < steps && s.phase !== "GAME_OVER"; i++) {
+      if (s.phase === "AWAIT_ROLL") s = act(s, { type: "ROLL" });
+      else if (s.phase === "AWAIT_MOVE") s = act(s, { type: "MOVE", to: Number(Object.keys(s.destinations)[0]) });
+      else if (s.phase === "AWAIT_CATEGORY") s = act(s, { type: "CHOOSE_CATEGORY", category: "pop" });
+      else s = act(s, { type: "FORCE_RESULT", correct: i % 3 === 0 });
+    }
+    return s;
+  };
+
+  it("a save survives JSON and continues exactly like the original (SAV-2)", () => {
+    const original = play(newGame("loop-shortcut"), 12);
+    const loaded = resumeGame(JSON.parse(JSON.stringify(suspendGame(original, NOW))), NOW);
+    expect(loaded).toEqual(original);
+    expect(play(loaded, 20)).toEqual(play(original, 20));
+  });
+
+  it("stores the question timer as time left and restarts it on load (SAV-3)", () => {
+    let s = newGame("linear-basic");
+    s = act(s, { type: "ROLL", value: 1 });
+    s = act(s, { type: "MOVE", to: 1 });
+    const saved = suspendGame(s, NOW + 10_000); // 30 s limit, 10 s used
+    expect(saved.question).toMatchObject({ deadline: null, time_left_ms: 20_000 });
+    expect(s.question!.deadline).toBe(NOW + 30_000); // the original is untouched
+
+    const later = NOW + 86_400_000; // continued the next day
+    const loaded = resumeGame(saved, later);
+    expect(loaded.question!.deadline).toBe(later + 20_000);
+    expect(loaded.question).not.toHaveProperty("time_left_ms");
+    expect(applyAction(loaded, { type: "TIMEOUT" }, later + 1000).error).toMatch(/hasn't expired/);
+
+    const expired = suspendGame(s, NOW + 40_000);
+    expect(expired.question!.time_left_ms).toBe(0);
   });
 });

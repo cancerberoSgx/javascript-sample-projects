@@ -152,5 +152,7 @@ the creator then can share a game like foo.com/games/123?code=12345 and if other
 when player confirms, the player is automatically created
 new players can only be created when the game status is "awaiting"
 member user can "start the game" when they want, if there are more than zero players. 
-the /game/123 screen must use websockets or polling so each player has a "real time" game experience, seeing when others roll dices, move and them selves. 
+the /game/123 screen must use websockets or polling so each player has a "real time" game experience, seeing when others roll dices, move and them selves. I'd prefer websockets if possible
+
+Before implementing this multiplayer game play in both frontend and backend analyze the problem and ask any question you'd have.
 

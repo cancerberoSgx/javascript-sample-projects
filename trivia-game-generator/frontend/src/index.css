@@ -185,3 +185,9 @@ table.cards td { vertical-align: top; }
   background: #ca8a04; color: #1c1400;
 }
 .impersonation-banner button { background: #1c1400; color: #fff; border-color: #1c1400; }
+
+/* Saved games list (play page and game details) */
+.saves { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.saves li { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; padding: 6px 8px; border: 1px solid transparent; border-radius: 8px; }
+.saves li.on { background: var(--canvas-bg); border-color: var(--accent); }
+.saves li .row { flex: none; }

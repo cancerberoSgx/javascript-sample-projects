@@ -117,6 +117,16 @@ A stored game belongs to an organization and has: a name, a `status`, a creator 
 - `GAM-2` While `not_started`, the board, deck, slot mapping and players can change. A game can only start once BRD-*, BRD-5, BRD-6, CRD-4 hold and it has at least one player.
 - `GAM-3` Starting copies the board, deck and categories into the game (a *snapshot*). Later edits or deletes of the originals never change a running or finished game.
 - `GAM-4` A board, deck or category can't be deleted while a not-started game uses it. A category can't be deleted while cards use it.
+- `GAM-5` Only a `running` game can be played (`/games/:id/play`). Play runs the engine on the snapshot (GAM-3) in hot-seat mode: the game's players take turns on one screen, in their stored order.
+
+### 2.7 Saved games (instances)
+A play session can be interrupted and continued later. A **save** (a *game instance*) is a named copy of the engine's whole `GameState` (§2.5): positions, scores, tokens, the draw and used piles, the RNG, the pending question, the log and the phase.
+
+- `SAV-1` A game can have any number of named saves. Every user who can see the game (its organization, and root) can list, load, overwrite and delete them. Each save records who saved it last and when.
+- `SAV-2` Loading a save continues the game exactly where it was: same phase, same active player, same RNG, so the next dice and cards are the ones that would have come.
+- `SAV-3` A question's timer is wall-clock time, so a save stores the *time left* (`question.time_left_ms`) instead of the deadline. Loading restarts the timer with that time left. A save made after the deadline passed times out right after loading.
+- `SAV-4` Saves can only be written while the game is `running`. The saved players MUST match the game's players (same names, same order).
+- `SAV-5` Saves are trusted data from the organization's own users. The server checks their shape and size, not that every move was legal.
 
 ---
 

@@ -9,7 +9,16 @@ from .auth import Conn
 from .bootstrap import ensure_root_user
 from .config import get_settings
 from .migrations import apply_pending
-from .routers import auth, boards, categories, decks, games, organizations, users
+from .routers import (
+    auth,
+    boards,
+    categories,
+    decks,
+    game_instances,
+    games,
+    organizations,
+    users,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 
@@ -44,7 +53,7 @@ def create_app() -> FastAPI:
     app.include_router(auth.router)
     app.include_router(organizations.router)
     app.include_router(users.router)
-    for content in (categories, decks, boards, games):
+    for content in (categories, decks, boards, games, game_instances):
         app.include_router(content.router)
 
     @app.get("/api/health", tags=["health"])

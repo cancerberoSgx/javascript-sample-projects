@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router";
 import { api, type Board, type Category, type Deck, type GameDetail, type GameInput } from "../api";
-import type { SlotMapping } from "../engine/types";
-import { BoardPreview, ErrorBox, NotFound, StatusBadge, categoryMapping, toBoardFile, useAction, useList, useRouteSelection } from "./common";
+import { BoardPreview, ErrorBox, NotFound, StatusBadge, categoryMapping, snapshotMapping, toBoardFile, useAction, useList, useRouteSelection } from "./common";
+import { SavesPanel } from "./GamePlayPage";
 
 export function GamesPage({ orgId }: { orgId: number }) {
   const games = useList(() => api.listGames(orgId), [orgId]);
@@ -75,6 +76,7 @@ function GameEditor({
   const decks = useList(() => api.listDecks(orgId), [orgId]);
   const categories = useList(() => api.listCategories(orgId), [orgId]);
   const action = useAction();
+  const navigate = useNavigate();
 
   useEffect(() => {
     api.getGame(gameId).then(setGame, action.setError);
@@ -101,9 +103,12 @@ function GameEditor({
     return (
       <StartedGame game={game} header={header} error={action.error}>
         {game.status === "running" && (
-          <button className="primary" onClick={() => action.run(async () => apply(await api.finishGame(game.id)))}>
-            Mark as finished
-          </button>
+          <div className="row">
+            <button className="primary" onClick={() => navigate(`/games/${game.id}/play`)}>
+              ▶ Play
+            </button>
+            <button onClick={() => action.run(async () => apply(await api.finishGame(game.id)))}>Mark as finished</button>
+          </div>
         )}
         <button className="danger" onClick={() => confirm(`Delete game "${game.name}"?`) && action.run(async () => (await api.deleteGame(game.id), onDeleted()))}>
           Delete game
@@ -292,8 +297,7 @@ function PlayersEditor({ names, onChange }: { names: string[]; onChange: (names:
 
 function StartedGame({ game, header, error, children }: { game: GameDetail; header: React.ReactNode; error: unknown; children: React.ReactNode }) {
   const snap = game.snapshot!;
-  const byId = new Map(snap.deck.categories.map((c) => [c.id, c]));
-  const mapping: SlotMapping = Object.fromEntries(Object.entries(snap.mapping).map(([slot, id]) => [slot, byId.get(id)!]));
+  const mapping = snapshotMapping(snap);
   return (
     <>
       <section className="panel">
@@ -320,10 +324,31 @@ function StartedGame({ game, header, error, children }: { game: GameDetail; head
       </section>
       <section className="panel">
         <ErrorBox error={error} />
-        <p className="muted small">Playing a stored game in the browser comes in a later step.</p>
+        <p className="muted small">
+          {game.status === "running"
+            ? "Play it in this browser (hot-seat: the players take turns on one screen). Save any time and continue later."
+            : "This game is finished: its saves can still be looked up here, but not played."}
+        </p>
         <div className="row between">{children}</div>
       </section>
+      <GameSaves game={game} />
     </>
+  );
+}
+
+function GameSaves({ game }: { game: GameDetail }) {
+  const saves = useList(() => api.listSaves(game.id), [game.id]);
+  const navigate = useNavigate();
+  return (
+    <SavesPanel
+      saves={saves.items}
+      error={saves.error}
+      currentId={null}
+      gameId={game.id}
+      canOpen={game.status === "running"}
+      onOpen={(id) => navigate(`/games/${game.id}/play?save=${id}`)}
+      onDeleted={saves.reload}
+    />
   );
 }
 

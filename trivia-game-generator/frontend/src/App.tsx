@@ -7,12 +7,13 @@ import { BoardsPage } from "./components/BoardsPage";
 import { CategoriesPage } from "./components/CategoriesPage";
 import type { RouteState } from "./components/common";
 import { DecksPage } from "./components/DecksPage";
+import { GamePlayPage } from "./components/GamePlayPage";
 import { GamesPage } from "./components/GamesPage";
 import { LoginPage } from "./components/LoginPage";
 import { OrganizationsPage } from "./components/OrganizationsPage";
 
 // Every tab has its own URL: /games, /games/:id, /boards/:id, /decks/:id, /categories/:id,
-// /organizations/:id and /demo. The list URL opens the first item (see useRouteSelection).
+// /organizations/:id, /games/:id/play and /demo. The list URL opens the first item (see useRouteSelection).
 
 type ContentKind = "games" | "boards" | "decks" | "categories";
 const CONTENT_KINDS: ContentKind[] = ["games", "boards", "decks", "categories"];
@@ -47,7 +48,10 @@ function Shell() {
   const [orgs, setOrgs] = useState<Organization[]>([]);
   const [orgId, setOrgId] = useState<number | null>(null);
   const navigate = useNavigate();
-  const kind = useLocation().pathname.split("/")[1] as ContentKind;
+  const path = useLocation().pathname;
+  const kind = path.split("/")[1] as ContentKind;
+  // The play page shows one game, so it needs no organization picker
+  const showOrgPicker = CONTENT_KINDS.includes(kind) && !path.endsWith("/play");
   const isRoot = user?.role === "root";
 
   // Content belongs to one organization: members always work on theirs, root users pick one
@@ -106,7 +110,7 @@ function Shell() {
         </div>
       </header>
 
-      {isRoot && CONTENT_KINDS.includes(kind) && (
+      {isRoot && showOrgPicker && (
         <div className="toolbar">
           <label className="small">
             Organization:{" "}
@@ -137,6 +141,7 @@ function Shell() {
               <Route key={path} path={path} element={<ContentRoute key={k} kind={k} orgId={orgId} setOrgId={setOrgId} />} />
             )),
           )}
+          <Route path="/games/:id/play" element={<GamePlayPage />} />
           <Route path="/organizations" element={<OrganizationsPage />} />
           <Route path="/organizations/:id" element={<OrganizationsPage />} />
           <Route path="/demo" element={isRoot ? <BoardsDemo /> : <Navigate to="/games" replace />} />

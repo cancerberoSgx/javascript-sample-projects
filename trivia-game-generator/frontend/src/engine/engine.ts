@@ -76,6 +76,29 @@ export function createGame(
   return s;
 }
 
+/**
+ * A copy of the state to save (SAV-3): a question's deadline is wall-clock time, so it is
+ * replaced by the time left. resumeGame() turns it back into a deadline.
+ */
+export function suspendGame(state: GameState, now: number = Date.now()): GameState {
+  const s = structuredClone(state);
+  if (s.question && s.question.deadline !== null) {
+    s.question.time_left_ms = Math.max(0, s.question.deadline - now);
+    s.question.deadline = null;
+  }
+  return s;
+}
+
+/** A loaded save, ready to play: the question timer restarts with the time it had left (SAV-3). */
+export function resumeGame(saved: GameState, now: number = Date.now()): GameState {
+  const s = structuredClone(saved);
+  if (s.question && s.question.time_left_ms !== undefined) {
+    s.question.deadline = now + s.question.time_left_ms;
+    delete s.question.time_left_ms;
+  }
+  return s;
+}
+
 export function applyAction(state: GameState, action: Action, now: number = Date.now()): ActionOutcome {
   if (state.phase === "GAME_OVER") return { state, error: "The game is over (INV-4)." };
   const s = structuredClone(state);

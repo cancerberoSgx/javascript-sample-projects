@@ -137,7 +137,8 @@ export type Phase = "AWAIT_ROLL" | "AWAIT_MOVE" | "AWAIT_CATEGORY" | "AWAIT_ANSW
 
 export interface PendingQuestion {
   card: Card;
-  deadline: number | null; // epoch ms; null = no time limit
+  deadline: number | null; // epoch ms; null = no time limit (or suspended, see time_left_ms)
+  time_left_ms?: number; // only in a saved state: the time left when it was saved (SAV-3)
   grand_prize: boolean;
   from_hq: boolean; // landing space is an HQ (RES-2)
 }

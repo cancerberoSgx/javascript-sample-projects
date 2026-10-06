@@ -1,7 +1,7 @@
 // REST client for the backend. Requests go to /api on the same origin; Vite proxies them
 // to FastAPI in dev (see vite.config.ts).
 
-import type { BoardFile, DeckFile, GameConfig, SpaceType } from "./engine/types";
+import type { BoardFile, DeckFile, GameConfig, GameState, SpaceType } from "./engine/types";
 
 export type Role = "root" | "member";
 
@@ -122,6 +122,26 @@ export interface GameInput {
   deck_id?: number | null;
   categories?: Record<string, number>;
   players?: { name: string }[];
+}
+
+/** A saved game (game instance, rules.md §2.7): a summary of its play state, without the state. */
+export interface GameSave {
+  id: number;
+  game_id: number;
+  name: string;
+  saved_by_id: number | null;
+  saved_by_name: string | null;
+  round: number;
+  phase: GameState["phase"];
+  players: Pick<GameState["players"][number], "id" | "name" | "color" | "score" | "inventory" | "current_space">[];
+  result: GameState["result"];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GameSaveDetail extends GameSave {
+  /** Saved with suspendGame(): load it with resumeGame() (SAV-3). */
+  state: GameState;
 }
 
 export class ApiError extends Error {
@@ -252,4 +272,13 @@ export const api = {
   deleteGame: (id: number) => request<void>("DELETE", `/games/${id}`),
   startGame: (id: number) => request<GameDetail>("POST", `/games/${id}/start`),
   finishGame: (id: number) => request<GameDetail>("POST", `/games/${id}/finish`),
+
+  // Saved games (only a running game can be saved, SAV-4)
+  listSaves: (gameId: number) => request<GameSave[]>("GET", `/games/${gameId}/instances`),
+  getSave: (gameId: number, id: number) => request<GameSaveDetail>("GET", `/games/${gameId}/instances/${id}`),
+  createSave: (gameId: number, body: { name: string; state: GameState }) => request<GameSaveDetail>("POST", `/games/${gameId}/instances`, body),
+  /** Overwrite the state and/or rename. */
+  updateSave: (gameId: number, id: number, body: { name?: string; state?: GameState }) =>
+    request<GameSaveDetail>("PATCH", `/games/${gameId}/instances/${id}`, body),
+  deleteSave: (gameId: number, id: number) => request<void>("DELETE", `/games/${gameId}/instances/${id}`),
 };

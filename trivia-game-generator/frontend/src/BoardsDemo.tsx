@@ -1,14 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { BoardCanvas } from "./components/BoardCanvas";
+import { useEffect, useState } from "react";
 import { JsonPanel } from "./components/JsonPanel";
-import { LogPanel, PlayersPanel } from "./components/PlayersPanel";
-import { TurnPanel } from "./components/TurnPanel";
+import { BoardView, GamePanels, PLAYER_COLORS, useGamePlay } from "./components/PlayTable";
 import { resolveConfig } from "./engine/board";
-import { applyAction, createGame } from "./engine/engine";
+import { createGame } from "./engine/engine";
 import { loadBoard, loadDeck, loadManifest, prepareBoard, type ManifestEntry, type LoadedBoard } from "./engine/loader";
-import type { Action, DeckFile, GameState, PlayerSetup, Space } from "./engine/types";
+import type { DeckFile, GameState, PlayerSetup } from "./engine/types";
 
-const PLAYER_COLORS = ["#e11d48", "#7c3aed", "#0891b2", "#ea580c"];
 const DEFAULT_PLAYERS: PlayerSetup[] = ["Ana", "Ben", "Cleo", "Dan"].map((name, i) => ({ name, color: PLAYER_COLORS[i] }));
 const CUSTOM = "__custom__";
 
@@ -20,21 +17,13 @@ export function BoardsDemo() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [game, setGame] = useState<GameState | null>(null);
   const [view, setView] = useState<"play" | "json">("play");
-  const [hovered, setHovered] = useState<Space | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
-  const toastTimer = useRef<number>(undefined);
+  const { dispatch, onSpaceClick, showToast, toast } = useGamePlay(game, setGame);
 
   // Setup options
   const [playerCount, setPlayerCount] = useState(2);
   const [players, setPlayers] = useState(DEFAULT_PLAYERS);
   const [seed, setSeed] = useState(() => Math.floor(Math.random() * 1e6));
   const [noTimer, setNoTimer] = useState(false);
-
-  const showToast = useCallback((msg: string) => {
-    setToast(msg);
-    clearTimeout(toastTimer.current);
-    toastTimer.current = window.setTimeout(() => setToast(null), 3500);
-  }, []);
 
   useEffect(() => {
     loadManifest()
@@ -72,25 +61,6 @@ export function BoardsDemo() {
     const board = structuredClone(loaded.board);
     if (noTimer) board.config = { ...board.config, answer_time_limit_sec: 0 };
     setGame(createGame(board, loaded.deck, players.slice(0, playerCount), seed));
-  };
-
-  const gameRef = useRef(game);
-  gameRef.current = game;
-  const dispatch = useCallback(
-    (action: Action) => {
-      const current = gameRef.current;
-      if (!current) return;
-      const out = applyAction(current, action);
-      if (out.error) showToast(out.error);
-      else setGame(out.state);
-    },
-    [showToast],
-  );
-
-  const onSpaceClick = (index: number) => {
-    if (!game) return;
-    if (game.phase === "AWAIT_MOVE") dispatch({ type: "MOVE", to: index });
-    else if (game.phase !== "GAME_OVER") showToast(`Nothing to move right now. Waiting for ${game.phase}.`);
   };
 
   const entry = manifest.find((m) => m.file === file);
@@ -148,35 +118,7 @@ export function BoardsDemo() {
             )}
 
             {view === "play" ? (
-              <>
-                <BoardCanvas board={board} game={game} onSpaceClick={onSpaceClick} onHover={setHovered} />
-                <div className="space-info">
-                  {hovered ? (
-                    <code>{JSON.stringify(hovered)}</code>
-                  ) : (
-                    <span className="muted">Hover a space to see its JSON. Accent arrows leave a fork (⑂). ★ HQ spaces award a category token. After a roll, legal moves glow and everything else is dimmed.</span>
-                  )}
-                </div>
-                <div className="legend">
-                  {board.categories.map((c) => (
-                    <span key={c.id}>
-                      <i style={{ background: c.color }} /> {c.name}
-                    </span>
-                  ))}
-                  <span>
-                    <i className="sp-roll" /> Roll again
-                  </span>
-                  <span>
-                    <i className="sp-penalty" /> Penalty
-                  </span>
-                  <span>
-                    <i className="sp-wild" /> Wildcard
-                  </span>
-                  <span>
-                    <i className="sp-finish" /> Finish
-                  </span>
-                </div>
-              </>
+              <BoardView board={board} game={game} onSpaceClick={onSpaceClick} />
             ) : (
               <JsonPanel loaded={loaded} file={file === CUSTOM ? "(uploaded file)" : file} />
             )}
@@ -185,9 +127,7 @@ export function BoardsDemo() {
           <aside>
             {game ? (
               <>
-                <TurnPanel game={game} dispatch={dispatch} />
-                <PlayersPanel game={game} />
-                <LogPanel game={game} />
+                <GamePanels game={game} dispatch={dispatch} />
                 <button onClick={() => setGame(null)}>↺ New game</button>
               </>
             ) : (
@@ -226,7 +166,7 @@ export function BoardsDemo() {
         </main>
       )}
 
-      {toast && <div className="toast">{toast}</div>}
+      {toast}
     </div>
   );
 }

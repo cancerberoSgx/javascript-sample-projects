@@ -3,8 +3,8 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, EmailStr, Field, StringConstraints, model_validator
 
-from .formats import BoardDefinition, GameSnapshot
-from .models import GameStatus, Role, User
+from .formats import BoardDefinition, EngineState, GameSnapshot
+from .models import GameInstanceSummary, GameStatus, Role, User
 
 Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
 # bcrypt only uses the first 72 bytes, so longer passwords are rejected rather than silently truncated
@@ -265,3 +265,26 @@ class GameUpdate(BaseModel):
     deck_id: int | None = None
     categories: dict[str, int] | None = None
     players: list[PlayerIn] | None = Field(default=None, max_length=12)
+
+
+# ---------- saved games (game instances, rules.md §2.7) ----------
+
+
+class GameInstanceOut(GameInstanceSummary):
+    """A save in a list: who saved it, when, and a summary of the play state (no state)."""
+
+
+class GameInstanceDetailOut(GameInstanceOut):
+    state: EngineState
+
+
+class GameInstanceCreate(BaseModel):
+    name: Name
+    state: EngineState
+
+
+class GameInstanceUpdate(BaseModel):
+    """Rename and/or overwrite with a new state."""
+
+    name: Name | None = None
+    state: EngineState | None = None

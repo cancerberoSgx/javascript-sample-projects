@@ -48,8 +48,8 @@ Tests also run inside the container: `docker compose -f docker/docker-compose.ym
 | `app/schemas.py` | API request/response models. Separate from the row models so secrets like `password_hash` never reach a response |
 | `app/permissions.py` | Every root/member access rule, in one place |
 | `app/auth.py` | Bearer JWT → `CurrentUser` dependency, with a revocation check |
-| `app/routers/` | HTTP endpoints: `/api/auth`, `/api/organizations`, `/api/users`, `/api/categories`, `/api/decks` (+ `/cards`), `/api/boards`, `/api/games` |
-| `app/formats.py` | Board definition and game snapshot formats (match the frontend's `BoardFile` / `DeckFile`) |
+| `app/routers/` | HTTP endpoints: `/api/auth`, `/api/organizations`, `/api/users`, `/api/categories`, `/api/decks` (+ `/cards`), `/api/boards`, `/api/games`, `/api/games/{id}/instances` (saved games) |
+| `app/formats.py` | Board definition, game snapshot and saved play-state (`EngineState`) formats (match the frontend's `BoardFile` / `DeckFile` / `GameState`) |
 | `app/validation.py` | Board and game-setup checks. Python port of `frontend/src/engine/board.ts` + `resolve.ts`, using the same rule IDs from `rules.md` |
 | `migrations/`, `seeds/` | Numbered `.sql` files |
 
@@ -78,7 +78,7 @@ Tests also run inside the container: `docker compose -f docker/docker-compose.ym
 | Delete users | ✔ (not yourself) | ✘ |
 | Impersonate a member user | ✔ any organization | ✘ |
 
-| Categories, decks, cards, boards, games | every organization | own organization: full create / edit / delete |
+| Categories, decks, cards, boards, games, saved games | every organization | own organization: full create / edit / delete |
 
 Other rules: the last root user can't be demoted or deleted, an organization that still has users can't be deleted, and anything outside your scope returns `404`.
 
@@ -92,6 +92,7 @@ Other rules: the last root user can't be demoted or deleted, an organization tha
 | `/api/games` | `board_id`, `deck_id`, `categories` (`{slot: category_id}`), `players` (`[{name}]`; order = turn order). `GET /api/games/{id}` includes `setup_errors`, the list of what still blocks starting |
 | `POST /api/games/{id}/start` | `not_started → running`. Validates the setup, then stores a `snapshot` (`{board, deck, mapping}`), so later edits don't affect the game |
 | `POST /api/games/{id}/finish` | `running → finished` |
+| `/api/games/{id}/instances` | Saved games (rules.md §2.7, table `trivia_game_instances`). `POST {name, state}` saves, `PATCH {name?, state?}` overwrites or renames, `GET …/{iid}` loads, `DELETE` removes. `state` is the engine's `GameState` (with the question timer stored as `time_left_ms`, SAV-3), kept as sent. The list returns a summary instead of the state: `round`, `phase`, `players` (name, color, score, tokens, space), `result`, who saved it last and when. Saving needs a `running` game (409 otherwise) and the game's players in order (422); states over 2 MB get 413. Finished games keep their saves, readable only |
 
 List endpoints return the caller's organization. Root users can pass `?organization_id=`, and `organization_id` in create bodies. A game's board, deck and categories must belong to the game's organization.
 

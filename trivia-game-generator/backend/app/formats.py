@@ -127,3 +127,46 @@ class GameSnapshot(BaseModel):
     board: SnapshotBoard
     deck: SnapshotDeck
     mapping: dict[str, str]  # slot -> SnapshotCategory.id
+
+
+# ---------- saved play state (rules.md §2.7) ----------
+# The engine's GameState (frontend/src/engine/types.ts). Only what the API reads or must
+# hold is typed; everything else is kept as sent (extra="allow"), so a save round-trips
+# unchanged (SAV-2). The server doesn't replay moves (SAV-5).
+
+EnginePhase = Literal["AWAIT_ROLL", "AWAIT_MOVE", "AWAIT_CATEGORY", "AWAIT_ANSWER", "GAME_OVER"]
+
+
+class EnginePlayer(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    id: str
+    name: str
+    color: str
+    current_space: int = Field(ge=0)
+    inventory: list[str]
+    score: int
+    skip_next_turn: bool
+
+
+class EngineResult(BaseModel):
+    type: Literal["win", "draw"]
+    player_id: str | None = None
+    reason: str | None = None
+
+
+class EngineState(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    config: dict[str, Any]
+    board: dict[str, Any]
+    cards: dict[str, Any]
+    decks: dict[str, Any]
+    players: list[EnginePlayer] = Field(min_length=1, max_length=12)
+    active_player: int = Field(ge=0)
+    round: int = Field(ge=1)
+    phase: EnginePhase
+    question: dict[str, Any] | None
+    result: EngineResult | None
+    rng: int
+    log: list[Any]

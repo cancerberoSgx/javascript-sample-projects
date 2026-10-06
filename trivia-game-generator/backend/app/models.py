@@ -9,7 +9,13 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from .formats import BoardDefinition, GameSnapshot
+from .formats import (
+    BoardDefinition,
+    EnginePhase,
+    EngineResult,
+    EngineState,
+    GameSnapshot,
+)
 
 Role = Literal["root", "member"]
 GameStatus = Literal["not_started", "running", "finished"]
@@ -229,3 +235,50 @@ class GameChanges(Changes):
     name: str | None = None
     board_id: int | None = None
     deck_id: int | None = None
+
+
+# ---------- trivia_game_instances (saved games) ----------
+
+
+class InstancePlayer(Row):
+    """A player as listed in a save's summary (read from state.players)."""
+
+    id: str
+    name: str
+    color: str
+    score: int
+    inventory: list[str]
+    current_space: int
+
+
+class GameInstanceSummary(Row):
+    """A save without its state, for lists. round/phase/players/result are read from the state."""
+
+    id: int
+    game_id: int
+    name: str
+    saved_by_id: int | None
+    saved_by_name: str | None  # joined
+    round: int
+    phase: EnginePhase
+    players: list[InstancePlayer]
+    result: EngineResult | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class GameInstance(GameInstanceSummary):
+    state: EngineState
+
+
+class NewGameInstance(BaseModel):
+    game_id: int
+    name: str
+    state: EngineState
+    saved_by_id: int
+
+
+class GameInstanceChanges(Changes):
+    name: str | None = None
+    state: EngineState | None = None
+    saved_by_id: int | None = None

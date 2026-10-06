@@ -46,7 +46,8 @@ npx tsc -b && npx vitest run                            # engine tests run again
 - Every piece of content belongs to an **organization**. Users are `root` (all organizations) or `member` (own organization only). Players are just names, not users.
 - A **board** has category **slots** (`A`, `B`, …), never categories. A **game** maps each slot to a category, so one board works for any topic.
 - **Cards** store `answer` text. For multiple choice it must be one of `options`. `grand_prize: true` cards are only drawn for the final question.
-- **Game status:** `not_started → running → finished`. Starting copies board, deck and categories into `trivia_games.snapshot`, so later edits never touch a started game (GAM-3). Playing a stored game in the browser is **not built yet**.
+- **Game status:** `not_started → running → finished`. Starting copies board, deck and categories into `trivia_games.snapshot`, so later edits never touch a started game (GAM-3).
+- **Playing and saves** (rules.md §2.7): `/games/:id/play` runs the engine on the snapshot, hot-seat, for `running` games only. A save is a row in `trivia_game_instances` holding the whole engine `GameState` as jsonb. The backend types only what it reads (`formats.EngineState`, `extra="allow"`) and stores the rest as sent, so saves round-trip unchanged. Always save through `suspendGame()` and load through `resumeGame()` (the question timer is wall-clock). If `GameState` changes shape, old saves must still load.
 
 ### Formats (version 2) and the engine
 - `BoardFile` / `DeckFile` (`frontend/src/engine/types.ts`) are the shared shapes: example files, the API's board `definition`, and game snapshots all use them. The Python equivalents are in `backend/app/formats.py`.
@@ -67,12 +68,14 @@ npx tsc -b && npx vitest run                            # engine tests run again
 ### Frontend
 - `api.ts` is the only HTTP client. Requests go to `/api` on the same origin, and Vite proxies them to `VITE_API_PROXY`. `ApiError.details` carries the server's validation lists, shown by `ErrorBox`.
 - `auth.tsx` holds the session. While impersonating, the root token waits in `trivia.token.impersonator`. A 401 handler gets the token that the failed request used and ignores stale ones. That fixed a race where several failing requests logged root out.
-- **Routes** (react-router, `App.tsx`): `/games/:id`, `/boards/:id`, `/decks/:id`, `/categories/:id`, `/organizations/:id`, `/demo`. The URL *is* the selection: pages use `useRouteSelection` (`common.tsx`) and navigate instead of keeping a selected id in state. For root, `ContentRoute` resolves a deep-linked item's organization; in-app links pass it as `RouteState` to skip that lookup. Details in `frontend/README.md`.
+- **Routes** (react-router, `App.tsx`): `/games/:id`, `/boards/:id`, `/decks/:id`, `/categories/:id`, `/organizations/:id`, `/games/:id/play?save=:id`, `/demo`. The URL *is* the selection: pages use `useRouteSelection` (`common.tsx`) and navigate instead of keeping a selected id in state. For root, `ContentRoute` resolves a deep-linked item's organization; in-app links pass it as `RouteState` to skip that lookup. Details in `frontend/README.md`.
 - The UI only *hides* actions a user can't take. The backend enforces everything.
 - Content pages (`GamesPage`, `BoardsPage`, `DecksPage`, `CategoriesPage`) take an `orgId`. Root users pick one in the toolbar; members always use their own. The **Boards demo** tab (root only) plays the example JSON files locally.
+- The play UI (`PlayTable.tsx`: `useGamePlay`, `BoardView`, `GamePanels`) is shared by the Boards demo and `GamePlayPage`. Change it once.
 - `BoardCanvas` draws any resolved board. `BoardPreview` (in `common.tsx`) wraps it for boards that may have unmapped slots.
 
 ### Keep in sync (checklist)
+- **Engine `GameState` change:** `engine/types.ts` → `backend/app/formats.py` `EngineState` (if the field is typed there) → keep old saves loadable.
 - **New table:** migration → row models in `models.py` → repository → API schemas → router (+ `permissions.py`) → tests → `backend/README.md`.
 - **Game or format rule change:** `rules.md` → `engine/board.ts` / `resolve.ts` → `backend/app/validation.py` / `formats.py` → tests on both sides.
 - **Example JSON change:** `python backend/scripts/generate_example_seed.py`. Seed `0002` is already applied in existing databases, so changes for those need a new seed file.
@@ -90,9 +93,10 @@ npx tsc -b && npx vitest run                            # engine tests run again
 6. Content: categories, decks + cards, boards (slots), games + players, start/finish with snapshot. Example content seeded. Management tabs in the UI.
 7. Impersonation of member users by root, with a banner and Exit.
 8. URL routes for every tab and item (`/games/1`, `/organizations/4`, …), with deep links surviving login.
+9. Playing stored games (`/games/:id/play`, hot-seat on the snapshot) with named saves in `trivia_game_instances` (save, save as new, continue, delete).
 
 ## Known gaps and likely next steps
-- Play stored games: run the engine on `snapshot`, and persist game state and turns on the backend.
+- Multiplayer: every player on their own device. Today play is hot-seat and saves are manual; the server doesn't run the engine or check moves (SAV-5).
 - LLM features from `readme.md`: lenient answer checking (EVL-3, needs the backend and the organization's key), generating categories, decks and boards.
 - No rate limit on login. Tokens live in `localStorage`.
 - The backend suite once failed with 9 setup errors that never reproduced in 6+ reruns. Look into it if it recurs.

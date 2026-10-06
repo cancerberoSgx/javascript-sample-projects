@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import { ApiError, type Board, type BoardDefinition } from "../api";
+import { ApiError, type Board, type BoardDefinition, type GameSnapshot } from "../api";
 import { placeholderMapping, resolveBoard, validateSlots } from "../engine/resolve";
 import type { BoardFile, Category, SlotMapping } from "../engine/types";
 import { BoardCanvas } from "./BoardCanvas";
@@ -142,6 +142,12 @@ export function categoryMapping(board: BoardFile | BoardDefinition, slots: Recor
     if (c) out[slot] = { id: String(c.id), name: c.name, color: c.color } satisfies Category;
   }
   return out;
+}
+
+/** A started game's slot mapping, from its snapshot (slot -> the deck's category). */
+export function snapshotMapping(snap: GameSnapshot): SlotMapping {
+  const byId = new Map(snap.deck.categories.map((c) => [c.id, c]));
+  return Object.fromEntries(Object.entries(snap.mapping).map(([slot, id]) => [slot, byId.get(id)!]));
 }
 
 export function StatusBadge({ status }: { status: string }) {

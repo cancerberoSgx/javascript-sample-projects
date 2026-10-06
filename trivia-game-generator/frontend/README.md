@@ -1,7 +1,8 @@
 # Trivia Game Generator (frontend)
 
 A React + Vite app. After login it shows:
-- **Games**: set up a game (board, deck, a category for each board slot, players), see what still blocks it, start it, finish it.
+- **Games**: set up a game (board, deck, a category for each board slot, players), see what still blocks it, start it, finish it. A running game has **▶ Play** and a list of its saves.
+- **Play** (`/games/:id/play`): plays a running game on its snapshot, exactly like the Boards demo (hot-seat: the game's players take turns on one screen). **Save** stores the whole play state on the server; anyone in the organization can **Continue** it later (rules.md §2.7).
 - **Boards**: edit a board's JSON definition, with live validation and a canvas preview. New boards can start from an example.
 - **Decks**: questions and answers (open or multiple choice, difficulty, grand prize).
 - **Categories**: name, description, color.
@@ -16,6 +17,7 @@ Every tab has its own address ([React Router](https://reactrouter.com), `Browser
 |---|---|
 | `/` | Redirects to `/games` |
 | `/games/:id`, `/boards/:id`, `/decks/:id` | That item, selected in its list. The bare list URL (`/games`) opens the first item |
+| `/games/:id/play`, `/games/:id/play?save=:saveId` | Play a running game; with `save`, that save is loaded. Saving updates `?save=`, so a reload continues from the last save |
 | `/categories`, `/categories/:id` | The categories table; with an id, that category's edit form |
 | `/organizations/:id` | That organization and its users. Members only ever see their own |
 | `/demo` | Boards demo (root only; others are sent to `/games`) |
@@ -57,6 +59,16 @@ Impersonation: root users get an **Impersonate** button on member users (Organiz
 | `src/BoardsDemo.tsx` | The boards demo tab |
 | `src/api.ts` | REST client for the backend |
 | `src/App.tsx` | Header, tabs and routes |
+| `src/components/PlayTable.tsx` | The play UI shared by the Boards demo and stored games: `useGamePlay` (dispatch + toasts), `BoardView`, `GamePanels` |
+| `src/components/GamePlayPage.tsx` | `/games/:id/play`: new playthrough, save / save as new, load, delete. Warns before leaving with unsaved progress |
+
+## Saved games
+
+A save is the engine's `GameState` as JSON: positions, scores, tokens, the draw/used piles, the RNG, the pending question and the log. So loading continues exactly where it stopped, with the same upcoming dice and cards (SAV-2). The question timer is wall-clock time, so `suspendGame()` stores the time left before saving and `resumeGame()` restarts it on load (SAV-3, `engine.ts`).
+
+- **Save** overwrites the loaded save (or creates the first one); **Save as new** keeps it and adds another.
+- Unsaved progress: the Save panel says so, loading another save asks first, and the browser asks before a reload or close. In-app links (the tabs) don't ask, because `BrowserRouter` has no navigation blocking.
+- Reaching game over doesn't finish the stored game: **Mark game as finished** does, and after that it can't be played or saved.
 
 ## Example boards
 

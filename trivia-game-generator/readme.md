@@ -20,7 +20,7 @@ Open http://localhost:5173 and log in with `ROOT_EMAIL` / `ROOT_PASSWORD` from `
 
 ## dev env fast notes
 
-make sure db is runnint - if not invoke above docker compose command and make sure container is running.
+make sure db is running - if not invoke above docker compose command and make sure container is running.
 
 cd backend; uv run uvicorn app.main:app --reload       # reads DATABASE_URL from ../.env
 cd frontend: npm run dev
