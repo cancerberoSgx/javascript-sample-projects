@@ -11,7 +11,7 @@ Read first:
 
 | Path | What |
 |---|---|
-| `frontend/` | React 19 + Vite 8 + TypeScript 7. `src/engine/` is the pure game engine; `src/components/` holds the pages; `src/boardEditor/` is the visual board editor |
+| `frontend/` | React 19 + Vite 8 + TypeScript 7. `src/engine/` is the pure game engine; `src/components/` holds the pages; `src/boardEditor/` is the visual board editor; `src/play/` is the players' phone screen |
 | `backend/` | FastAPI + psycopg 3 on Postgres 18, Python 3.14, managed with `uv`. Plain SQL, no ORM |
 | `docker/docker-compose.yml` | db + backend (uvicorn `--reload`) + frontend (Vite dev server), with source bind-mounted |
 | `.env` / `.env.example` | All config. `.env` is gitignored; `docker/.env` is a committed symlink to it, because that's where Compose looks |
@@ -37,7 +37,7 @@ uv run python -m app.migrations status|up|seed|new "description" [--seed]
 npx tsc -b && npx vitest run                            # engine tests run against the real example JSON files
 ```
 
-**On this machine:** host ports 5432 and 5173 are already taken (another Postgres, and the user's own Vite). That's why Postgres maps to **5433**. To run a test stack next to the user's Vite, use `FRONTEND_HOST_PORT=5180 docker compose … up -d`, and stop it afterwards with `docker compose -f docker/docker-compose.yml down` (keep the volume, so no `-v`). Local root login: `ROOT_EMAIL` / `ROOT_PASSWORD` from `.env`.
+**On this machine:** host ports 5432 and 5173 are already taken (another Postgres, and the user's own Vite). That's why Postgres maps to **5433**. The user may also run their own uvicorn on 8000. To run a test stack next to them, use `BACKEND_HOST_PORT=8010 FRONTEND_HOST_PORT=5180 docker compose … up -d`, and stop it afterwards with `docker compose -f docker/docker-compose.yml down` (keep the volume, so no `-v`). Local root login: `ROOT_EMAIL` / `ROOT_PASSWORD` from `.env`.
 
 **Verify UI changes in a real browser.** Drive the app with Playwright and headless Chromium (browsers are cached in `~/.cache/ms-playwright`; install `playwright` in a scratch folder, not in the repo). Take screenshots and look at them. This has caught real bugs that typecheck and unit tests missed (a canvas crash, a 401 race).
 
@@ -76,7 +76,8 @@ npx tsc -b && npx vitest run                            # engine tests run again
 - **Routes** (react-router, `App.tsx`): `/games/:id`, `/boards/:id`, `/decks/:id`, `/categories/:id`, `/organizations/:id`, `/demo`. `/games/:id?code=…` is the **player page** (`PlayerGamePage`), rendered before the login check, so it works logged out. The URL *is* the selection: pages use `useRouteSelection` (`common.tsx`) and navigate instead of keeping a selected id in state. For root, `ContentRoute` resolves a deep-linked item's organization; in-app links pass it as `RouteState` to skip that lookup. Details in `frontend/README.md`.
 - The UI only *hides* actions a user can't take. The backend enforces everything.
 - Content pages (`GamesPage`, `BoardsPage`, `DecksPage`, `CategoriesPage`) take an `orgId`. Root users pick one in the toolbar; members always use their own. The **Boards demo** tab (root only) plays the example JSON files locally.
-- The play UI (`PlayTable.tsx`: `useGamePlay`, `BoardView`, `GamePanels`, `TurnPanel` with `canAct`/`dev`/`clockOffset`) is shared by the Boards demo and live games (`LiveGame.tsx`: `useLiveGame`, `LiveTable`, lobby, share link, host controls). Change it once.
+- The play UI (`PlayTable.tsx`: `useGamePlay`, `BoardView`, `GamePanels`, `TurnPanel` with `canAct`/`dev`/`clockOffset`) is shared by the Boards demo and the host's game page (`LiveGame.tsx`: `useLiveGame`, `LiveTable`, lobby, share link, host controls). Change it once.
+- **Players' play screen** (`src/play/`, rules.md §2.7.1): `PlayerGamePage` → `PlayScreen`, a separate phone-first UI over the same `useLiveGame` / `useGamePlay` hooks. The board is `BoardCanvas` with `viewport` (pan/zoom camera); animations come from `diffEvents(prev, next)`; sheets and cards are native `<dialog>`s (`Layer`), notices above them are manual popovers (`Floating`). Details in `frontend/README.md`. Dialogs opened in effects meet StrictMode's mount → cleanup → mount: a `close` event queued by the cleanup arrives after the reopen, so `Layer` ignores close events while the dialog is open.
 - `BoardCanvas` draws any resolved board. `BoardPreview` (in `common.tsx`) wraps it for boards that may have unmapped slots. Its `drawTile` / `arrow` / `arrowBend` helpers are shared with the editor canvas.
 - **Card generation UI** (`GenerateCards.tsx`): form → progress (polling) → review list → accept. Nothing reaches the deck before accept. `CardForm` (DecksPage) is reused to edit generated cards.
 - **Backgrounds**: `components/background.ts` (pure layout math + `BackgroundLayer`, an offscreen-canvas cache, so per-frame redraws stay cheap) is shared by `BoardCanvas` and `EditorCanvas`; `BackgroundEditor.tsx` (library, crop, sliders) by the board editor and the game setup. `BoardPreview` takes an optional `background` override.
@@ -109,9 +110,11 @@ npx tsc -b && npx vitest run                            # engine tests run again
 
 14. Background images: an organization image library (upload, drag-and-drop, import from URL), board default backgrounds and per-game overrides (board's / custom / none), fill / fit / stretch / mosaic, crop, position, zoom, tile size, opacity, fade, blur, grayscale, fill color. Files served as immutable static files; frozen into the snapshot at start (migration 0007, `BKG-*`).
 
+15. Phone-first play screen (`src/play/`, rules.md §2.7.1 `PLY-UI-*`): full-screen pan/zoom board (`BoardCanvas` `viewport` mode, `camera.ts`, `useBoardCamera.ts`), floating status, dock and sheets, dice / question / answer / wildcard / game-over cards for every device, legal-move buttons, auto-focus camera, transposed boards on portrait phones, "Your turn!" alerts with vibration, wake lock, WebAudio sounds (off by default), fullscreen, PWA manifest and icons. The admin pages and Boards demo keep the old layout (`LiveTable`).
+
 ## Known gaps and likely next steps
 - The WebSocket hub is in-process memory: fine for one uvicorn process, but several workers would need shared broadcasts (Postgres `LISTEN/NOTIFY`). Sockets check the login token only on connect.
-- The board canvas is small on phones (tiles about 22px wide), which makes tapping moves fiddly. A zoom, or a list of legal moves as buttons, would help.
+- Play screen: verified in headless Chromium with phone emulation (touch events via CDP), not on real iOS Safari or Android devices yet. Sounds and vibration weren't heard/felt in tests. Background images are drawn at board resolution, so they soften when zoomed past 1x.
 - The board editor is desktop-first. On phones, dragging inside the grid moves spaces instead of panning (`touch-action: none`). Leaving a board with unsaved edits asks only when switching boards in the list (and on reload/close), not on tab changes (`BrowserRouter` has no `useBlocker`).
 - No rate limit on `join` (8-hex join codes) or login.
 - LLM features from `readme.md`: lenient answer checking (EVL-3, needs the backend and the organization's key), generating categories and boards. Card generation exists (12).

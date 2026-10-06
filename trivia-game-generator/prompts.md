@@ -183,16 +183,14 @@ Also add the openai and gemini models in the organization record, let the user c
 do you have any doubts about these two things?
 
 
-# FUTURE
-
 # board background image
 User's can set a board's background image by uploading an image file or entering a url pointing to an image. 
 A board can have a default background image, but also users can set a custom image per game,  so different games using the same board can have  different images. 
 The user is able to set if they wan tot display it in mosaic, or expand it to feet the entire board, or cut a portion of the image, etc (think on other display image settings that make sense)
 Before implementing this, how would you say we should store the images ? as local files ? as db records ? This image will be served to multiple users playing so we should minimize the interfeering with the backend performance in general. Before implementing anytjhing, present me with questions and a implementation plan
 
-p2
-make sure background image is blurred or masked so the board spaces and graph arrows are clear. 
+
+
 
 # game screen
 
@@ -207,6 +205,14 @@ Can you elaborate a plan on how to implement this ? Would you need a frontend de
 The rest of the screens (admin) keep them as they are, this game / play screen is different since it's all the players will see and the experience should be the best for playing not admin.
 Present ideas and doubts and plan before implementing any of this..
 
+
+
+
+# FUTURE
+
+
+# public boards, decks, cards, bg images
+There must be a way to create cool boards decks, cards, images that can be shared across organizations. Simple thing is being able to make them public and I think that could work instead of explicit orcanization permissions what do you think before implementing anything ? or would you suggest both things, public and shared decks, cards, etc between organizations? Make a plan or ask questions before proceeding.
 
 # categories metadata
 currently, categories consists on a name and a description. Nevertheless, we could have similar categories or subcategories, such as "history", "history-world", "history-uruguay", each with different descriptions so the LLM has more context when creating cards. Nevertheless, categories must also have a label, which is displayed in a game, since we don't want to display long names such as history-uruguay or geography-uruguay but just "history" and "geography" in a game that which every card is related to uruguay. Do you understand or have any question befor implementing this ? 

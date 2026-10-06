@@ -57,7 +57,7 @@ export function useGamePlay(game: GameView | null, run: (action: Action) => stri
     else showToast(`Nothing to move right now. Waiting for ${game.phase}.`);
   };
 
-  return { dispatch, onSpaceClick, showToast, toast: toast && <div className="toast">{toast}</div> };
+  return { dispatch, onSpaceClick, showToast, toast: toast && <div className="toast">{toast}</div>, toastMessage: toast };
 }
 
 /** The board canvas, the hovered space's JSON and the legend. */
@@ -86,26 +86,33 @@ export function BoardView({
           </span>
         )}
       </div>
-      <div className="legend">
-        {board.categories.map((c) => (
-          <span key={c.id}>
-            <i style={{ background: c.color }} /> {c.name}
-          </span>
-        ))}
-        <span>
-          <i className="sp-roll" /> Roll again
-        </span>
-        <span>
-          <i className="sp-penalty" /> Penalty
-        </span>
-        <span>
-          <i className="sp-wild" /> Wildcard
-        </span>
-        <span>
-          <i className="sp-finish" /> Finish
-        </span>
-      </div>
+      <Legend board={board} />
     </>
+  );
+}
+
+/** Category colors and the special spaces. */
+export function Legend({ board }: { board: BoardDefinition }) {
+  return (
+    <div className="legend">
+      {board.categories.map((c) => (
+        <span key={c.id}>
+          <i style={{ background: c.color }} /> {c.name}
+        </span>
+      ))}
+      <span>
+        <i className="sp-roll" /> Roll again
+      </span>
+      <span>
+        <i className="sp-penalty" /> Penalty
+      </span>
+      <span>
+        <i className="sp-wild" /> Wildcard
+      </span>
+      <span>
+        <i className="sp-finish" /> Finish
+      </span>
+    </div>
   );
 }
 

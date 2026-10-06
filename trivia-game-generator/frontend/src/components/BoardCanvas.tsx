@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { isFork } from "../engine/board";
 import type { Background, BoardDefinition, GameView, Space } from "../engine/types";
 import { BackgroundLayer, boardArea, hasBackground, useBackgroundImage, type Rect } from "./background";
+import { NO_INSETS, boundsOf, toWorld, type Insets } from "./camera";
+import { useBoardCamera, type CameraCommand } from "./useBoardCamera";
 
 interface Props {
   board: BoardDefinition;
@@ -10,7 +12,17 @@ interface Props {
   game: GameView | null;
   onSpaceClick: (index: number) => void;
   onHover: (space: Space | null) => void;
+  /**
+   * Play screen: the canvas fills its container and the board pans and zooms inside it
+   * (drag, pinch, wheel, double tap). `insets` is the screen space floating controls cover.
+   */
+  viewport?: { insets: Insets; command: CameraCommand | null };
+  /** A space to show as hovered (e.g. a legal-move button the user is pointing at). */
+  highlight?: number | null;
 }
+
+/** Board cell size (px at zoom 1) in viewport mode. */
+const WORLD_CELL = 96;
 
 const STEP_MS = 160;
 const SPECIAL_LABEL: Record<string, string> = {
@@ -31,14 +43,22 @@ interface Layout {
   area: Rect;
 }
 
-function computeLayout(spaces: Space[], width: number): Layout {
-  const xs = spaces.map((s) => s.pos.x);
-  const ys = spaces.map((s) => s.pos.y);
+/**
+ * Fits the board to `width`, or with `fixedCell`, lays it out at that cell size (its own width).
+ * `transpose` swaps the grid's x and y (a mirror across the diagonal: same paths, same arrows),
+ * so a wide board can fill a portrait phone.
+ */
+function computeLayout(spaces: Space[], width: number, fixedCell?: number, transpose = false): Layout {
+  const gx = (s: Space) => (transpose ? s.pos.y : s.pos.x);
+  const gy = (s: Space) => (transpose ? s.pos.x : s.pos.y);
+  const xs = spaces.map(gx);
+  const ys = spaces.map(gy);
   const [minX, maxX, minY, maxY] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
   const cols = maxX - minX + 1;
   const rows = maxY - minY + 1;
   const pad = 16;
-  const cell = Math.min(96, (width - pad * 2) / cols);
+  if (fixedCell) width = cols * fixedCell + pad * 2;
+  const cell = fixedCell ?? Math.min(96, (width - pad * 2) / cols);
   const height = Math.max(200, rows * cell + pad * 2);
   const offsetX = (width - cols * cell) / 2;
   const offsetY = (height - rows * cell) / 2;
@@ -48,8 +68,25 @@ function computeLayout(spaces: Space[], width: number): Layout {
     width,
     height,
     area: boardArea({ x: offsetX, y: offsetY, w: cols * cell, h: rows * cell }, cell),
-    center: (s) => ({ x: offsetX + (s.pos.x - minX + 0.5) * cell, y: offsetY + (s.pos.y - minY + 0.5) * cell }),
+    center: (s) => ({ x: offsetX + (gx(s) - minX + 0.5) * cell, y: offsetY + (gy(s) - minY + 0.5) * cell }),
   };
+}
+
+/**
+ * Viewport mode: lay a wide board out tall on a portrait screen (and the other way round) when
+ * that makes its tiles clearly bigger. Not with a background image, which is drawn for the
+ * board's own shape.
+ */
+function shouldTranspose(spaces: Space[], view: { w: number; h: number }, withImage: boolean): boolean {
+  if (withImage || !view.w || !view.h || !spaces.length) return false;
+  const xs = spaces.map((s) => s.pos.x);
+  const ys = spaces.map((s) => s.pos.y);
+  const cols = Math.max(...xs) - Math.min(...xs) + 1;
+  const rows = Math.max(...ys) - Math.min(...ys) + 1;
+  // Roughly the free area: the floating bars take ~250px of height
+  const [w, h] = [view.w, Math.max(1, view.h - 250)];
+  const fit = (c: number, r: number) => Math.min(w / c, h / r);
+  return fit(rows, cols) > fit(cols, rows) * 1.25;
 }
 
 export type Theme = ReturnType<typeof readTheme>;
@@ -59,6 +96,8 @@ export function readTheme() {
   const v = (name: string) => css.getPropertyValue(name).trim();
   return {
     bg: v("--canvas-bg"),
+    /** Around the board in viewport mode. */
+    table: v("--table"),
     text: v("--text"),
     muted: v("--muted"),
     edge: v("--edge"),
@@ -184,18 +223,25 @@ export function drawTile(
   }
 }
 
-export function BoardCanvas({ board, background, game, onSpaceClick, onHover }: Props) {
+export function BoardCanvas({ board, background, game, onSpaceClick, onHover, viewport, highlight = null }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [width, setWidth] = useState(800);
-  const [hovered, setHovered] = useState<number | null>(null);
+  const [view, setView] = useState({ w: 0, h: 0 });
+  const [mouseOver, setHovered] = useState<number | null>(null);
+  const hovered = highlight ?? mouseOver;
   const [themeTick, setThemeTick] = useState(0);
   const [anim, setAnim] = useState<{ playerId: string; path: number[]; start: number } | null>(null);
   const [now, setNow] = useState(0);
   const bgImage = useBackgroundImage(background);
   const [bgLayer] = useState(() => new BackgroundLayer());
 
-  const layout = useMemo(() => computeLayout(board.spaces, width), [board, width]);
+  const zoomable = !!viewport;
+  const transpose = zoomable && shouldTranspose(board.spaces, view, hasBackground(background));
+  const layout = useMemo(
+    () => (zoomable ? computeLayout(board.spaces, 0, WORLD_CELL, transpose) : computeLayout(board.spaces, width)),
+    [board, width, zoomable, transpose],
+  );
   const byIndex = useMemo(() => new Map(board.spaces.map((s) => [s.index, s])), [board]);
   const categoryColor = useMemo(() => Object.fromEntries(board.categories.map((c) => [c.id, c.color])), [board]);
   const categoryName = useMemo(() => Object.fromEntries(board.categories.map((c) => [c.id, c.name])), [board]);
@@ -203,7 +249,10 @@ export function BoardCanvas({ board, background, game, onSpaceClick, onHover }: 
   // Track container width
   useEffect(() => {
     const el = wrapRef.current!;
-    const ro = new ResizeObserver(([entry]) => setWidth(Math.max(280, entry.contentRect.width)));
+    const ro = new ResizeObserver(([entry]) => {
+      setWidth(Math.max(280, entry.contentRect.width));
+      setView({ w: Math.round(entry.contentRect.width), h: Math.round(entry.contentRect.height) });
+    });
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
@@ -241,6 +290,54 @@ export function BoardCanvas({ board, background, game, onSpaceClick, onHover }: 
   const destinations = choosing ? game.destinations : {};
   const previewPath = hovered !== null ? destinations[hovered] : undefined;
 
+  // ---- Viewport mode: the camera ----
+  const world = useMemo(() => ({ x: 0, y: 0, w: layout.width, h: layout.height }), [layout]);
+  const spaceAtWorld = (p: { x: number; y: number }, snap: number) => {
+    const half = layout.tile / 2;
+    const hit = board.spaces.find((s) => {
+      const c = layout.center(s);
+      return Math.abs(p.x - c.x) <= half && Math.abs(p.y - c.y) <= half;
+    });
+    if (hit || !snap) return hit ?? null;
+    // Near miss on a small screen: the closest legal destination within reach of the finger
+    let best: Space | null = null;
+    let bestD = half + snap;
+    for (const s of board.spaces) {
+      if (!(s.index in destinations)) continue;
+      const c = layout.center(s);
+      const d = Math.max(Math.abs(p.x - c.x), Math.abs(p.y - c.y));
+      if (d <= bestD) [best, bestD] = [s, d];
+    }
+    return best;
+  };
+  const { cam, handlers } = useBoardCamera({
+    enabled: !!viewport,
+    canvasRef,
+    view,
+    world,
+    tile: layout.tile,
+    insets: viewport?.insets ?? NO_INSETS,
+    command: viewport?.command ?? null,
+    rectOf: (indexes) => {
+      const pts = indexes.flatMap((i) => (byIndex.has(i) ? [layout.center(byIndex.get(i)!)] : []));
+      return pts.length ? boundsOf(pts, layout.cell * 0.6) : null;
+    },
+    onTap: (p) => {
+      if (!cam) return false;
+      const s = spaceAtWorld(toWorld(cam, p), 18 / cam.scale);
+      if (!s) return false;
+      onSpaceClick(s.index);
+      return s.index in destinations;
+    },
+    onHover: (p) => {
+      const s = p && cam ? spaceAtWorld(toWorld(cam, p), 0) : null;
+      if ((s?.index ?? null) !== mouseOver) {
+        setHovered(s?.index ?? null);
+        onHover(s);
+      }
+    },
+  });
+
   // Keep redrawing while a destination must be picked, so legal targets pulse
   useEffect(() => {
     if (!choosing) return;
@@ -256,18 +353,39 @@ export function BoardCanvas({ board, background, game, onSpaceClick, onHover }: 
   // ---- Draw ----
   useEffect(() => {
     const canvas = canvasRef.current!;
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = layout.width * dpr;
-    canvas.height = layout.height * dpr;
-    canvas.style.width = `${layout.width}px`;
-    canvas.style.height = `${layout.height}px`;
     const ctx = canvas.getContext("2d")!;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const theme = readTheme();
     const { tile, center } = layout;
-
-    ctx.fillStyle = theme.bg;
-    ctx.fillRect(0, 0, layout.width, layout.height);
+    if (viewport) {
+      // The canvas covers the view; the board sits on a "table" at the camera's position.
+      // Phones get at most 2x pixels: 3x costs a lot of fill rate for little visible gain.
+      if (!cam) return;
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const [w, h] = [Math.round(view.w * dpr), Math.round(view.h * dpr)];
+      if (canvas.width !== w || canvas.height !== h) [canvas.width, canvas.height] = [w, h];
+      canvas.style.width = `${view.w}px`;
+      canvas.style.height = `${view.h}px`;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.fillStyle = theme.table || theme.bg;
+      ctx.fillRect(0, 0, w, h);
+      ctx.setTransform(dpr * cam.scale, 0, 0, dpr * cam.scale, dpr * cam.x, dpr * cam.y);
+      ctx.save();
+      ctx.shadowColor = "rgba(0, 0, 0, 0.25)";
+      ctx.shadowBlur = 24;
+      roundRect(ctx, 0, 0, layout.width, layout.height, layout.cell * 0.2);
+      ctx.fillStyle = theme.bg;
+      ctx.fill();
+      ctx.restore();
+    } else {
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = layout.width * dpr;
+      canvas.height = layout.height * dpr;
+      canvas.style.width = `${layout.width}px`;
+      canvas.style.height = `${layout.height}px`;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.fillStyle = theme.bg;
+      ctx.fillRect(0, 0, layout.width, layout.height);
+    }
     if (hasBackground(background)) bgLayer.draw(ctx, background, bgImage, layout.area, theme.bg, layout.cell * 0.2);
 
     // Edges. Over an image, each arrow gets a halo in the board color so it stays visible.
@@ -384,7 +502,7 @@ export function BoardCanvas({ board, background, game, onSpaceClick, onHover }: 
         ctx.fillText(p.name.slice(0, 1).toUpperCase(), tx, ty + 0.5);
       });
     }
-  }, [board, game, layout, hovered, anim, now, themeTick, byIndex, categoryColor, categoryName, destinations, previewPath, background, bgImage, bgLayer]);
+  }, [board, game, layout, hovered, anim, now, themeTick, byIndex, categoryColor, categoryName, destinations, previewPath, background, bgImage, bgLayer, viewport, cam, view]);
 
   // ---- Hit testing ----
   const spaceAtPoint = (e: React.MouseEvent<HTMLCanvasElement>): Space | null => {
@@ -397,6 +515,13 @@ export function BoardCanvas({ board, background, game, onSpaceClick, onHover }: 
       return Math.abs(px - c.x) <= half && Math.abs(py - c.y) <= half;
     }) ?? null;
   };
+
+  if (viewport)
+    return (
+      <div ref={wrapRef} className="board-viewport">
+        <canvas ref={canvasRef} style={{ cursor: hovered !== null && hovered in destinations ? "pointer" : "grab" }} {...handlers} />
+      </div>
+    );
 
   return (
     <div ref={wrapRef} className="board-canvas">

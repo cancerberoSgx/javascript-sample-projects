@@ -258,6 +258,14 @@ export function SharePanel({ game, onChanged }: { game: GameDetail; onChanged: (
           New link
         </button>
       </div>
+      {game.status === "running" && (
+        <p className="small">
+          <a href={link} target="_blank" rel="noreferrer">
+            Open the play screen ↗
+          </a>{" "}
+          <span className="muted">(full screen, as players see it; you can play the players you added by name there)</span>
+        </p>
+      )}
       <ErrorBox error={action.error} />
     </section>
   );

@@ -6,6 +6,7 @@
   --muted: #6b7280;
   --accent: #6366f1;
   --canvas-bg: #eef0f4;
+  --table: #d9dee7; /* around the board on the play screen */
   --edge: #9aa3b2;
   --space-start: #64748b;
   --space-finish: #ca8a04;
@@ -28,6 +29,7 @@
     --muted: #8b93a3;
     --accent: #818cf8;
     --canvas-bg: #12161d;
+    --table: #07090d;
     --edge: #4b5466;
     --error-bg: #2a1215;
     --error-text: #fca5a5;

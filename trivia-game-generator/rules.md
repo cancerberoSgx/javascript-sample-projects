@@ -190,6 +190,14 @@ Each player plays on their own device. The server runs the engine (a Python port
 - `MPL-10` A game is `finished` as soon as the engine reaches GAME_OVER. The host can also end a running game early, without a winner.
 - `MPL-11` The live state is saved after every action. A restart or a dropped connection loses nothing: devices reconnect and continue. Games started before live play get a fresh state the first time they're opened.
 
+#### 2.7.1 The play screen
+What a player's device shows at `/games/:id?code=…` once the game runs. Presentation only: none of this changes the engine or what the server sends.
+
+- `PLY-UI-1` The board fills the screen and pans and zooms (drag, pinch, wheel, double tap, + / − / fit / find-me buttons). The view never changes the game; a tap only counts as a move on one of the active player's legal destinations, and a near miss snaps to the closest legal destination within reach.
+- `PLY-UI-2` A board whose shape doesn't match the screen (wide board, portrait phone, or the reverse) may be drawn **transposed** (x and y swapped), when that makes its tiles at least 25% bigger. The paths, arrows and numbers are the same. Boards with a background image are never transposed.
+- `PLY-UI-3` Every device sees each roll (dice animation), each question (only the active device can answer; the others read along and can hide it to look at the board), each answer with the right answer (MPL-6), and the end of the game. The device whose turn starts gets a "Your turn!" alert (and a vibration where supported).
+- `PLY-UI-4` The board name, track, win conditions, players and scores, the log and the legend are in sheets opened from floating buttons. The game's name isn't on the main screen. The player's name, the game status and a lost connection float over the board.
+
 ---
 
 ## 3. Turn State Machine

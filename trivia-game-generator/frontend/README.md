@@ -68,7 +68,15 @@ Impersonation: root users get an **Impersonate** button on member users (Organiz
 | `src/components/GenerateCards.tsx` | Card generation: `useGeneration` (providers + the deck's open generation, polled while it runs), `GenerateForm`, `GenerationPanel` (progress, then the review list) |
 | `src/components/background.ts` | Backgrounds (rules.md §2.1.2): the pure layout math (`boardArea`, `cropRect`, `placeBackground`, tested in `background.test.ts`), `useBackgroundImage`, and `BackgroundLayer`, which renders the image once into an offscreen canvas that both board canvases copy every frame |
 | `src/components/BackgroundEditor.tsx` | `BackgroundEditor` (fit, crop rectangle, sliders) and `ImageLibrary` (upload, drop, import from URL, rename, delete). Used by the board editor and the game setup |
-| `src/components/PlayerGamePage.tsx` | `/games/:id?code=…`: the player's own device |
+| `src/components/PlayerGamePage.tsx` | `/games/:id?code=…`: the player's own device. Lobby and join cards, then `PlayScreen` |
+| `src/play/PlayScreen.tsx` | The phone-first play screen (rules.md §2.7.1): full-screen board, floating identity / turn pill / zoom buttons, the action dock (roll, legal-move buttons, back to the question), sheet buttons |
+| `src/play/moments.tsx` | Dice, question card, answer reveal, wildcard picker, game over |
+| `src/play/events.ts` | `diffEvents(prev, next)`: rolls, answers, new turns and game over, found by diffing two views (the server sends only states). Tested in `events.test.ts` |
+| `src/play/layers.tsx` | `Layer` (native modal `<dialog>`: bottom sheet or centered card) and `Floating` (a manual popover, so notices stay above open dialogs) |
+| `src/play/feedback.ts` | WebAudio sounds (no files; off by default, per device), vibration, screen wake lock, fullscreen |
+| `src/play/play.css` | Play screen styles (phone first; short screens get a one-row top bar and a side nav) |
+| `src/components/camera.ts` | Pan/zoom math for `BoardCanvas`'s `viewport` mode (fit, clamp, zoom around a point, pinch, bring into view). Tested in `camera.test.ts` |
+| `src/components/useBoardCamera.ts` | Pointer, pinch, wheel and double-tap handling plus camera commands (`fit`, `zoomIn`, `zoomOut`, `focus`) |
 
 ## Multiplayer
 
@@ -78,6 +86,20 @@ Games are played live, each player on their own device (rules.md §2.7). The ser
 - **Players** open the link: name → lobby → game. The device keeps a player token in `localStorage` (`trivia.player.<gameId>`), so a reload or a dropped connection comes back as the same player. Opening the link without joining (or after the start) just watches.
 - `useLiveGame(gameId, code)` opens `ws(s)://<host>/api/games/:id/ws` (Vite proxies it, `ws: true`), sends the hello (login token, player token, code), keeps the latest message, and reconnects with backoff. `canActNow()` decides whether this screen plays the current turn; others see "Waiting for … to roll" and the question read-only.
 - Question timers run on server time (`server_now` → `clockOffset`), and the server times out unanswered questions itself, so the browser never sends a timeout in multiplayer.
+
+### The play screen (players' phones)
+
+The player page doesn't use the admin layout: `PlayScreen` draws the board full screen with `BoardCanvas` in **`viewport` mode** (the canvas fills its container and a camera pans/zooms the board; the admin canvases don't pass `viewport` and are unchanged). Everything else floats:
+
+- Top: who this device is (name + color, or Host / Watching) and the status; sound and fullscreen; the **turn pill** (whose turn and what they're doing, plus the latest log line). It turns accent-colored on your turn.
+- Right: + / − (hidden on short screens), fit the whole board, find my token.
+- Bottom: the **dock** with this device's action (🎲 Roll, the legal-move buttons, "Back to the question", "Final results") and the sheet buttons: Players, Log, Legend, Board (info). Sheets slide up on phones and are centered panels on wide screens.
+- Cards (`moments.tsx`): dice, question, answer reveal, wildcard, game over. They're driven by `diffEvents` between consecutive server views, so a device that connects mid-game just shows the current state (no replayed animations).
+- Camera: the first view fits the whole board inside the floating bars (`useInsets` measures them). After your roll it brings your token and every legal destination into view with tappable tiles (≥ 48px); other players' moves are followed only if you haven't moved the board yourself in the last 6 s. Fitting never makes tiles bigger than 140px; the user can zoom to 280px.
+- Wide boards on portrait phones (and tall ones in landscape) are drawn transposed when that's ≥ 25% bigger (rules.md PLY-UI-2).
+- `html.play-mode` (set while the page is mounted) stops page scroll, overscroll and pull-to-refresh; the board and buttons use `touch-action` so pinches never zoom the page.
+- PWA: `public/manifest.webmanifest` + `public/icons/` (PNG icons rendered from `icon.svg`). It has no `start_url`, so adding the game to the home screen opens that game's link. No service worker (a live game is useless offline).
+- The host's game page links to the play screen ("Open the play screen ↗" in the invite panel), where the host can play the players they added by name.
 
 ## Generating cards
 
