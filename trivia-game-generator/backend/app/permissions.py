@@ -8,12 +8,13 @@ Member:  sees only their own organization and its users. Can create users there 
 A resource the caller can't see is reported as 404, not 403, so its existence isn't leaked.
 """
 
+import hmac
 from typing import Protocol
 
 from fastapi import HTTPException, status
 
 from .auth import CurrentUser
-from .models import Role, User, UserChanges
+from .models import Game, Player, Role, User, UserChanges
 
 
 def not_found(what: str = "Not found") -> HTTPException:
@@ -97,3 +98,28 @@ def list_org(me: CurrentUser, organization_id: int | None) -> int:
     if not can_access_org(me, org_id):
         raise not_found("Organization not found")
     return org_id
+
+
+# ---------- multiplayer games (rules.md §2.7, MPL-*) ----------
+# Hosting (setup, start, skip a turn, remove players, new link) is organization content, so
+# it follows the rules above. Players don't need an account: the game's link (its join code)
+# lets anyone join while the game is awaiting, and their device then holds a player token.
+
+
+def join_code_matches(game: Game, code: str | None) -> bool:
+    if not code:
+        return False
+    return hmac.compare_digest(code.strip().upper().encode(), game.join_code.encode())
+
+
+def check_join(game: Game, code: str | None) -> None:
+    """MPL-1, MPL-2: a valid link, and only while the game is awaiting players."""
+    if not join_code_matches(game, code):
+        raise not_found("Game not found. The link may be out of date: ask the host for a new one.")
+    if game.status != "awaiting":
+        raise conflict("This game has already started, so it can't be joined anymore")
+
+
+def can_watch(me: CurrentUser | None, game: Game, player: Player | None, code: str | None) -> bool:
+    """MPL-5: who may open a game's live view. Its organization (and root), its players, and anyone with its link."""
+    return (me is not None and can_access_org(me, game.organization_id)) or player is not None or join_code_matches(game, code)

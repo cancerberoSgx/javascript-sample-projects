@@ -137,7 +137,7 @@ def validate_game_setup(
     if "finish" in board.effective_config()["win_conditions"] and not any(gp for _, gp in cards):
         errors.append("The board's 'finish' win needs at least one grand prize card in the deck")
     if player_count < 1:
-        errors.append("Add at least one player")
+        errors.append("Wait for at least one player to join")
     return errors
 
 

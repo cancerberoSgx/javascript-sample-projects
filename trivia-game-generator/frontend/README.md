@@ -1,8 +1,8 @@
 # Trivia Game Generator (frontend)
 
 A React + Vite app. After login it shows:
-- **Games**: set up a game (board, deck, a category for each board slot, players), see what still blocks it, start it, finish it. A running game has **▶ Play** and a list of its saves.
-- **Play** (`/games/:id/play`): plays a running game on its snapshot, exactly like the Boards demo (hot-seat: the game's players take turns on one screen). **Save** stores the whole play state on the server; anyone in the organization can **Continue** it later (rules.md §2.7).
+- **Games**: set up a game (board, deck, a category for each board slot), share its link, watch players join live, start it. A running game shows the live board with host controls (skip a turn, remove a player, end the game). See [Multiplayer](#multiplayer).
+- **Player page** (`/games/:id?code=…`): what players open on their own devices. No login: pick a name, wait in the lobby, play your turns.
 - **Boards**: edit a board's JSON definition, with live validation and a canvas preview. New boards can start from an example.
 - **Decks**: questions and answers (open or multiple choice, difficulty, grand prize).
 - **Categories**: name, description, color.
@@ -17,7 +17,8 @@ Every tab has its own address ([React Router](https://reactrouter.com), `Browser
 |---|---|
 | `/` | Redirects to `/games` |
 | `/games/:id`, `/boards/:id`, `/decks/:id` | That item, selected in its list. The bare list URL (`/games`) opens the first item |
-| `/games/:id/play`, `/games/:id/play?save=:saveId` | Play a running game; with `save`, that save is loaded. Saving updates `?save=`, so a reload continues from the last save |
+| `/games/:id?code=:joinCode` | The player page (`PlayerGamePage`), logged in or not. It's rendered before the login check in `App.tsx` |
+| `/games/:id/play` | Old hot-seat URL: redirects to `/games/:id` |
 | `/categories`, `/categories/:id` | The categories table; with an id, that category's edit form |
 | `/organizations/:id` | That organization and its users. Members only ever see their own |
 | `/demo` | Boards demo (root only; others are sent to `/games`) |
@@ -49,7 +50,7 @@ Impersonation: root users get an **Impersonate** button on member users (Organiz
 | `public/boards/index.json` | Manifest of example boards (SER-1) |
 | `public/boards/*.json` | Example boards (SER-2, format v2). Each space has `type`, `slot`, `next` (forks = more than one entry) and `pos`. Also seeded into the backend |
 | `public/decks/general.json` | Sample deck (SER-3) with its categories. Also seeded into the backend |
-| `src/engine/` | Pure TypeScript game engine, no React. It can move to the server later as is |
+| `src/engine/` | Pure TypeScript game engine, no React. The backend runs a Python port of it (`backend/app/engine/`) for multiplayer games; `engine.test.ts` writes the conformance fixture that keeps them identical |
 | `src/engine/engine.ts` | `createGame` / `applyAction(state, action, now)`: a pure state machine (§3–§7) |
 | `src/engine/movement.ts` | Legal destinations for a roll (MOV-*, FRK-*) |
 | `src/engine/board.ts` | Default config and board/deck validation (BRD-*, CRD-*) |
@@ -59,16 +60,18 @@ Impersonation: root users get an **Impersonate** button on member users (Organiz
 | `src/BoardsDemo.tsx` | The boards demo tab |
 | `src/api.ts` | REST client for the backend |
 | `src/App.tsx` | Header, tabs and routes |
-| `src/components/PlayTable.tsx` | The play UI shared by the Boards demo and stored games: `useGamePlay` (dispatch + toasts), `BoardView`, `GamePanels` |
-| `src/components/GamePlayPage.tsx` | `/games/:id/play`: new playthrough, save / save as new, load, delete. Warns before leaving with unsaved progress |
+| `src/components/PlayTable.tsx` | The play UI shared by the Boards demo and live games: `useGamePlay` (dispatch + toasts; `useLocalGamePlay` runs the engine in the browser), `BoardView`, `GamePanels` |
+| `src/components/LiveGame.tsx` | Multiplayer: `useLiveGame` (the game's WebSocket), `LiveTable`, lobby list, join form, share link, host controls |
+| `src/components/PlayerGamePage.tsx` | `/games/:id?code=…`: the player's own device |
 
-## Saved games
+## Multiplayer
 
-A save is the engine's `GameState` as JSON: positions, scores, tokens, the draw/used piles, the RNG, the pending question and the log. So loading continues exactly where it stopped, with the same upcoming dice and cards (SAV-2). The question timer is wall-clock time, so `suspendGame()` stores the time left before saving and `resumeGame()` restarts it on load (SAV-3, `engine.ts`).
+Games are played live, each player on their own device (rules.md §2.7). The server runs the engine; the browser only sends actions and draws what the server broadcasts.
 
-- **Save** overwrites the loaded save (or creates the first one); **Save as new** keeps it and adds another.
-- Unsaved progress: the Save panel says so, loading another save asks first, and the browser asks before a reload or close. In-app links (the tabs) don't ask, because `BrowserRouter` has no navigation blocking.
-- Reaching game over doesn't finish the stored game: **Mark game as finished** does, and after that it can't be played or saved.
+- **Host** (any user of the organization), on `/games/:id`: sets the game up, copies the **join link**, and watches players join (green dot = online). Players can be reordered or removed, and the host can add players by name who then play on the host's screen. The host can also join from this device. **Start game** closes the lobby. While running: **Skip <name>'s turn**, **Remove** a player, **End game**.
+- **Players** open the link: name → lobby → game. The device keeps a player token in `localStorage` (`trivia.player.<gameId>`), so a reload or a dropped connection comes back as the same player. Opening the link without joining (or after the start) just watches.
+- `useLiveGame(gameId, code)` opens `ws(s)://<host>/api/games/:id/ws` (Vite proxies it, `ws: true`), sends the hello (login token, player token, code), keeps the latest message, and reconnects with backoff. `canActNow()` decides whether this screen plays the current turn; others see "Waiting for … to roll" and the question read-only.
+- Question timers run on server time (`server_now` → `clockOffset`), and the server times out unanswered questions itself, so the browser never sends a timeout in multiplayer.
 
 ## Example boards
 
@@ -83,4 +86,5 @@ A save is the engine's `GameState` as JSON: positions, scores, tokens, the draw/
 - **Dice: rig N** forces the next roll, so you can test specific forks or spaces.
 - **force ✓ / force ✗** settles a question without answering it.
 - **Disable answer timer** and **Seed**: the same seed with the same inputs replays the same game.
+- These are Boards demo only. Multiplayer games have no rigged dice or forced answers (MPL-7).
 - **Load JSON…** loads a board file from disk and validates it. Its `deck` path must exist under `public/`.

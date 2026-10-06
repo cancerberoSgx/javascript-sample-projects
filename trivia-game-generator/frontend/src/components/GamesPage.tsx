@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router";
-import { api, type Board, type Category, type Deck, type GameDetail, type GameInput } from "../api";
+import { api, type Board, type Category, type Deck, type GameDetail, type GameInput, type LiveMessage } from "../api";
 import { BoardPreview, ErrorBox, NotFound, StatusBadge, categoryMapping, snapshotMapping, toBoardFile, useAction, useList, useRouteSelection } from "./common";
-import { SavesPanel } from "./GamePlayPage";
+import { FinalResult, HostControls, JoinForm, LeaveButton, LiveTable, LobbyPlayers, SharePanel, YouBanner, useLiveGame, type LiveGame } from "./LiveGame";
 
 export function GamesPage({ orgId }: { orgId: number }) {
   const games = useList(() => api.listGames(orgId), [orgId]);
@@ -76,11 +75,18 @@ function GameEditor({
   const decks = useList(() => api.listDecks(orgId), [orgId]);
   const categories = useList(() => api.listCategories(orgId), [orgId]);
   const action = useAction();
-  const navigate = useNavigate();
+  const live = useLiveGame(gameId);
+  const msg = live.msg;
 
+  // The live view says when players join or leave and when the game starts or ends: re-read the
+  // details then (setup errors depend on the players, the snapshot on the start)
+  const liveKey = msg && `${msg.game.status}|${msg.game.players.map((p) => `${p.id}:${p.position}:${p.removed}`).join()}`;
   useEffect(() => {
     api.getGame(gameId).then(setGame, action.setError);
-  }, [gameId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [gameId, liveKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (liveKey) onChanged();
+  }, [msg?.game.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!game) return <ErrorBox error={action.error} />;
 
@@ -89,31 +95,38 @@ function GameEditor({
     return onChanged();
   };
   const update = (body: GameInput) => action.run(async () => apply(await api.updateGame(game.id, body)));
+  const deleteButton = (
+    <button className="danger" onClick={() => confirm(`Delete game "${game.name}"?`) && action.run(async () => (await api.deleteGame(game.id), onDeleted()))}>
+      Delete game
+    </button>
+  );
 
   const header = (
     <div className="row between">
       <h2>
         {game.name} <StatusBadge status={game.status} />
       </h2>
-      <span className="muted small">created by {game.creator_name ?? "a deleted user"}</span>
+      <span className="row">
+        {msg && <YouBanner msg={msg} />}
+        <span className="muted small">created by {game.creator_name ?? "a deleted user"}</span>
+      </span>
     </div>
   );
 
-  if (game.status !== "not_started") {
+  if (game.status !== "awaiting") {
     return (
-      <StartedGame game={game} header={header} error={action.error}>
-        {game.status === "running" && (
-          <div className="row">
-            <button className="primary" onClick={() => navigate(`/games/${game.id}/play`)}>
-              ▶ Play
-            </button>
-            <button onClick={() => action.run(async () => apply(await api.finishGame(game.id)))}>Mark as finished</button>
-          </div>
+      <>
+        <StartedGame game={game} header={header} error={action.error}>
+          {deleteButton}
+        </StartedGame>
+        {game.status === "running" && <SharePanel game={game} onChanged={setGame} />}
+        {msg?.game.status === "finished" && <FinalResult msg={msg} />}
+        {msg?.state ? (
+          <LiveTable live={live} aside={<HostControls game={game} msg={msg} onChanged={apply} />} />
+        ) : (
+          <p className="muted">{live.fatal ?? (msg ? "This game ended before live play existed, so there's no board to show." : "Connecting to the game…")}</p>
         )}
-        <button className="danger" onClick={() => confirm(`Delete game "${game.name}"?`) && action.run(async () => (await api.deleteGame(game.id), onDeleted()))}>
-          Delete game
-        </button>
-      </StartedGame>
+      </>
     );
   }
 
@@ -136,9 +149,11 @@ function GameEditor({
         {board && <BoardPreview board={toBoardFile(board)} mapping={categoryMapping(board.definition, game.categories, categories.items)} />}
       </section>
 
+      <SharePanel game={game} onChanged={setGame} />
+
       <section className="panel">
         <h2>Players · {game.players.length}</h2>
-        <PlayersEditor names={game.players.map((p) => p.name)} onChange={(names) => update({ players: names.map((name) => ({ name })) })} />
+        {msg ? <LobbyEditor game={game} msg={msg} live={live} onChanged={apply} /> : <p className="muted small">Connecting…</p>}
       </section>
 
       <section className="panel">
@@ -153,17 +168,89 @@ function GameEditor({
             </ul>
           </div>
         ) : (
-          <div className="ok">Ready to start. Starting copies the board, deck and categories into the game, so later edits won't change it.</div>
+          <div className="ok">
+            Ready to start with {game.players.length} player{game.players.length === 1 ? "" : "s"}. Starting closes the lobby and copies the board, deck and categories into
+            the game, so later edits won't change it.
+          </div>
         )}
         <div className="row between">
           <button className="primary" disabled={game.setup_errors.length > 0 || action.busy} onClick={() => action.run(async () => apply(await api.startGame(game.id)))}>
             ▶ Start game
           </button>
-          <button className="danger" onClick={() => confirm(`Delete game "${game.name}"?`) && action.run(async () => (await api.deleteGame(game.id), onDeleted()))}>
-            Delete game
-          </button>
+          {deleteButton}
         </div>
       </section>
+    </>
+  );
+}
+
+/** The lobby, live: who joined and who's online. The host can reorder, remove and add players. */
+function LobbyEditor({ game, msg, live, onChanged }: { game: GameDetail; msg: LiveMessage; live: LiveGame; onChanged: (g: GameDetail) => void }) {
+  const [draft, setDraft] = useState("");
+  const [joining, setJoining] = useState(false);
+  const action = useAction();
+  const players = msg.game.players;
+  const ids = players.map((p) => p.id);
+  const move = (i: number, d: number) => {
+    const next = [...ids];
+    [next[i], next[i + d]] = [next[i + d], next[i]];
+    action.run(async () => onChanged(await api.orderPlayers(game.id, next)));
+  };
+  const full = players.length >= 12;
+
+  return (
+    <>
+      <ErrorBox error={action.error} />
+      <LobbyPlayers msg={msg}>
+        {(p) => {
+          const i = ids.indexOf(p.id);
+          return (
+            <span className="row">
+              <button className="small" disabled={i === 0 || action.busy} onClick={() => move(i, -1)} title="Earlier in turn order">
+                ↑
+              </button>
+              <button className="small" disabled={i === ids.length - 1 || action.busy} onClick={() => move(i, 1)} title="Later in turn order">
+                ↓
+              </button>
+              {p.id === msg.you.player_id ? (
+                <LeaveButton gameId={game.id} onLeft={live.reconnect} />
+              ) : (
+                <button className="small danger" disabled={action.busy} onClick={() => action.run(async () => onChanged(await api.removePlayer(game.id, p.id)))}>
+                  Remove
+                </button>
+              )}
+            </span>
+          );
+        }}
+      </LobbyPlayers>
+      <form
+        className="row"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!draft.trim()) return;
+          action.run(async () => {
+            onChanged(await api.addPlayer(game.id, draft.trim()));
+            setDraft("");
+          });
+        }}
+      >
+        <input placeholder="Add a player who plays on this screen" maxLength={40} value={draft} onChange={(e) => setDraft(e.target.value)} />
+        <button className="small" disabled={full || action.busy}>
+          + Add
+        </button>
+      </form>
+      {msg.you.player_id === null &&
+        !full &&
+        (joining ? (
+          <JoinForm gameId={game.id} code={game.join_code} onJoined={() => (setJoining(false), live.reconnect())} />
+        ) : (
+          <button className="small self-start" onClick={() => setJoining(true)}>
+            Join as a player from this device
+          </button>
+        ))}
+      <p className="muted small">
+        The order is the turn order. Players who join with the link play on their own devices; players added here play on the host's screen. Names must be unique.
+      </p>
     </>
   );
 }
@@ -249,64 +336,19 @@ function SlotRow({ slot, categories, value, taken, onChange }: { slot: string; c
   );
 }
 
-function PlayersEditor({ names, onChange }: { names: string[]; onChange: (names: string[]) => void }) {
-  const [draft, setDraft] = useState("");
-  const move = (i: number, d: number) => {
-    const next = [...names];
-    [next[i], next[i + d]] = [next[i + d], next[i]];
-    onChange(next);
-  };
-  return (
-    <>
-      <ol className="players-list">
-        {names.map((n, i) => (
-          <li key={`${i}-${n}`} className="row between">
-            <span>{n}</span>
-            <span className="row">
-              <button className="small" disabled={i === 0} onClick={() => move(i, -1)} title="Earlier in turn order">
-                ↑
-              </button>
-              <button className="small" disabled={i === names.length - 1} onClick={() => move(i, 1)} title="Later in turn order">
-                ↓
-              </button>
-              <button className="small danger" onClick={() => onChange(names.filter((_, j) => j !== i))}>
-                Remove
-              </button>
-            </span>
-          </li>
-        ))}
-      </ol>
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!draft.trim()) return;
-          onChange([...names, draft.trim()]);
-          setDraft("");
-        }}
-      >
-        <input placeholder="Player name (doesn't need an account)" value={draft} onChange={(e) => setDraft(e.target.value)} />
-        <button className="small" disabled={names.length >= 12}>
-          + Add player
-        </button>
-      </form>
-      <p className="muted small">The order is the turn order.</p>
-    </>
-  );
-}
-
 function StartedGame({ game, header, error, children }: { game: GameDetail; header: React.ReactNode; error: unknown; children: React.ReactNode }) {
   const snap = game.snapshot!;
   const mapping = snapshotMapping(snap);
   return (
-    <>
-      <section className="panel">
-        {header}
-        <p className="muted small">
+    <section className="panel">
+      {header}
+      <ErrorBox error={error} />
+      <details>
+        <summary className="small muted">
           Started {new Date(game.started_at!).toLocaleString()}
-          {game.finished_at && ` · finished ${new Date(game.finished_at).toLocaleString()}`}. This is the snapshot taken at start: later edits to the board, deck or
-          categories don't change it.
-        </p>
+          {game.finished_at && ` · finished ${new Date(game.finished_at).toLocaleString()}`} · {snap.board.name} · {snap.deck.name}
+        </summary>
+        <p className="muted small">This is the snapshot taken at start: later edits to the board, deck or categories don't change it.</p>
         <dl className="grid-form">
           <dt>Board</dt>
           <dd>{snap.board.name}</dd>
@@ -317,38 +359,10 @@ function StartedGame({ game, header, error, children }: { game: GameDetail; head
           {Object.entries(mapping).map(([slot, c]) => (
             <SnapshotSlot key={slot} slot={slot} name={c.name} color={c.color} />
           ))}
-          <dt>Players</dt>
-          <dd>{game.players.map((p) => p.name).join(", ")}</dd>
         </dl>
-        <BoardPreview board={snap.board} mapping={mapping} />
-      </section>
-      <section className="panel">
-        <ErrorBox error={error} />
-        <p className="muted small">
-          {game.status === "running"
-            ? "Play it in this browser (hot-seat: the players take turns on one screen). Save any time and continue later."
-            : "This game is finished: its saves can still be looked up here, but not played."}
-        </p>
         <div className="row between">{children}</div>
-      </section>
-      <GameSaves game={game} />
-    </>
-  );
-}
-
-function GameSaves({ game }: { game: GameDetail }) {
-  const saves = useList(() => api.listSaves(game.id), [game.id]);
-  const navigate = useNavigate();
-  return (
-    <SavesPanel
-      saves={saves.items}
-      error={saves.error}
-      currentId={null}
-      gameId={game.id}
-      canOpen={game.status === "running"}
-      onOpen={(id) => navigate(`/games/${game.id}/play?save=${id}`)}
-      onDeleted={saves.reload}
-    />
+      </details>
+    </section>
   );
 }
 

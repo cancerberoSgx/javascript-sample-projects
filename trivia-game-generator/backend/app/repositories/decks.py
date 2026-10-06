@@ -50,7 +50,7 @@ def update(conn: DbConn, deck_id: int, changes: DeckChanges) -> bool:
 
 
 def count_pending_games_using(conn: DbConn, deck_id: int) -> int:
-    return fetch_scalar(conn, "SELECT count(*) FROM trivia_games WHERE deck_id = %s AND status = 'not_started'", (deck_id,))
+    return fetch_scalar(conn, "SELECT count(*) FROM trivia_games WHERE deck_id = %s AND status = 'awaiting'", (deck_id,))
 
 
 def delete(conn: DbConn, deck_id: int) -> bool:

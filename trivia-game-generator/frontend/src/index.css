@@ -60,7 +60,8 @@ header .whoami { margin-left: auto; display: flex; align-items: center; gap: 10p
 .check input { flex: none; }
 
 .boards-demo main { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: start; }
-@media (max-width: 900px) { .boards-demo main { grid-template-columns: 1fr; } }
+@media (max-width: 900px) { .boards-demo main { grid-template-columns: minmax(0, 1fr); } }
+.boards-demo .left { min-width: 0; }
 aside { display: flex; flex-direction: column; gap: 12px; }
 
 .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
@@ -165,7 +166,7 @@ header { flex-wrap: wrap; }
 .warn ul { margin: 4px 0 0; padding-left: 18px; }
 .error-text { color: var(--error-text); }
 .ok-text { color: #16a34a; }
-.chip.status-not_started { color: var(--muted); }
+.chip.status-awaiting { color: #ca8a04; border-color: #ca8a04; }
 .chip.status-running { color: #16a34a; border-color: #16a34a; }
 .chip.status-finished { color: var(--accent); border-color: var(--accent); }
 input.color { flex: none; width: 44px; height: 32px; padding: 2px; }
@@ -191,3 +192,24 @@ table.cards td { vertical-align: top; }
 .saves li { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; padding: 6px 8px; border: 1px solid transparent; border-radius: 8px; }
 .saves li.on { background: var(--canvas-bg); border-color: var(--accent); }
 .saves li .row { flex: none; }
+
+/* ---------- multiplayer ---------- */
+.presence { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--border); vertical-align: 1px; }
+.presence.on { background: #16a34a; }
+.players-list.lobby { padding-left: 22px; }
+.players-list.lobby li { min-height: 30px; }
+.chip.you { color: var(--accent); border-color: var(--accent); }
+tr.removed td { opacity: 0.5; text-decoration: line-through; }
+tr.removed td .chip { text-decoration: none; }
+.options-view { margin: 0; padding-left: 22px; display: grid; gap: 4px; font-size: 14px; }
+.join-form { display: flex; flex-direction: column; gap: 10px; max-width: 420px; }
+.join-form input { font-size: 16px; padding: 10px 12px; }
+.player-page header .whoami { margin-left: auto; }
+.lobby-page { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; max-width: 900px; }
+@media (max-width: 700px) { .lobby-page { grid-template-columns: 1fr; } }
+details summary { cursor: pointer; }
+@media (max-width: 600px) {
+  .app { padding: 8px 10px 32px; }
+  .options button, .turn button.primary { padding: 10px 12px; font-size: 15px; }
+}
+.self-start { align-self: flex-start; }

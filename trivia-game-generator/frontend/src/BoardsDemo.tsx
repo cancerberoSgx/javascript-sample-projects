@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { JsonPanel } from "./components/JsonPanel";
-import { BoardView, GamePanels, PLAYER_COLORS, useGamePlay } from "./components/PlayTable";
+import { BoardView, GamePanels, PLAYER_COLORS, useLocalGamePlay } from "./components/PlayTable";
 import { resolveConfig } from "./engine/board";
 import { createGame } from "./engine/engine";
 import { loadBoard, loadDeck, loadManifest, prepareBoard, type ManifestEntry, type LoadedBoard } from "./engine/loader";
@@ -17,7 +17,7 @@ export function BoardsDemo() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [game, setGame] = useState<GameState | null>(null);
   const [view, setView] = useState<"play" | "json">("play");
-  const { dispatch, onSpaceClick, showToast, toast } = useGamePlay(game, setGame);
+  const { dispatch, onSpaceClick, showToast, toast } = useLocalGamePlay(game, setGame);
 
   // Setup options
   const [playerCount, setPlayerCount] = useState(2);

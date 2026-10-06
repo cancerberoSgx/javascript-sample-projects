@@ -151,5 +151,5 @@ export function snapshotMapping(snap: GameSnapshot): SlotMapping {
 }
 
 export function StatusBadge({ status }: { status: string }) {
-  return <span className={`chip status-${status}`}>{status.replace("_", " ")}</span>;
+  return <span className={`chip status-${status}`}>{status}</span>;
 }

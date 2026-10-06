@@ -143,7 +143,7 @@ Also we want to save a game state (current user's space, scores, tokens, logs, e
 
 
 
-# FUTURE
+# multiplayer
 
 multiplayer game experience
 

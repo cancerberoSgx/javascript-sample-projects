@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Response, status
 from psycopg import errors
 
+from .. import play
 from ..auth import Conn, CurrentUser, Me
 from ..db import DbConn
 from ..formats import (
@@ -10,9 +11,10 @@ from ..formats import (
     SnapshotCategory,
     SnapshotDeck,
 )
+from ..live import hub
 from ..models import Game, GameChanges, NewGame, Player
 from ..permissions import conflict, list_org, not_found, target_org, visible
-from ..repositories import boards, categories, decks, games
+from ..repositories import boards, categories, decks, game_states, games
 from ..schemas import GameCreate, GameDetailOut, GameOut, GameUpdate, PlayerOut
 from ..validation import validate_game_setup
 
@@ -23,7 +25,7 @@ def _out(game: Game, mapping: dict[str, int], players: list[Player]) -> GameOut:
     return GameOut(
         **game.model_dump(exclude={"snapshot"}),
         categories=mapping,
-        players=[PlayerOut(id=p.id, name=p.name, position=p.position) for p in players],
+        players=[PlayerOut(**p.model_dump(include={"id", "name", "position", "joined", "removed"})) for p in players],
     )
 
 
@@ -36,7 +38,7 @@ def _detail(conn: DbConn, game: Game | None) -> GameDetailOut:
     return GameDetailOut(
         **base.model_dump(),
         snapshot=game.snapshot,
-        setup_errors=_setup_errors(conn, game, mapping, len(players)) if game.status == "not_started" else [],
+        setup_errors=_setup_errors(conn, game, mapping, len(players)) if game.status == "awaiting" else [],
     )
 
 
@@ -45,7 +47,7 @@ def _setup_errors(conn: DbConn, game: Game, mapping: dict[str, int], player_coun
     deck = decks.get(conn, game.deck_id) if game.deck_id else None
     missing = [what for what, item in (("board", board), ("deck", deck)) if item is None]
     if missing:
-        return [f"Choose a {' and a '.join(missing)}"] + (["Add at least one player"] if player_count < 1 else [])
+        return [f"Choose a {' and a '.join(missing)}"] + (["Wait for at least one player to join"] if player_count < 1 else [])
     assert board and deck
     names = {c.id: c.name for c in categories.get_many(conn, list(mapping.values()))}
     cards = [(c.category_id, c.grand_prize) for c in decks.list_cards(conn, deck.id)]
@@ -54,6 +56,13 @@ def _setup_errors(conn: DbConn, game: Game, mapping: dict[str, int], player_coun
 
 def _visible_game(me: CurrentUser, conn: DbConn, game_id: int) -> Game:
     return visible(me, games.get(conn, game_id), "Game")
+
+
+def _awaiting_game(me: CurrentUser, conn: DbConn, game_id: int) -> Game:
+    game = _visible_game(me, conn, game_id)
+    if game.status != "awaiting":
+        raise conflict("This game has already started, so its setup can't change")
+    return game
 
 
 def _check_refs(conn: DbConn, org_id: int, board_id: int | None, deck_id: int | None, mapping: dict[str, int] | None) -> None:
@@ -92,6 +101,8 @@ def create_game(body: GameCreate, me: Me, conn: Conn):
             games.replace_players(conn, game_id, [p.name for p in body.players])
     except errors.ForeignKeyViolation:
         raise not_found("Organization not found")
+    except errors.UniqueViolation:
+        raise conflict("Player names must be unique (MPL-3)")
     return _detail(conn, games.get(conn, game_id))
 
 
@@ -102,9 +113,7 @@ def get_game(game_id: int, me: Me, conn: Conn):
 
 @router.patch("/{game_id}", response_model=GameDetailOut)
 def update_game(game_id: int, body: GameUpdate, me: Me, conn: Conn):
-    game = _visible_game(me, conn, game_id)
-    if game.status != "not_started":
-        raise conflict("This game has already started, so its setup can't change")
+    game = _awaiting_game(me, conn, game_id)
     sent = body.model_fields_set
     _check_refs(conn, game.organization_id, body.board_id, body.deck_id, body.categories)
     # name: null is ignored; board_id/deck_id: null clears the reference
@@ -113,8 +122,7 @@ def update_game(game_id: int, body: GameUpdate, me: Me, conn: Conn):
         games.update(conn, game_id, changes)
         if body.categories is not None:
             games.replace_mapping(conn, game_id, body.categories)
-        if body.players is not None:
-            games.replace_players(conn, game_id, [p.name for p in body.players])
+    hub.publish_soon(game_id)
     return _detail(conn, games.get(conn, game_id))
 
 
@@ -123,32 +131,40 @@ def delete_game(game_id: int, me: Me, conn: Conn):
     _visible_game(me, conn, game_id)
     with conn.transaction():
         games.delete(conn, game_id)
+    hub.publish_soon(game_id)  # tells everyone watching that it's gone
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/{game_id}/start", response_model=GameDetailOut)
 def start_game(game_id: int, me: Me, conn: Conn):
-    """not_started -> running. Copies board, deck and categories into the game's snapshot."""
+    """awaiting -> running. Copies board, deck and categories into the game's snapshot (GAM-3)
+    and deals the opening state to the players who joined (MPL-2)."""
     game = _visible_game(me, conn, game_id)
-    if game.status != "not_started":
+    if game.status != "awaiting":
         raise conflict("This game has already started")
     with conn.transaction():
+        games.lock(conn, game_id)  # no one joins between reading the players and starting
         mapping = games.get_mapping(conn, game_id)
         players = games.list_players(conn, game_id)
         if setup_errors := _setup_errors(conn, game, mapping, len(players)):
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, detail=setup_errors)
-        if not games.mark_started(conn, game_id, _snapshot(conn, game, mapping)):
+        snapshot = _snapshot(conn, game, mapping)
+        if not games.mark_started(conn, game_id, snapshot):
             raise conflict("This game has already started")
+        game_states.create(conn, game_id, play.initial_state(snapshot, players))
+    hub.publish_soon(game_id)
     return _detail(conn, games.get(conn, game_id))
 
 
 @router.post("/{game_id}/finish", response_model=GameDetailOut)
 def finish_game(game_id: int, me: Me, conn: Conn):
-    """running -> finished."""
+    """running -> finished, before anyone won: ends the game for everyone."""
     _visible_game(me, conn, game_id)
     with conn.transaction():
+        games.lock(conn, game_id)
         if not games.mark_finished(conn, game_id):
             raise conflict("Only a running game can be finished")
+    hub.publish_soon(game_id)
     return _detail(conn, games.get(conn, game_id))
 
 

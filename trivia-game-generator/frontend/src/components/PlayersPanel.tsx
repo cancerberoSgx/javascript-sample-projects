@@ -1,7 +1,8 @@
 import { useEffect, useRef } from "react";
-import type { GameState } from "../engine/types";
+import type { GameView } from "../engine/types";
 
-export function PlayersPanel({ game }: { game: GameState }) {
+/** online: engine player id -> has a device connected (multiplayer). you: this device's player id. */
+export function PlayersPanel({ game, online, you }: { game: GameView; online?: Record<string, boolean>; you?: string | null }) {
   return (
     <section className="panel">
       <h2>Players</h2>
@@ -16,9 +17,12 @@ export function PlayersPanel({ game }: { game: GameState }) {
         </thead>
         <tbody>
           {game.players.map((p, i) => (
-            <tr key={p.id} className={i === game.active_player && game.phase !== "GAME_OVER" ? "active" : ""}>
+            <tr key={p.id} className={[i === game.active_player && game.phase !== "GAME_OVER" ? "active" : "", p.removed ? "removed" : ""].join(" ")}>
               <td>
                 <span className="dot" style={{ background: p.color }} /> {p.name}
+                {p.id === you && <span className="chip">you</span>}
+                {online && !p.removed && online[p.id] === false && <span className="chip muted" title="No device connected">offline</span>}
+                {p.removed && <span className="chip">removed</span>}
                 {p.skip_next_turn && <span className="chip warn">skips next</span>}
               </td>
               <td>{p.current_space}</td>
@@ -43,7 +47,7 @@ export function PlayersPanel({ game }: { game: GameState }) {
   );
 }
 
-export function LogPanel({ game }: { game: GameState }) {
+export function LogPanel({ game }: { game: GameView }) {
   const ref = useRef<HTMLOListElement>(null);
   useEffect(() => {
     ref.current?.scrollTo({ top: ref.current.scrollHeight });

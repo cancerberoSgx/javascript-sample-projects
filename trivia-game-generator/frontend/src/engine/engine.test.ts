@@ -1,7 +1,7 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { activePlayer, applyAction, createGame, normalizeAnswer, resumeGame, suspendGame } from "./engine";
+import { activePlayer, applyAction, createGame, normalizeAnswer } from "./engine";
 import { legalDestinations } from "./movement";
 import { resolveGame, validateBoardFile } from "./resolve";
 import type { Action, BoardDefinition, BoardFile, DeckFile, GameState, SlotMapping } from "./types";
@@ -242,39 +242,140 @@ describe("turn flow", () => {
   });
 });
 
-describe("saved games", () => {
-  const play = (s: GameState, steps: number) => {
-    for (let i = 0; i < steps && s.phase !== "GAME_OVER"; i++) {
-      if (s.phase === "AWAIT_ROLL") s = act(s, { type: "ROLL" });
-      else if (s.phase === "AWAIT_MOVE") s = act(s, { type: "MOVE", to: Number(Object.keys(s.destinations)[0]) });
-      else if (s.phase === "AWAIT_CATEGORY") s = act(s, { type: "CHOOSE_CATEGORY", category: "pop" });
-      else s = act(s, { type: "FORCE_RESULT", correct: i % 3 === 0 });
-    }
-    return s;
-  };
-
-  it("a save survives JSON and continues exactly like the original (SAV-2)", () => {
-    const original = play(newGame("loop-shortcut"), 12);
-    const loaded = resumeGame(JSON.parse(JSON.stringify(suspendGame(original, NOW))), NOW);
-    expect(loaded).toEqual(original);
-    expect(play(loaded, 20)).toEqual(play(original, 20));
+describe("multiplayer host actions", () => {
+  it("uses the given player ids", () => {
+    const { board, deck } = resolve(loadBoardFile("linear-basic"));
+    const s = createGame(board, deck, [{ name: "Ana", color: "#000", id: "17" }, { name: "Ben", color: "#111", id: "4" }], 1, NOW);
+    expect(s.players.map((p) => p.id)).toEqual(["17", "4"]);
   });
 
-  it("stores the question timer as time left and restarts it on load (SAV-3)", () => {
+  it("SKIP_TURN ends the active player's turn in any phase (MPL-8)", () => {
     let s = newGame("linear-basic");
     s = act(s, { type: "ROLL", value: 1 });
     s = act(s, { type: "MOVE", to: 1 });
-    const saved = suspendGame(s, NOW + 10_000); // 30 s limit, 10 s used
-    expect(saved.question).toMatchObject({ deadline: null, time_left_ms: 20_000 });
-    expect(s.question!.deadline).toBe(NOW + 30_000); // the original is untouched
+    expect(s.phase).toBe("AWAIT_ANSWER");
+    s = act(s, { type: "SKIP_TURN" });
+    expect(activePlayer(s).name).toBe("Ben");
+    expect(s.phase).toBe("AWAIT_ROLL");
+    expect(s.question).toBeNull();
+  });
 
-    const later = NOW + 86_400_000; // continued the next day
-    const loaded = resumeGame(saved, later);
-    expect(loaded.question!.deadline).toBe(later + 20_000);
-    expect(loaded.question).not.toHaveProperty("time_left_ms");
-    expect(applyAction(loaded, { type: "TIMEOUT" }, later + 1000).error).toMatch(/hasn't expired/);
+  it("REMOVE_PLAYER passes over the player from then on (MPL-9)", () => {
+    const { board, deck } = resolve(loadBoardFile("linear-basic"));
+    let s = createGame(board, deck, [...PLAYERS, { name: "Cy", color: "#000" }], 42, NOW);
+    s = act(s, { type: "REMOVE_PLAYER", player_id: "p2" });
+    expect(activePlayer(s).name).toBe("Ana"); // not Ana's turn that ended
+    s = act(s, { type: "SKIP_TURN" });
+    expect(activePlayer(s).name).toBe("Cy");
+    s = act(s, { type: "SKIP_TURN" });
+    expect([activePlayer(s).name, s.round]).toEqual(["Ana", 2]);
 
-    const expired = suspendGame(s, NOW + 40_000);
-    expect(expired.question!.time_left_ms).toBe(0);
+    // Removing the active player starts the next turn
+    s = act(s, { type: "REMOVE_PLAYER", player_id: "p1" });
+    expect(activePlayer(s).name).toBe("Cy");
+    expect(applyAction(s, { type: "REMOVE_PLAYER", player_id: "p3" }).error).toMatch(/last player/);
+    expect(applyAction(s, { type: "REMOVE_PLAYER", player_id: "p1" }).error).toMatch(/Unknown player/);
+    expect(s.players.map((p) => !!p.removed)).toEqual([true, true, false]);
+  });
+
+  it("the turn-limit ranking ignores removed players", () => {
+    let s = newGame("loop-classic", (b) => {
+      b.config.max_rounds = 1;
+      b.config.win_conditions = ["turn_limit"];
+    });
+    s.players[1].score = 5;
+    s = act(s, { type: "REMOVE_PLAYER", player_id: "p2" });
+    s = act(s, { type: "SKIP_TURN" });
+    expect(s.result).toEqual({ type: "win", player_id: "p1", reason: "turn_limit" });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Conformance fixture for the server's Python port of the engine (backend/app/engine/).
+// Scripted games on every example board; the Python test replays the same actions and must
+// produce the same states and errors. Regenerate after an engine change with:
+//   UPDATE_CONFORMANCE=1 npx vitest run src/engine
+// then port the change to Python until backend/tests/test_engine.py passes.
+
+const FIXTURE = join(__dirname, "../../../backend/tests/fixtures/engine_conformance.json");
+
+interface Step {
+  action: Action;
+  now: number;
+  error?: string;
+  state: unknown; // digest, see digest()
+}
+
+/** The parts of the state that matter, without the (static) board and cards. */
+function digest(s: GameState) {
+  const { board: _b, cards: _c, config: _f, log, question, last_answer, ...rest } = s;
+  return {
+    ...rest,
+    question: question && { card: question.card.id, deadline: question.deadline, grand_prize: question.grand_prize, from_hq: question.from_hq },
+    last_answer: last_answer && { card: last_answer.card.id, given: last_answer.given, result: last_answer.result },
+    log_length: log.length,
+    last_log: log.slice(-2),
+  };
+}
+
+function scriptedGame(boardFile: string, patch: Partial<BoardFile["config"]>, seed: number, steps: number) {
+  const file = structuredClone(readJson<BoardFile>(boardFile));
+  file.config = { ...file.config, ...patch };
+  const { board, deck } = resolve(file);
+  const players = [...PLAYERS, { name: "Cy", color: "#0891b2", id: "77" }];
+  let s = createGame(board, deck, players, seed, NOW);
+  const initial = s;
+  let r = seed;
+  const rand = (n: number) => {
+    r = (Math.imul(r, 1103515245) + 12345) | 0;
+    return ((r >>> 8) % n + n) % n;
+  };
+  const out: Step[] = [];
+  let now = NOW;
+  let removed = false;
+  for (let i = 0; i < steps && s.phase !== "GAME_OVER"; i++) {
+    now += 1000;
+    let action: Action;
+    const roll = rand(100);
+    const dests = Object.keys(s.destinations);
+    if (roll < 3) action = { type: "SKIP_TURN" };
+    else if (roll < 5 && !removed && i > 20) {
+      action = { type: "REMOVE_PLAYER", player_id: s.players[rand(s.players.length)].id };
+      removed = true;
+    } else if (roll < 7) action = [{ type: "MOVE", to: 999 }, { type: "CHOOSE_CATEGORY", category: "nope" }, { type: "TIMEOUT" }, { type: "ROLL", value: 99 }][rand(4)] as Action;
+    else if (s.phase === "AWAIT_ROLL") action = roll < 15 ? { type: "ROLL", value: 1 + rand(s.config.dice_sides) } : { type: "ROLL" };
+    else if (s.phase === "AWAIT_MOVE") action = { type: "MOVE", to: Number(dests[rand(dests.length)]) };
+    else if (s.phase === "AWAIT_CATEGORY") action = { type: "CHOOSE_CATEGORY", category: s.board.categories[rand(s.board.categories.length)].id };
+    else {
+      const card = s.question!.card;
+      const kind = rand(6);
+      if (kind === 0 && s.question!.deadline !== null) {
+        now = s.question!.deadline + 1;
+        action = rand(2) ? { type: "TIMEOUT" } : { type: "ANSWER", answer: card.options ? 0 : "x" };
+      } else if (kind <= 2) {
+        // correct, written loosely for open questions (EVL-2 normalization)
+        action = { type: "ANSWER", answer: card.options ? (card.correct_answer as number) : `  ${String(card.correct_answer).toUpperCase()}!! ` };
+      } else if (kind === 3) action = { type: "ANSWER", answer: card.options ? (rand(card.options.length + 1) as number) : "Café, Ünïcode" };
+      else action = { type: "FORCE_RESULT", correct: rand(2) === 1 };
+    }
+    const result = applyAction(s, action, now);
+    s = result.state;
+    out.push({ action, now, ...(result.error ? { error: result.error } : {}), state: digest(s) });
+  }
+  return { board: boardFile, config: patch, players, seed, initial: digest(initial), steps: out, final: { ...s, board: undefined, cards: undefined } };
+}
+
+describe("engine conformance fixture", () => {
+  const scenarios = () =>
+    manifest.boards.flatMap((b, i) => [
+      scriptedGame(b.file, {}, 1000 + i, 150),
+      scriptedGame(b.file, { reuse_cards: true, bonus_roll_on_correct: false, max_rounds: 4, win_conditions: b.file.includes("loop") ? ["turn_limit", "collection"] : ["finish", "turn_limit"] }, 2000 + i, 150),
+    ]);
+
+  it("matches backend/tests/fixtures/engine_conformance.json", () => {
+    const fresh = JSON.parse(JSON.stringify(scenarios()));
+    if (process.env.UPDATE_CONFORMANCE) writeFileSync(FIXTURE, JSON.stringify(fresh) + "\n");
+    if (!existsSync(FIXTURE)) return; // the backend isn't checked out next to the frontend (e.g. in its container)
+    expect(JSON.parse(readFileSync(FIXTURE, "utf8"))).toEqual(fresh);
   });
 });

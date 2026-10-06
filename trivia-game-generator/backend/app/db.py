@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+from contextlib import contextmanager
 from typing import Any, LiteralString
 
 from psycopg import Connection
@@ -39,8 +40,15 @@ def fetch_scalar(conn: DbConn, query: LiteralString, params: tuple = ()) -> Any:
     return value
 
 
-def get_conn() -> Iterator[Connection[DictRow]]:
-    """FastAPI dependency: one pooled connection per request."""
+@contextmanager
+def connection() -> Iterator[Connection[DictRow]]:
+    """A pooled connection, for code outside a request (WebSockets, timers)."""
     assert _pool, "Connection pool is not open"
     with _pool.connection() as conn:
+        yield conn
+
+
+def get_conn() -> Iterator[Connection[DictRow]]:
+    """FastAPI dependency: one pooled connection per request."""
+    with connection() as conn:
         yield conn

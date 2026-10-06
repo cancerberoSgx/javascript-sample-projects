@@ -48,8 +48,13 @@ def _unauthorized(detail: str) -> HTTPException:
 def current_user(conn: Conn, creds: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer)]) -> CurrentUser:
     if creds is None:
         raise _unauthorized("Not authenticated")
+    return user_from_token(conn, creds.credentials)
+
+
+def user_from_token(conn: DbConn, token: str) -> CurrentUser:
+    """The user a bearer token acts as. Raises a 401 HTTPException if it isn't valid."""
     try:
-        claims = decode_access_token(creds.credentials)
+        claims = decode_access_token(token)
         jti = uuid.UUID(claims["jti"])
         user_id = int(claims["sub"])
         impersonator_id = int(claims["imp"]) if "imp" in claims else None

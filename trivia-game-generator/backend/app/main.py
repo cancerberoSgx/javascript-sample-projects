@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -8,15 +9,16 @@ from . import db
 from .auth import Conn
 from .bootstrap import ensure_root_user
 from .config import get_settings
+from .live import hub
 from .migrations import apply_pending
 from .routers import (
     auth,
     boards,
     categories,
     decks,
-    game_instances,
     games,
     organizations,
+    play,
     users,
 )
 
@@ -30,13 +32,15 @@ async def lifespan(_: FastAPI):
         apply_pending(settings.database_url, "migration")
     db.open_pool(settings.database_url)
     try:
-        with db._pool.connection() as conn:  # type: ignore[union-attr]
+        with db.connection() as conn:
             ensure_root_user(conn, settings)
         # After the root bootstrap, so seeds can reference the root user
         if settings.run_seeds:
             apply_pending(settings.database_url, "seed")
+        hub.attach(asyncio.get_running_loop())
         yield
     finally:
+        await hub.close()
         db.close_pool()
 
 
@@ -53,7 +57,7 @@ def create_app() -> FastAPI:
     app.include_router(auth.router)
     app.include_router(organizations.router)
     app.include_router(users.router)
-    for content in (categories, decks, boards, games, game_instances):
+    for content in (categories, decks, boards, games, play):
         app.include_router(content.router)
 
     @app.get("/api/health", tags=["health"])

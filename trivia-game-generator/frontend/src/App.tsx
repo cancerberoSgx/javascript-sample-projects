@@ -7,13 +7,14 @@ import { BoardsPage } from "./components/BoardsPage";
 import { CategoriesPage } from "./components/CategoriesPage";
 import type { RouteState } from "./components/common";
 import { DecksPage } from "./components/DecksPage";
-import { GamePlayPage } from "./components/GamePlayPage";
 import { GamesPage } from "./components/GamesPage";
 import { LoginPage } from "./components/LoginPage";
 import { OrganizationsPage } from "./components/OrganizationsPage";
+import { PlayerGamePage } from "./components/PlayerGamePage";
 
 // Every tab has its own URL: /games, /games/:id, /boards/:id, /decks/:id, /categories/:id,
-// /organizations/:id, /games/:id/play and /demo. The list URL opens the first item (see useRouteSelection).
+// /organizations/:id and /demo. The list URL opens the first item (see useRouteSelection).
+// A game's join link, /games/:id?code=…, is the player page: it works without logging in.
 
 type ContentKind = "games" | "boards" | "decks" | "categories";
 const CONTENT_KINDS: ContentKind[] = ["games", "boards", "decks", "categories"];
@@ -44,14 +45,25 @@ export default function App() {
 }
 
 function Shell() {
+  const location = useLocation();
+  // Players open the game's link on their own devices, logged in or not (MPL-1)
+  if (/^\/games\/\d+\/?$/.test(location.pathname) && new URLSearchParams(location.search).has("code"))
+    return (
+      <Routes>
+        <Route path="/games/:id" element={<PlayerGamePage />} />
+      </Routes>
+    );
+  return <AppShell />;
+}
+
+function AppShell() {
   const { user, loading, logout, stopImpersonating } = useAuth();
   const [orgs, setOrgs] = useState<Organization[]>([]);
   const [orgId, setOrgId] = useState<number | null>(null);
   const navigate = useNavigate();
   const path = useLocation().pathname;
   const kind = path.split("/")[1] as ContentKind;
-  // The play page shows one game, so it needs no organization picker
-  const showOrgPicker = CONTENT_KINDS.includes(kind) && !path.endsWith("/play");
+  const showOrgPicker = CONTENT_KINDS.includes(kind);
   const isRoot = user?.role === "root";
 
   // Content belongs to one organization: members always work on theirs, root users pick one
@@ -141,7 +153,7 @@ function Shell() {
               <Route key={path} path={path} element={<ContentRoute key={k} kind={k} orgId={orgId} setOrgId={setOrgId} />} />
             )),
           )}
-          <Route path="/games/:id/play" element={<GamePlayPage />} />
+          <Route path="/games/:id/play" element={<PlayRedirect />} />
           <Route path="/organizations" element={<OrganizationsPage />} />
           <Route path="/organizations/:id" element={<OrganizationsPage />} />
           <Route path="/demo" element={isRoot ? <BoardsDemo /> : <Navigate to="/games" replace />} />
@@ -188,4 +200,9 @@ function ContentRoute({ kind, orgId, setOrgId }: { kind: ContentKind; orgId: num
   const Page = PAGES[kind];
   // key: a different organization starts the page afresh (lists, selection)
   return <Page key={orgId} orgId={orgId} />;
+}
+
+/** The old hot-seat play URL: games are played live on their own page now. */
+function PlayRedirect() {
+  return <Navigate to={`/games/${useParams().id}`} replace />;
 }

@@ -1,7 +1,7 @@
 // REST client for the backend. Requests go to /api on the same origin; Vite proxies them
 // to FastAPI in dev (see vite.config.ts).
 
-import type { BoardFile, DeckFile, GameConfig, GameState, SpaceType } from "./engine/types";
+import type { BoardFile, DeckFile, GameConfig, GameView, SpaceType } from "./engine/types";
 
 export type Role = "root" | "member";
 
@@ -85,12 +85,20 @@ export interface Board {
   definition: BoardDefinition;
 }
 
-export type GameStatus = "not_started" | "running" | "finished";
+export type GameStatus = "awaiting" | "running" | "finished";
 
 export interface GameSnapshot {
   board: BoardFile;
   deck: DeckFile;
   mapping: Record<string, string>; // slot -> deck category id
+}
+
+export interface GamePlayer {
+  id: number;
+  name: string;
+  position: number; // turn order
+  joined: boolean; // joined with the link from their own device (MPL-4); false = added by the host
+  removed: boolean; // removed from the running game by the host (MPL-9)
 }
 
 export interface Game {
@@ -105,7 +113,9 @@ export interface Game {
   deck_id: number | null;
   deck_name: string | null;
   categories: Record<string, number>; // slot -> category id
-  players: { id: number; name: string; position: number }[];
+  players: GamePlayer[];
+  /** Players join with /games/:id?code=<join_code> (MPL-1). */
+  join_code: string;
   started_at: string | null;
   finished_at: string | null;
   created_at: string;
@@ -121,28 +131,29 @@ export interface GameInput {
   board_id?: number | null;
   deck_id?: number | null;
   categories?: Record<string, number>;
-  players?: { name: string }[];
 }
 
-/** A saved game (game instance, rules.md §2.7): a summary of its play state, without the state. */
-export interface GameSave {
-  id: number;
-  game_id: number;
-  name: string;
-  saved_by_id: number | null;
-  saved_by_name: string | null;
-  round: number;
-  phase: GameState["phase"];
-  players: Pick<GameState["players"][number], "id" | "name" | "color" | "score" | "inventory" | "current_space">[];
-  result: GameState["result"];
-  created_at: string;
-  updated_at: string;
+// ---------- multiplayer (rules.md §2.7) ----------
+
+/** What a game's WebSocket sends after every change (MPL-5). */
+export interface LiveMessage {
+  type: "game";
+  game: {
+    id: number;
+    name: string;
+    status: GameStatus;
+    board_name: string | null;
+    players: (GamePlayer & { online: boolean })[];
+  };
+  /** The engine state without its secrets (MPL-6); null until the game starts. */
+  state: GameView | null;
+  version: number | null;
+  /** Epoch ms on the server, so question timers run on server time. */
+  server_now: number;
+  you: { player_id: number | null; can_host: boolean };
 }
 
-export interface GameSaveDetail extends GameSave {
-  /** Saved with suspendGame(): load it with resumeGame() (SAV-3). */
-  state: GameState;
-}
+export type LiveServerMessage = LiveMessage | { type: "error"; message: string; fatal?: boolean } | { type: "gone" };
 
 export class ApiError extends Error {
   constructor(
@@ -179,6 +190,8 @@ function storage(key: string) {
 export const tokenStore = storage("trivia.token");
 /** While impersonating: the root user's own token, restored on exit. */
 export const impersonatorTokenStore = storage("trivia.token.impersonator");
+/** This device's player token for a game it joined (MPL-4). */
+export const playerTokenStore = (gameId: number) => storage(`trivia.player.${gameId}`);
 
 let onUnauthorized: (tokenUsed: string | null) => void = () => {};
 /** Called when a request gets a 401, with the token that request sent, so the app can tell
@@ -187,8 +200,8 @@ export function setUnauthorizedHandler(fn: (tokenUsed: string | null) => void) {
   onUnauthorized = fn;
 }
 
-async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const headers: Record<string, string> = {};
+async function request<T>(method: string, path: string, body?: unknown, extraHeaders: Record<string, string> = {}): Promise<T> {
+  const headers: Record<string, string> = { ...extraHeaders };
   const token = tokenStore.get();
   if (token) headers.Authorization = `Bearer ${token}`;
   if (body !== undefined) headers["Content-Type"] = "application/json";
@@ -273,12 +286,17 @@ export const api = {
   startGame: (id: number) => request<GameDetail>("POST", `/games/${id}/start`),
   finishGame: (id: number) => request<GameDetail>("POST", `/games/${id}/finish`),
 
-  // Saved games (only a running game can be saved, SAV-4)
-  listSaves: (gameId: number) => request<GameSave[]>("GET", `/games/${gameId}/instances`),
-  getSave: (gameId: number, id: number) => request<GameSaveDetail>("GET", `/games/${gameId}/instances/${id}`),
-  createSave: (gameId: number, body: { name: string; state: GameState }) => request<GameSaveDetail>("POST", `/games/${gameId}/instances`, body),
-  /** Overwrite the state and/or rename. */
-  updateSave: (gameId: number, id: number, body: { name?: string; state?: GameState }) =>
-    request<GameSaveDetail>("PATCH", `/games/${gameId}/instances/${id}`, body),
-  deleteSave: (gameId: number, id: number) => request<void>("DELETE", `/games/${gameId}/instances/${id}`),
+
+  // Multiplayer (rules.md §2.7). Joining and leaving need no login: the code and the player token are the proof.
+  joinGame: (id: number, body: { code: string; name: string }) =>
+    request<{ player: GamePlayer; player_token: string }>("POST", `/games/${id}/join`, body),
+  leaveGame: (id: number, playerToken: string) => request<void>("POST", `/games/${id}/leave`, undefined, { "X-Player-Token": playerToken }),
+  addPlayer: (id: number, name: string) => request<GameDetail>("POST", `/games/${id}/players`, { name }),
+  orderPlayers: (id: number, playerIds: number[]) => request<GameDetail>("PUT", `/games/${id}/players/order`, { player_ids: playerIds }),
+  removePlayer: (id: number, playerId: number) => request<GameDetail>("DELETE", `/games/${id}/players/${playerId}`),
+  skipTurn: (id: number) => request<void>("POST", `/games/${id}/skip-turn`),
+  newJoinCode: (id: number) => request<GameDetail>("POST", `/games/${id}/join-code`),
 };
+
+/** The link players open on their own devices (MPL-1). */
+export const joinLink = (game: Pick<Game, "id" | "join_code">) => `${location.origin}/games/${game.id}?code=${game.join_code}`;

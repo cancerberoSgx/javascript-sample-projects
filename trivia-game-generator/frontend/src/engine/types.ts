@@ -125,6 +125,8 @@ export interface Player {
   inventory: string[]; // stored as a sorted unique array (PLY-2) so state stays JSON-serializable
   score: number;
   skip_next_turn: boolean;
+  /** Removed by the host during a multiplayer game (MPL-9): keeps its log and score, never plays again. */
+  removed?: boolean;
 }
 
 export interface DeckState {
@@ -137,8 +139,7 @@ export type Phase = "AWAIT_ROLL" | "AWAIT_MOVE" | "AWAIT_CATEGORY" | "AWAIT_ANSW
 
 export interface PendingQuestion {
   card: Card;
-  deadline: number | null; // epoch ms; null = no time limit (or suspended, see time_left_ms)
-  time_left_ms?: number; // only in a saved state: the time left when it was saved (SAV-3)
+  deadline: number | null; // epoch ms (server time in multiplayer); null = no time limit
   grand_prize: boolean;
   from_hq: boolean; // landing space is an HQ (RES-2)
 }
@@ -189,9 +190,21 @@ export type Action =
   | { type: "CHOOSE_CATEGORY"; category: string }
   | { type: "ANSWER"; answer: string | number }
   | { type: "TIMEOUT" }
-  | { type: "FORCE_RESULT"; correct: boolean }; // dev shortcut: skip answering
+  | { type: "FORCE_RESULT"; correct: boolean } // dev shortcut: skip answering
+  | { type: "SKIP_TURN" } // host: end the active player's turn (MPL-8)
+  | { type: "REMOVE_PLAYER"; player_id: string }; // host: take a player out of the game (MPL-9)
 
 export interface PlayerSetup {
   name: string;
   color: string;
+  id?: string; // default "p1", "p2"… in turn order. Multiplayer games use the database id.
+}
+
+/**
+ * What a multiplayer client receives (MPL-6): the state minus everything that would give away
+ * answers or the future (all cards, the draw piles, the RNG), and the pending card without
+ * its answer. A full GameState is also a GameView, so the play UI takes this type.
+ */
+export interface GameView extends Omit<GameState, "cards" | "decks" | "rng" | "question"> {
+  question: (Omit<PendingQuestion, "card"> & { card: Omit<Card, "correct_answer"> & { correct_answer?: Card["correct_answer"] } }) | null;
 }

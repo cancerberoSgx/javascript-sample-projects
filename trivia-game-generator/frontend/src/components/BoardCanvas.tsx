@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { isFork } from "../engine/board";
-import type { BoardDefinition, GameState, Space } from "../engine/types";
+import type { BoardDefinition, GameView, Space } from "../engine/types";
 
 interface Props {
   board: BoardDefinition;
-  game: GameState | null;
+  game: GameView | null;
   onSpaceClick: (index: number) => void;
   onHover: (space: Space | null) => void;
 }
@@ -287,6 +287,7 @@ export function BoardCanvas({ board, game, onSpaceClick, onHover }: Props) {
         [1, -0.2],
       ];
       game.players.forEach((p, i) => {
+        if (p.removed) return; // MPL-9
         let pos = center(byIndex.get(p.current_space)!);
         if (anim && anim.playerId === p.id) {
           const t = Math.max(0, Math.min((now - anim.start) / STEP_MS, anim.path.length - 1));

@@ -1,48 +1,9 @@
 """Categories, decks + cards, boards and games (migration 0002)."""
 
-import json
-from pathlib import Path
-
-import pytest
+from conftest import board_definition
 
 from app.config import get_settings
 from app.migrations import apply_pending
-
-PUBLIC = Path(__file__).resolve().parents[2] / "frontend" / "public"
-
-
-def board_definition(board_id: str) -> dict:
-    """An example board file, reduced to what the API stores (config + slots + spaces)."""
-    data = json.loads((PUBLIC / "boards" / f"{board_id}.json").read_text())
-    return {k: data[k] for k in ("config", "slots", "spaces")}
-
-
-@pytest.fixture
-def acme(client, world):
-    """Ana (member of Acme) with 4 categories, a deck with one card each + a grand prize card, and a board."""
-    ana = world["ana_auth"]
-    cats = {}
-    for name, color in [("Science", "#3b82f6"), ("History", "#d97706"), ("Art", "#db2777"), ("Pop", "#16a34a")]:
-        r = client.post("/api/categories", json={"name": name, "color": color}, headers=ana)
-        assert r.status_code == 201, r.text
-        cats[name] = r.json()
-    deck = client.post("/api/decks", json={"name": "Basics"}, headers=ana).json()
-    for name, cat in cats.items():
-        r = client.post(
-            f"/api/decks/{deck['id']}/cards",
-            json={"category_id": cat["id"], "question": f"A {name} question?", "answer": "42"},
-            headers=ana,
-        )
-        assert r.status_code == 201, r.text
-    client.post(
-        f"/api/decks/{deck['id']}/cards",
-        json={"category_id": cats["Science"]["id"], "question": "Final?", "options": ["yes", "no"], "answer": "yes", "difficulty": 3, "grand_prize": True},
-        headers=ana,
-    )
-    board = client.post("/api/boards", json={"name": "Snake", "definition": board_definition("linear-basic")}, headers=ana)
-    assert board.status_code == 201, board.text
-    return {"auth": ana, "cats": cats, "deck": deck, "board": board.json(), "mapping": dict(zip("ABCD", [c["id"] for c in cats.values()]))}
-
 
 # ---------- categories ----------
 
@@ -152,16 +113,17 @@ def test_game_lifecycle(client, acme):
     r = client.post("/api/games", json={"name": "Quiz night"}, headers=ana)
     assert r.status_code == 201
     game = r.json()
-    assert game["status"] == "not_started" and game["creator_name"] == "Ana"
-    assert game["setup_errors"] == ["Choose a board and a deck", "Add at least one player"]
+    assert game["status"] == "awaiting" and game["creator_name"] == "Ana"
+    assert game["setup_errors"] == ["Choose a board and a deck", "Wait for at least one player to join"]
     assert client.post(f"/api/games/{game['id']}/start", headers=ana).status_code == 422
 
     r = client.patch(
         f"/api/games/{game['id']}",
-        json={"board_id": acme["board"]["id"], "deck_id": acme["deck"]["id"], "categories": {"A": acme["mapping"]["A"]}, "players": [{"name": "P1"}, {"name": "P2"}]},
+        json={"board_id": acme["board"]["id"], "deck_id": acme["deck"]["id"], "categories": {"A": acme["mapping"]["A"]}},
         headers=ana,
     )
-    game = r.json()
+    client.post(f"/api/games/{game['id']}/players", json={"name": "P1"}, headers=ana)
+    game = client.post(f"/api/games/{game['id']}/players", json={"name": "P2"}, headers=ana).json()
     assert [p["name"] for p in game["players"]] == ["P1", "P2"]
     assert game["setup_errors"] == ["No category chosen for slot(s): B, C, D"]
 
@@ -171,7 +133,7 @@ def test_game_lifecycle(client, acme):
     game = client.patch(f"/api/games/{game['id']}", json={"categories": acme["mapping"]}, headers=ana).json()
     assert game["setup_errors"] == []
 
-    # The board can't be deleted while a not-started game uses it
+    # The board can't be deleted while an awaiting game uses it
     assert client.delete(f"/api/boards/{acme['board']['id']}", headers=ana).status_code == 409
 
     r = client.post(f"/api/games/{game['id']}/start", headers=ana)

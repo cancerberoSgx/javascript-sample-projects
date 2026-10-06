@@ -48,7 +48,7 @@ def count_pending_games_using(conn: DbConn, category_id: int) -> int:
         """
         SELECT count(*) FROM trivia_game_categories gc
         JOIN trivia_games g ON g.id = gc.game_id
-        WHERE gc.category_id = %s AND g.status = 'not_started'
+        WHERE gc.category_id = %s AND g.status = 'awaiting'
         """,
         (category_id,),
     )

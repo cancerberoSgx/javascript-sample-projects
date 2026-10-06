@@ -2,7 +2,7 @@
 BoardFile / DeckFile types (frontend/src/engine/types.ts), so a snapshot can be passed
 straight to the engine's resolveGame()."""
 
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import (
     BaseModel,
@@ -11,6 +11,9 @@ from pydantic import (
     SerializerFunctionWrapHandler,
     model_serializer,
 )
+
+if TYPE_CHECKING:
+    from .engine.types import GameState as GameStateDict
 
 TrackType = Literal["linear", "loop"]
 WinCondition = Literal["finish", "collection", "turn_limit"]
@@ -129,10 +132,10 @@ class GameSnapshot(BaseModel):
     mapping: dict[str, str]  # slot -> SnapshotCategory.id
 
 
-# ---------- saved play state (rules.md §2.7) ----------
-# The engine's GameState (frontend/src/engine/types.ts). Only what the API reads or must
-# hold is typed; everything else is kept as sent (extra="allow"), so a save round-trips
-# unchanged (SAV-2). The server doesn't replay moves (SAV-5).
+# ---------- live play state (rules.md §2.7) ----------
+# The engine's GameState (frontend/src/engine/types.ts, app/engine/types.py). The server
+# creates and changes it only through app/engine; this model types what the API reads and
+# keeps everything else as is (extra="allow"), so a state round-trips unchanged.
 
 EnginePhase = Literal["AWAIT_ROLL", "AWAIT_MOVE", "AWAIT_CATEGORY", "AWAIT_ANSWER", "GAME_OVER"]
 
@@ -147,6 +150,7 @@ class EnginePlayer(BaseModel):
     inventory: list[str]
     score: int
     skip_next_turn: bool
+    removed: bool = False
 
 
 class EngineResult(BaseModel):
@@ -170,3 +174,7 @@ class EngineState(BaseModel):
     result: EngineResult | None
     rng: int
     log: list[Any]
+
+    def to_engine(self) -> "GameStateDict":
+        """The plain JSON state app/engine works on (exactly what was stored)."""
+        return self.model_dump(mode="json", exclude_unset=True)  # type: ignore[return-value]

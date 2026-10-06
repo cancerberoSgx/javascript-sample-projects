@@ -49,7 +49,7 @@ export function createGame(
     decks,
     players: players.map(
       (p, i): Player => ({
-        id: `p${i + 1}`,
+        id: p.id ?? `p${i + 1}`,
         name: p.name,
         color: p.color,
         current_space: 0,
@@ -76,29 +76,6 @@ export function createGame(
   return s;
 }
 
-/**
- * A copy of the state to save (SAV-3): a question's deadline is wall-clock time, so it is
- * replaced by the time left. resumeGame() turns it back into a deadline.
- */
-export function suspendGame(state: GameState, now: number = Date.now()): GameState {
-  const s = structuredClone(state);
-  if (s.question && s.question.deadline !== null) {
-    s.question.time_left_ms = Math.max(0, s.question.deadline - now);
-    s.question.deadline = null;
-  }
-  return s;
-}
-
-/** A loaded save, ready to play: the question timer restarts with the time it had left (SAV-3). */
-export function resumeGame(saved: GameState, now: number = Date.now()): GameState {
-  const s = structuredClone(saved);
-  if (s.question && s.question.time_left_ms !== undefined) {
-    s.question.deadline = now + s.question.time_left_ms;
-    delete s.question.time_left_ms;
-  }
-  return s;
-}
-
 export function applyAction(state: GameState, action: Action, now: number = Date.now()): ActionOutcome {
   if (state.phase === "GAME_OVER") return { state, error: "The game is over (INV-4)." };
   const s = structuredClone(state);
@@ -106,9 +83,9 @@ export function applyAction(state: GameState, action: Action, now: number = Date
   return error ? { state, error } : { state: s };
 }
 
-export const activePlayer = (s: GameState) => s.players[s.active_player];
+export const activePlayer = (s: Pick<GameState, "players" | "active_player">) => s.players[s.active_player];
 export const spaceAt = (s: GameState, index: number) => s.board.spaces.find((sp) => sp.index === index)!;
-export const categoryName = (s: GameState, id: string) =>
+export const categoryName = (s: Pick<GameState, "board">, id: string) =>
   id === GRAND_PRIZE ? "Grand Prize" : (s.board.categories.find((c) => c.id === id)?.name ?? id);
 
 // ---------------------------------------------------------------------------
@@ -184,6 +161,23 @@ function dispatch(s: GameState, action: Action, now: number): string | undefined
       const bad = expect("AWAIT_ANSWER");
       if (bad) return bad;
       applyResult(s, action.correct ? "correct" : "incorrect", action.correct ? "(forced correct)" : "(forced wrong)", now);
+      return;
+    }
+
+    case "SKIP_TURN": {
+      log(s, "had their turn skipped by the host.");
+      endTurn(s, now);
+      return;
+    }
+
+    case "REMOVE_PLAYER": {
+      const p = s.players.find((x) => x.id === action.player_id);
+      if (!p || p.removed) return `Unknown player '${action.player_id}'.`;
+      if (s.players.filter((x) => !x.removed).length === 1) return "Can't remove the last player: finish the game instead.";
+      p.removed = true;
+      p.skip_next_turn = false;
+      log(s, "was removed from the game by the host.", p.id);
+      if (p === activePlayer(s)) endTurn(s, now);
       return;
     }
   }
@@ -324,23 +318,25 @@ function applyResult(s: GameState, result: AnswerResult, given: string, now: num
   endTurn(s, now);
 }
 
-// §4.8 TURN_END
+// §4.8 TURN_END. Removed players are passed over (MPL-9).
 function endTurn(s: GameState, now: number) {
   s.question = null;
   s.destinations = {};
-  s.active_player = (s.active_player + 1) % s.players.length;
-  if (s.active_player === 0) {
-    s.round++;
-    if (s.config.win_conditions.includes("turn_limit") && s.config.max_rounds && s.round > s.config.max_rounds)
-      return finishByTurnLimit(s);
-  }
+  do {
+    s.active_player = (s.active_player + 1) % s.players.length;
+    if (s.active_player === 0) {
+      s.round++;
+      if (s.config.win_conditions.includes("turn_limit") && s.config.max_rounds && s.round > s.config.max_rounds)
+        return finishByTurnLimit(s);
+    }
+  } while (activePlayer(s).removed);
   startTurn(s, now);
 }
 
 // §7.3 (WIN-T1, WIN-T2)
 function finishByTurnLimit(s: GameState) {
   const key = (p: Player) => [p.score, p.inventory.length, p.current_space];
-  const ranked = [...s.players].sort((a, b) => {
+  const ranked = s.players.filter((p) => !p.removed).sort((a, b) => {
     const [ka, kb] = [key(a), key(b)];
     for (let i = 0; i < ka.length; i++) if (ka[i] !== kb[i]) return kb[i] - ka[i];
     return 0;

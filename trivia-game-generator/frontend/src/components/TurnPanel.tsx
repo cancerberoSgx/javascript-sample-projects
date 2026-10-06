@@ -1,13 +1,22 @@
 import { useEffect, useState } from "react";
 import { activePlayer, categoryName } from "../engine/engine";
-import type { Action, GameState } from "../engine/types";
+import type { Action, GameView } from "../engine/types";
 
-interface Props {
-  game: GameState;
+export interface TurnOptions {
+  /** This screen may act for the active player. Otherwise it only shows what they do. */
+  canAct?: boolean;
+  /** Dev tools: rigged dice and forced answers (Boards demo only, not multiplayer: MPL-7). */
+  dev?: boolean;
+  /** Server time minus local time, for question timers in multiplayer. */
+  clockOffset?: number;
+}
+
+interface Props extends TurnOptions {
+  game: GameView;
   dispatch: (action: Action) => void;
 }
 
-export function TurnPanel({ game, dispatch }: Props) {
+export function TurnPanel({ game, dispatch, canAct = true, dev = true, clockOffset = 0 }: Props) {
   const [rigged, setRigged] = useState<string>("random");
   const p = activePlayer(game);
 
@@ -32,11 +41,19 @@ export function TurnPanel({ game, dispatch }: Props) {
         </span>
       </div>
 
-      {game.phase === "AWAIT_ROLL" && (
+      {!canAct && game.phase !== "AWAIT_ANSWER" && (
+        <p className="muted">
+          Waiting for {p.name} to {game.phase === "AWAIT_ROLL" ? "roll" : game.phase === "AWAIT_MOVE" ? "move" : "pick a category"}…
+          {game.phase === "AWAIT_MOVE" && <> Rolled <span className="die">{game.last_roll}</span></>}
+        </p>
+      )}
+
+      {canAct && game.phase === "AWAIT_ROLL" && (
         <div className="row">
           <button className="primary" onClick={() => dispatch({ type: "ROLL", value: rigged === "random" ? undefined : Number(rigged) })}>
             🎲 Roll {rigged !== "random" && `(${rigged})`}
           </button>
+          {dev && (
           <label className="muted small">
             Dice:{" "}
             <select value={rigged} onChange={(e) => setRigged(e.target.value)} title="Pick a fixed value to test specific moves">
@@ -48,10 +65,11 @@ export function TurnPanel({ game, dispatch }: Props) {
               ))}
             </select>
           </label>
+          )}
         </div>
       )}
 
-      {game.phase === "AWAIT_MOVE" && (
+      {canAct && game.phase === "AWAIT_MOVE" && (
         <div>
           <p className="big">
             Rolled <span className="die">{game.last_roll}</span>
@@ -64,7 +82,7 @@ export function TurnPanel({ game, dispatch }: Props) {
         </div>
       )}
 
-      {game.phase === "AWAIT_CATEGORY" && (
+      {canAct && game.phase === "AWAIT_CATEGORY" && (
         <div>
           <p>Wildcard: pick a category.</p>
           <div className="row wrap">
@@ -77,7 +95,9 @@ export function TurnPanel({ game, dispatch }: Props) {
         </div>
       )}
 
-      {game.phase === "AWAIT_ANSWER" && <Question key={game.question!.card.id + game.log.length} game={game} dispatch={dispatch} />}
+      {game.phase === "AWAIT_ANSWER" && (
+        <Question key={game.question!.card.id + game.log.length} game={game} dispatch={dispatch} canAct={canAct} dev={dev} clockOffset={clockOffset} />
+      )}
 
       {game.last_answer && game.phase !== "AWAIT_ANSWER" && (
         <p className={`small result ${game.last_answer.result}`}>
@@ -98,21 +118,22 @@ export function TurnPanel({ game, dispatch }: Props) {
   );
 }
 
-function Question({ game, dispatch }: Props) {
+function Question({ game, dispatch, canAct, dev, clockOffset }: Props & Required<TurnOptions>) {
   const q = game.question!;
   const [text, setText] = useState("");
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(Date.now() + clockOffset);
 
   useEffect(() => {
     if (q.deadline === null) return;
-    const id = setInterval(() => setNow(Date.now()), 200);
+    const id = setInterval(() => setNow(Date.now() + clockOffset), 200);
     return () => clearInterval(id);
-  }, [q.deadline]);
+  }, [q.deadline, clockOffset]);
 
   const remaining = q.deadline === null ? null : Math.max(0, Math.ceil((q.deadline - now) / 1000));
+  // Locally the screen runs the timer; in multiplayer the server does (MPL-8)
   useEffect(() => {
-    if (q.deadline !== null && now >= q.deadline) dispatch({ type: "TIMEOUT" });
-  }, [now, q.deadline, dispatch]);
+    if (dev && q.deadline !== null && now >= q.deadline) dispatch({ type: "TIMEOUT" });
+  }, [dev, now, q.deadline, dispatch]);
 
   return (
     <div className="question">
@@ -124,7 +145,18 @@ function Question({ game, dispatch }: Props) {
         {remaining !== null && <span className={`timer ${remaining <= 5 ? "low" : ""}`}>{remaining}s</span>}
       </div>
       <p className="big">{q.card.question}</p>
-      {q.card.options ? (
+      {!canAct ? (
+        <>
+          {q.card.options && (
+            <ol className="options-view" type="A">
+              {q.card.options.map((o, i) => (
+                <li key={i}>{o}</li>
+              ))}
+            </ol>
+          )}
+          <p className="muted small">Waiting for {activePlayer(game).name} to answer…</p>
+        </>
+      ) : q.card.options ? (
         <div className="options">
           {q.card.options.map((o, i) => (
             <button key={i} onClick={() => dispatch({ type: "ANSWER", answer: i })}>
@@ -146,6 +178,7 @@ function Question({ game, dispatch }: Props) {
           </button>
         </form>
       )}
+      {canAct && dev && (
       <div className="row dev">
         <span className="muted small">Dev:</span>
         <button className="small" onClick={() => dispatch({ type: "FORCE_RESULT", correct: true })}>
@@ -155,6 +188,7 @@ function Question({ game, dispatch }: Props) {
           force ✗
         </button>
       </div>
+      )}
     </div>
   );
 }

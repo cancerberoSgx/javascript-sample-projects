@@ -48,8 +48,11 @@ Tests also run inside the container: `docker compose -f docker/docker-compose.ym
 | `app/schemas.py` | API request/response models. Separate from the row models so secrets like `password_hash` never reach a response |
 | `app/permissions.py` | Every root/member access rule, in one place |
 | `app/auth.py` | Bearer JWT → `CurrentUser` dependency, with a revocation check |
-| `app/routers/` | HTTP endpoints: `/api/auth`, `/api/organizations`, `/api/users`, `/api/categories`, `/api/decks` (+ `/cards`), `/api/boards`, `/api/games`, `/api/games/{id}/instances` (saved games) |
-| `app/formats.py` | Board definition, game snapshot and saved play-state (`EngineState`) formats (match the frontend's `BoardFile` / `DeckFile` / `GameState`) |
+| `app/routers/` | HTTP endpoints: `/api/auth`, `/api/organizations`, `/api/users`, `/api/categories`, `/api/decks` (+ `/cards`), `/api/boards`, `/api/games`, and multiplayer play (`routers/play.py`: join, lobby, host controls, the game WebSocket) |
+| `app/formats.py` | Board definition, game snapshot and live play-state (`EngineState`) formats (match the frontend's `BoardFile` / `DeckFile` / `GameState`) |
+| `app/engine/` | **The game engine, ported from `frontend/src/engine`** (`engine.ts`, `movement.ts`, `rng.ts`, `resolve.ts`). Same states, same rule IDs, same error messages. `tests/test_engine.py` replays the conformance fixture the TS tests write (`tests/fixtures/engine_conformance.json`). Change one engine, change the other |
+| `app/play.py` | Multiplayer play: deals a started game's opening state and applies actions (turn checks, auto-finish). The only code that changes a live state |
+| `app/live.py` | The in-memory WebSocket hub: who watches which game, broadcasts, presence and the server-side question timer |
 | `app/validation.py` | Board and game-setup checks. Python port of `frontend/src/engine/board.ts` + `resolve.ts`, using the same rule IDs from `rules.md` |
 | `migrations/`, `seeds/` | Numbered `.sql` files |
 
@@ -78,7 +81,9 @@ Tests also run inside the container: `docker compose -f docker/docker-compose.ym
 | Delete users | ✔ (not yourself) | ✘ |
 | Impersonate a member user | ✔ any organization | ✘ |
 
-| Categories, decks, cards, boards, games, saved games | every organization | own organization: full create / edit / delete |
+| Categories, decks, cards, boards, games; hosting a game (start, players, skip turn, new link, end) | every organization | own organization: full create / edit / delete |
+
+Players don't need an account (rules.md §2.7). The game's join code lets anyone join while it's awaiting, and the player token they get proves which player a device is. Who can watch a game's WebSocket: its organization's users (and root), its players, and anyone with its join code.
 
 Other rules: the last root user can't be demoted or deleted, an organization that still has users can't be deleted, and anything outside your scope returns `404`.
 
@@ -86,13 +91,29 @@ Other rules: the last root user can't be demoted or deleted, an organization tha
 
 | Resource | Notes |
 |---|---|
-| `/api/categories` | `name`, `description`, `color`. Can't be deleted while cards or a not-started game use it |
+| `/api/categories` | `name`, `description`, `color`. Can't be deleted while cards or an awaiting game use it |
 | `/api/decks`, `/api/decks/{id}/cards` | A card has `category_id`, `question`, `options` (null = open-ended), `answer` (for multiple choice, one of the options), `difficulty` 1–3, `grand_prize` |
 | `/api/boards` | `definition` = `{config, slots, spaces}` (rules.md §2.1). Spaces use **slots**, not categories. Invalid boards are rejected with a list of errors |
-| `/api/games` | `board_id`, `deck_id`, `categories` (`{slot: category_id}`), `players` (`[{name}]`; order = turn order). `GET /api/games/{id}` includes `setup_errors`, the list of what still blocks starting |
-| `POST /api/games/{id}/start` | `not_started → running`. Validates the setup, then stores a `snapshot` (`{board, deck, mapping}`), so later edits don't affect the game |
-| `POST /api/games/{id}/finish` | `running → finished` |
-| `/api/games/{id}/instances` | Saved games (rules.md §2.7, table `trivia_game_instances`). `POST {name, state}` saves, `PATCH {name?, state?}` overwrites or renames, `GET …/{iid}` loads, `DELETE` removes. `state` is the engine's `GameState` (with the question timer stored as `time_left_ms`, SAV-3), kept as sent. The list returns a summary instead of the state: `round`, `phase`, `players` (name, color, score, tokens, space), `result`, who saved it last and when. Saving needs a `running` game (409 otherwise) and the game's players in order (422); states over 2 MB get 413. Finished games keep their saves, readable only |
+| `/api/games` | `board_id`, `deck_id`, `categories` (`{slot: category_id}`); `players` (`[{name}]`) only on create. Every game has a `join_code`; players have `joined` (from their own device) and `removed`. `GET /api/games/{id}` includes `setup_errors`, the list of what still blocks starting |
+| `POST /api/games/{id}/start` | `awaiting → running`. Validates the setup, stores a `snapshot` (`{board, deck, mapping}`) so later edits don't affect the game, and deals the opening play state (table `trivia_game_states`) |
+| `POST /api/games/{id}/finish` | `running → finished`: the host ends the game early. Reaching GAME_OVER finishes it by itself (MPL-10) |
+
+## Multiplayer (rules.md §2.7)
+
+| Endpoint | Who | What |
+|---|---|---|
+| `POST /api/games/{id}/join` `{code, name}` | anyone with the link | Joins an awaiting game. Returns `{player, player_token}`; the device keeps the token. Wrong code 404, started 409, name taken (ignoring case) 409, 12 players 409 |
+| `POST /api/games/{id}/leave` (header `X-Player-Token`) | that player | Leaves the lobby. 409 once the game runs |
+| `POST /api/games/{id}/players` `{name}` | host | Adds a player without a device: they play on the host's screen |
+| `PUT /api/games/{id}/players/order` `{player_ids}` | host | New turn order. 409 if the list isn't exactly the current players (someone joined meanwhile) |
+| `DELETE /api/games/{id}/players/{pid}` | host | Awaiting: deletes the player. Running: removes them from the game (MPL-9); 409 for the last player |
+| `POST /api/games/{id}/skip-turn` | host | Ends the active player's turn (MPL-8) |
+| `POST /api/games/{id}/join-code` | host | A new join code; the old link stops working |
+| `WS /api/games/{id}/ws` | see Permissions | The live view (below) |
+
+**WebSocket protocol.** The client's first message says who it is, with whatever it has: `{"type": "hello", "token": <login JWT>?, "player_token": ?, "code": ?}`. Without access it gets `{"type": "error", "fatal": true}` and close code 4404 (4400 for a bad hello). Then, after every change to the game (joins, start, actions, someone connecting or dropping), the server sends `{"type": "game", "game": {id, name, status, board_name, players: [{id, name, position, joined, removed, online}]}, "state", "version", "server_now", "you": {player_id, can_host}}`. `state` is the engine's `GameState` without `cards`, `decks`, `rng`, and without the pending card's `correct_answer` (MPL-6). `server_now` lets clients run question timers in server time. A device sends `{"type": "action", "action": {"type": "ROLL" | "MOVE" | "CHOOSE_CATEGORY" | "ANSWER" | "TIMEOUT", …}}`; mistakes come back as `{"type": "error", "message"}` to that device only. When the game is deleted, everyone gets `{"type": "gone"}`.
+
+How it works: actions lock the game's `trivia_game_states` row, run the engine (`app/engine`), and save the new state with `version + 1`. The hub (`app/live.py`) then reads the game and sends each socket its view, one broadcast per game at a time so views never arrive out of order. It also schedules a timeout task for each pending question, so absent players can't stall a game. The hub lives in process memory: this is fine for the single uvicorn process the app runs as, but several workers would need shared broadcasts (for example Postgres `LISTEN/NOTIFY`). Long-lived sockets check the login token only when they connect.
 
 List endpoints return the caller's organization. Root users can pass `?organization_id=`, and `organization_id` in create bodies. A game's board, deck and categories must belong to the game's organization.
 

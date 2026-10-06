@@ -90,6 +90,7 @@ interface Player {
   inventory: Set<string>;    // categories collected at HQ spaces (one token per category)
   score: number;             // starts at 0
   skip_next_turn: boolean;   // starts false
+  removed?: boolean;         // removed by the host during a multiplayer game (MPL-9)
 }
 ```
 - `PLY-1` Players play in a fixed order: the order they joined, or a randomized order. The order MUST NOT change during the game.
@@ -111,22 +112,28 @@ interface GameState {
 ```
 
 ### 2.6 Game (stored)
-A stored game belongs to an organization and has: a name, a `status`, a creator (an organization user), a board, a deck, a category for each board slot, and players (just names; they don't need accounts, and their order is the turn order).
+A stored game belongs to an organization and has: a name, a `status`, a creator (an organization user), a board, a deck, a category for each board slot, a join code, and players (just names; they don't need accounts, and their order is the turn order).
 
-- `GAM-1` `status` goes `not_started → running → finished`, never backwards.
-- `GAM-2` While `not_started`, the board, deck, slot mapping and players can change. A game can only start once BRD-*, BRD-5, BRD-6, CRD-4 hold and it has at least one player.
+- `GAM-1` `status` goes `awaiting → running → finished`, never backwards. `awaiting` is the lobby: players join while the game waits for its host to start it.
+- `GAM-2` While `awaiting`, the board, deck, slot mapping and players can change. A game can only start once BRD-*, BRD-5, BRD-6, CRD-4 hold and it has at least one player. Starting is up to the host (any user of the game's organization).
 - `GAM-3` Starting copies the board, deck and categories into the game (a *snapshot*). Later edits or deletes of the originals never change a running or finished game.
-- `GAM-4` A board, deck or category can't be deleted while a not-started game uses it. A category can't be deleted while cards use it.
-- `GAM-5` Only a `running` game can be played (`/games/:id/play`). Play runs the engine on the snapshot (GAM-3) in hot-seat mode: the game's players take turns on one screen, in their stored order.
+- `GAM-4` A board, deck or category can't be deleted while an awaiting game uses it. A category can't be deleted while cards use it.
+- `GAM-5` Only a `running` game can be played. It is played live and multiplayer (§2.7) at `/games/:id`.
 
-### 2.7 Saved games (instances)
-A play session can be interrupted and continued later. A **save** (a *game instance*) is a named copy of the engine's whole `GameState` (§2.5): positions, scores, tokens, the draw and used piles, the RNG, the pending question, the log and the phase.
+### 2.7 Multiplayer play
+Each player plays on their own device. The server runs the engine (a Python port of it, kept identical by a conformance fixture), so it alone decides what happens; devices send actions and show what the server broadcasts.
 
-- `SAV-1` A game can have any number of named saves. Every user who can see the game (its organization, and root) can list, load, overwrite and delete them. Each save records who saved it last and when.
-- `SAV-2` Loading a save continues the game exactly where it was: same phase, same active player, same RNG, so the next dice and cards are the ones that would have come.
-- `SAV-3` A question's timer is wall-clock time, so a save stores the *time left* (`question.time_left_ms`) instead of the deadline. Loading restarts the timer with that time left. A save made after the deadline passed times out right after loading.
-- `SAV-4` Saves can only be written while the game is `running`. The saved players MUST match the game's players (same names, same order).
-- `SAV-5` Saves are trusted data from the organization's own users. The server checks their shape and size, not that every move was legal.
+- `MPL-1` A game has a **join code**. Its link is `/games/:id?code=<code>`. Codes ignore case. The host can make a new code at any time; the old link then stops working for joining and watching, and players who already joined stay in.
+- `MPL-2` With the link, anyone can join while the game is `awaiting`: they give a name and become a player. No account is needed. Once the game starts, no one can join.
+- `MPL-3` Player names are unique within a game, ignoring case and surrounding spaces. At most 12 players.
+- `MPL-4` Joining gives the device a secret **player token** (the server stores only its hash). It identifies that player when the device reconnects. A player can leave the lobby from their device; once the game runs, only the host can remove them.
+- `MPL-5` Every device watching a game keeps a WebSocket open and gets the game's current view after every change: lobby, players with who's **online**, status and play state. Who may watch: users of the game's organization (and root), its players, and anyone with a valid link.
+- `MPL-6` Each player acts only on their own turn, from their own device. Players the host added by name (no device) are played from the host's screen. What devices receive never includes the deck, the draw piles, the RNG or the pending card's answer. A card's answer is shown once the card is answered.
+- `MPL-7` Devices can only roll, move, choose a category, answer and time out. Rigged rolls and forced results exist only in the Boards demo.
+- `MPL-8` The server runs the question timer: an unanswered question times out at its deadline even if no device sends anything. The host can **skip** the active player's turn (for someone who's away); the turn ends as if it had played out.
+- `MPL-9` The host can **remove** a player. While awaiting, the player is deleted. While running, they stay in the scoreboard and log but never play again: their token disappears from the board and turns pass over them. The last remaining player can't be removed (end the game instead).
+- `MPL-10` A game is `finished` as soon as the engine reaches GAME_OVER. The host can also end a running game early, without a winner.
+- `MPL-11` The live state is saved after every action. A restart or a dropped connection loses nothing: devices reconnect and continue. Games started before live play get a fresh state the first time they're opened.
 
 ---
 
@@ -304,3 +311,6 @@ Answers to gaps or conflicts in the original draft. Change any of them and updat
 8. **Empty decks**: used cards are reshuffled.
 9. **Score has a purpose**: it decides the optional `turn_limit` win and the leaderboard.
 10. **Open-ended answers**: exact match after normalization, with an optional LLM judge (from the readme idea).
+11. **Multiplayer is server-authoritative** (MPL-*): players are anonymous guests, so the server runs the engine, checks turns, keeps answers and upcoming cards hidden, and runs the timer. The hot-seat play page and named saves were replaced by one live state per game, saved after every action.
+12. **Players without a device** (added by the host) are played from the host's screen, so a game can mix phones and a shared screen.
+13. **Absent players**: the game waits for them. The question timer still runs on the server, and the host can skip their turn or remove them.

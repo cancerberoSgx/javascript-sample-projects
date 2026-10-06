@@ -1,10 +1,18 @@
 from datetime import datetime
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, EmailStr, Field, StringConstraints, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    StrictInt,
+    StringConstraints,
+    model_validator,
+)
 
-from .formats import BoardDefinition, EngineState, GameSnapshot
-from .models import GameInstanceSummary, GameStatus, Role, User
+from .formats import BoardDefinition, GameSnapshot
+from .models import GameStatus, Role, User
 
 Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
 # bcrypt only uses the first 72 bytes, so longer passwords are rejected rather than silently truncated
@@ -215,13 +223,15 @@ class BoardUpdate(BaseModel):
 
 
 class PlayerIn(BaseModel):
-    name: Name
+    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=40)]
 
 
 class PlayerOut(BaseModel):
     id: int
     name: str
     position: int
+    joined: bool  # joined with the link from their own device
+    removed: bool  # removed from the running game by the host
 
 
 class GameOut(BaseModel):
@@ -237,6 +247,7 @@ class GameOut(BaseModel):
     deck_name: str | None
     categories: dict[str, int]  # slot -> category id
     players: list[PlayerOut]
+    join_code: str  # players join with /games/{id}?code={join_code} (MPL-1)
     started_at: datetime | None
     finished_at: datetime | None
     created_at: datetime
@@ -258,33 +269,102 @@ class GameCreate(BaseModel):
 
 
 class GameUpdate(BaseModel):
-    """Only while not started. Send board_id/deck_id: null to clear; categories/players replace the whole list."""
+    """Only while awaiting. Send board_id/deck_id: null to clear; categories replaces the whole mapping.
+    Players have their own endpoints, so a host's edit never overwrites someone joining meanwhile."""
 
     name: Name | None = None
     board_id: int | None = None
     deck_id: int | None = None
     categories: dict[str, int] | None = None
-    players: list[PlayerIn] | None = Field(default=None, max_length=12)
 
 
-# ---------- saved games (game instances, rules.md §2.7) ----------
+# ---------- multiplayer (rules.md §2.7, MPL-*) ----------
+
+class PlayerOrderIn(BaseModel):
+    player_ids: list[int]  # every player of the game, in the new turn order
 
 
-class GameInstanceOut(GameInstanceSummary):
-    """A save in a list: who saved it, when, and a summary of the play state (no state)."""
+class JoinIn(PlayerIn):
+    code: str = Field(max_length=64)
 
 
-class GameInstanceDetailOut(GameInstanceOut):
-    state: EngineState
+class JoinOut(BaseModel):
+    player: PlayerOut
+    player_token: str  # keep it on this device: it proves which player it is (MPL-4)
 
 
-class GameInstanceCreate(BaseModel):
-    name: Name
-    state: EngineState
+class LivePlayerOut(BaseModel):
+    id: int
+    name: str
+    position: int
+    joined: bool
+    removed: bool
+    online: bool  # has a connection open right now
 
 
-class GameInstanceUpdate(BaseModel):
-    """Rename and/or overwrite with a new state."""
+class LiveGameOut(BaseModel):
+    id: int
+    name: str
+    status: GameStatus
+    board_name: str | None
+    players: list[LivePlayerOut]
 
-    name: Name | None = None
-    state: EngineState | None = None
+
+class LiveYouOut(BaseModel):
+    player_id: int | None  # the player this device plays as
+    can_host: bool  # an organization user: may start, skip turns, remove players
+
+
+class LiveMessage(BaseModel):
+    """Sent over the game's WebSocket after every change (MPL-5)."""
+
+    type: Literal["game"] = "game"
+    game: LiveGameOut
+    state: dict[str, Any] | None  # the engine state without its secrets (MPL-6); null until started
+    version: int | None  # +1 on every state change
+    server_now: int  # epoch ms, so clients can show question timers in server time
+    you: LiveYouOut
+
+
+class SocketHello(BaseModel):
+    """The first message on a game's WebSocket: who is watching. Any combination works (MPL-5)."""
+
+    type: Literal["hello"]
+    token: str | None = None  # an organization user's access token
+    player_token: str | None = None  # from joining on this device
+    code: str | None = None  # the game's join code, from its link
+
+
+class _ActionIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+
+class RollIn(_ActionIn):
+    type: Literal["ROLL"]  # no rigged "value" in multiplayer (MPL-7)
+
+
+class MoveIn(_ActionIn):
+    type: Literal["MOVE"]
+    to: StrictInt
+
+
+class ChooseCategoryIn(_ActionIn):
+    type: Literal["CHOOSE_CATEGORY"]
+    category: str
+
+
+class AnswerIn(_ActionIn):
+    type: Literal["ANSWER"]
+    answer: Annotated[str, StringConstraints(max_length=500)] | StrictInt
+
+
+class TimeoutIn(_ActionIn):
+    type: Literal["TIMEOUT"]
+
+
+PlayerAction = Annotated[RollIn | MoveIn | ChooseCategoryIn | AnswerIn | TimeoutIn, Field(discriminator="type")]
+
+
+class SocketAction(BaseModel):
+    type: Literal["action"]
+    action: PlayerAction

@@ -9,16 +9,10 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from .formats import (
-    BoardDefinition,
-    EnginePhase,
-    EngineResult,
-    EngineState,
-    GameSnapshot,
-)
+from .formats import BoardDefinition, EngineState, GameSnapshot
 
 Role = Literal["root", "member"]
-GameStatus = Literal["not_started", "running", "finished"]
+GameStatus = Literal["awaiting", "running", "finished"]
 
 
 class Row(BaseModel):
@@ -203,6 +197,8 @@ class Player(Row):
     game_id: int
     name: str
     position: int
+    joined: bool  # joined with the game's link from their own device (has a player token)
+    removed: bool  # removed from a running game by the host (MPL-9)
 
 
 class Game(Row):
@@ -217,6 +213,7 @@ class Game(Row):
     deck_id: int | None
     deck_name: str | None  # joined
     snapshot: GameSnapshot | None
+    join_code: str
     started_at: datetime | None
     finished_at: datetime | None
     created_at: datetime
@@ -237,48 +234,11 @@ class GameChanges(Changes):
     deck_id: int | None = None
 
 
-# ---------- trivia_game_instances (saved games) ----------
+# ---------- trivia_game_states (live play state of running games) ----------
 
 
-class InstancePlayer(Row):
-    """A player as listed in a save's summary (read from state.players)."""
-
-    id: str
-    name: str
-    color: str
-    score: int
-    inventory: list[str]
-    current_space: int
-
-
-class GameInstanceSummary(Row):
-    """A save without its state, for lists. round/phase/players/result are read from the state."""
-
-    id: int
+class GameLiveState(Row):
     game_id: int
-    name: str
-    saved_by_id: int | None
-    saved_by_name: str | None  # joined
-    round: int
-    phase: EnginePhase
-    players: list[InstancePlayer]
-    result: EngineResult | None
-    created_at: datetime
+    state: EngineState
+    version: int  # +1 on every change
     updated_at: datetime
-
-
-class GameInstance(GameInstanceSummary):
-    state: EngineState
-
-
-class NewGameInstance(BaseModel):
-    game_id: int
-    name: str
-    state: EngineState
-    saved_by_id: int
-
-
-class GameInstanceChanges(Changes):
-    name: str | None = None
-    state: EngineState | None = None
-    saved_by_id: int | None = None
