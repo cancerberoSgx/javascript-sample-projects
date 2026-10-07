@@ -45,6 +45,7 @@ from ..schemas import (
     VisibilityIn,
 )
 from ..storage import MEDIA_URL
+from ..transfer import CategoryMatcher, new_name
 from ..validation import validate_board
 from . import boards as boards_router
 from . import categories as categories_router
@@ -155,60 +156,23 @@ def list_public_images(_: Me, conn: Conn, q: str | None = None):
 # ---------- copying (SHR-3 … SHR-7) ----------
 
 
-def unique_name(name: str, taken: set[str]) -> str:
-    """SHR-4: the original's name, or "<name> (copy)", "<name> (copy 2)", … when the organization has it."""
-    candidate, n = name, 1
-    while candidate.lower() in taken:
-        suffix = " (copy)" if n == 1 else f" (copy {n})"
-        candidate = name[: 200 - len(suffix)] + suffix
-        n += 1
-    return candidate
-
-
 def _copy_name(conn: DbConn, table: library.Table, org_id: int, original: str, requested: str | None) -> str:
-    """A requested name must be free (409); the default name is made free (SHR-4)."""
-    taken = library.names_in_org(conn, table, org_id)
-    if requested:
-        if requested.lower() in taken:
-            raise conflict(f"'{requested}' is already taken in this organization. Pick another name.")
-        return requested
-    return unique_name(original, taken)
+    return new_name(conn, table, org_id, original, requested, "copy")
 
 
 def _origin(item_id: int, name: str, organization_name: str) -> CopiedFrom:
     return CopiedFrom(id=item_id, name=name, organization_name=organization_name)
 
 
-class _CategoryMatcher:
-    """SHR-5: maps the original's categories to the target organization's, by name (ignoring case).
-    A category the organization doesn't have is created, with the original's description and color."""
+class _CategoryMatcher(CategoryMatcher):
+    """SHR-5: the original's categories, matched by name or created (remembering where they came from)."""
 
     def __init__(self, conn: DbConn, org_id: int, organization_name: str):
-        self.conn, self.org_id, self.organization_name = conn, org_id, organization_name
-        self.by_name = {c.name.lower(): c.id for c in categories.list_for_org(conn, org_id)}
-        self.ids: dict[int, int] = {}
-        self.created: list[str] = []
-        self.matched: list[str] = []
+        super().__init__(conn, org_id)
+        self.organization_name = organization_name
 
-    def target(self, source: Category) -> int:
-        if source.id not in self.ids:
-            if (found := self.by_name.get(source.name.lower())) is not None:
-                self.matched.append(source.name)
-            else:
-                found = categories.create(
-                    self.conn,
-                    NewCategory(
-                        organization_id=self.org_id,
-                        name=source.name,
-                        description=source.description,
-                        color=source.color,
-                        copied_from=_origin(source.id, source.name, self.organization_name),
-                    ),
-                )
-                self.by_name[source.name.lower()] = found
-                self.created.append(source.name)
-            self.ids[source.id] = found
-        return self.ids[source.id]
+    def source(self, c: Category) -> int:
+        return self.target(c.id, c.name, c.description, c.color, _origin(c.id, c.name, self.organization_name))
 
 
 def _copy_card(card: Card, deck_id: int, category_id: int) -> NewCard:
@@ -301,7 +265,7 @@ def copy_deck(deck_id: int, body: CopyIn, me: Me, conn: Conn):
             )
             matcher = _CategoryMatcher(conn, org_id, original.organization_name)
             for card in library.cards(conn, deck_id):
-                decks.create_card(conn, _copy_card(card, new_id, matcher.target(source_categories[card.category_id])))
+                decks.create_card(conn, _copy_card(card, new_id, matcher.source(source_categories[card.category_id])))
     except errors.UniqueViolation:
         raise conflict("That name was just taken. Try again.")
     except errors.ForeignKeyViolation:
@@ -331,7 +295,7 @@ def copy_cards(deck_id: int, body: CardsCopyIn, me: Me, conn: Conn):
             if not seen.add_new(card.question, card.answer):
                 skipped.append(card.question)
                 continue
-            decks.create_card(conn, _copy_card(card, target.id, matcher.target(source_categories[card.category_id])))
+            decks.create_card(conn, _copy_card(card, target.id, matcher.source(source_categories[card.category_id])))
             added += 1
     return CardsCopyOut(added=added, skipped_duplicates=skipped, categories_created=matcher.created)
 

@@ -3,8 +3,8 @@
 A React + Vite app. After login it shows:
 - **Games**: set up a game (board, deck, a category for each board slot), share its link, watch players join live, start it. A running game shows the live board with host controls (skip a turn, remove a player, end the game). See [Multiplayer](#multiplayer).
 - **Player page** (`/games/:id?code=…`): what players open on their own devices. No login: pick a name, wait in the lobby, play your turns.
-- **Boards**: a visual board editor (see [Board editor](#board-editor)), with live validation that points at the spaces involved. New boards can start blank or from an example.
-- **Decks**: questions and answers (open or multiple choice, difficulty, grand prize), written by hand or generated with OpenAI / Gemini (see [Generating cards](#generating-cards)).
+- **Boards**: a visual board editor (see [Board editor](#board-editor)), with live validation that points at the spaces involved. New boards can start blank or from an example. **⬇ Export JSON** downloads a board as a file, **⬆ Import** makes a new board from one (rules.md SER-7, SER-8).
+- **Decks**: questions and answers (open or multiple choice, difficulty, grand prize), written by hand or generated with OpenAI / Gemini (see [Generating cards](#generating-cards)). Decks export to and import from `.json` files too, with their categories (matched by name on import).
 - **Categories**: name, description, color.
 - **🌐 Library**: what every organization made public (boards, decks with their cards, categories, images). Copy anything into your organization, or add chosen cards to one of your decks. Boards, decks, categories and images get a **Publish to Library** / **Make private** control. See [Library](#library).
 - **Organizations** (root) / **My organization** (member): CRUD for organizations and their users, the organization's OpenAI / Gemini keys (root only, shown masked) and models (any user of the organization; empty = default, checked when saved). Root users also get an organization picker on the content tabs.
@@ -69,6 +69,7 @@ Impersonation: root users get an **Impersonate** button on member users (Organiz
 | `src/components/LiveGame.tsx` | Multiplayer: `useLiveGame` (the game's WebSocket), `LiveTable`, lobby list, join form, share link, host controls |
 | `src/components/GenerateCards.tsx` | Card generation: `useGeneration` (providers + the deck's open generation, polled while it runs), `GenerateForm`, `GenerationPanel` (progress, then the review list) |
 | `src/components/background.ts` | Backgrounds (rules.md §2.1.2): the pure layout math (`boardArea`, `cropRect`, `placeBackground`, tested in `background.test.ts`), `useBackgroundImage`, and `BackgroundLayer`, which renders the image once into an offscreen canvas that both board canvases copy every frame |
+| `src/components/files.tsx` | Deck and board files (rules.md SER-7 … SER-9): `ImportButton` (file picker), `readJsonFile`, `downloadJson` and `fileJson` (lays the JSON out like the example files, one line per card/space). Used by the Decks and Boards pages (⬆ Import in the list, ⬇ Export JSON in the editor) and the organization page's Backup panel (SER-10, SER-11: everything at once) |
 | `src/components/LibraryPage.tsx` | The public Library (rules.md §2.8): search, a list + detail per kind, copy forms, the card picker for adding single cards to your decks |
 | `src/components/BackgroundEditor.tsx` | `BackgroundEditor` (fit, crop rectangle, sliders) and `ImageLibrary` (upload, drop, import from URL, rename, delete). Used by the board editor and the game setup |
 | `src/components/PlayerGamePage.tsx` | `/games/:id?code=…`: the player's own device. Lobby and join cards, then `PlayScreen` |

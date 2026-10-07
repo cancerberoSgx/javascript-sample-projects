@@ -9,6 +9,7 @@ from pydantic import (
     ConfigDict,
     Field,
     SerializerFunctionWrapHandler,
+    StringConstraints,
     field_validator,
     model_serializer,
     model_validator,
@@ -151,6 +152,91 @@ class BoardDefinition(Strict):
     def to_json(self) -> dict:
         # exclude_unset keeps config partial, so defaults can change without rewriting boards
         return self.model_dump(mode="json", exclude_unset=True)
+
+
+# ---------- board and deck files (export / import, rules.md §7b SER-2, SER-3, SER-7) ----------
+# What a user downloads and uploads: the same shapes as the example files in frontend/public.
+# Shapes are checked here; the content rules (answers among options, category references, …)
+# are checked by app/transfer.py so every problem is reported with the card it's on.
+
+
+def _check_version(v: object) -> object:
+    if v != 2:
+        raise ValueError(f"schema_version must be 2 (got {v!r}). This app reads format version 2 files (rules.md SER-6).")
+    return v
+
+
+FileText = Annotated[str, StringConstraints(strip_whitespace=True, max_length=2000)]
+FileName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
+
+
+class BoardFile(BoardDefinition):
+    """SER-2: a board file. `id` is only a label (the example files' file name); it's ignored on import."""
+
+    schema_version: Literal[2]
+    id: str | None = Field(default=None, max_length=200)
+    name: FileName
+    description: FileText = ""
+
+    _version = field_validator("schema_version", mode="before")(_check_version)
+
+    @model_serializer(mode="wrap")
+    def _omit_no_background(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:  # overrides BoardDefinition's
+        data = handler(self)
+        order = ["schema_version", "id", "name", "description", "config", "slots", "spaces", "background"]
+        return {k: data[k] for k in order if data.get(k) is not None}
+
+
+class DeckFileCategory(Strict):
+    id: str = Field(min_length=1, max_length=200)  # what the cards' `category` refers to
+    name: FileName
+    description: FileText = ""
+    color: str = Field(pattern=r"^#[0-9a-fA-F]{6}$")
+
+
+class DeckFileCard(Strict):
+    id: str | None = Field(default=None, max_length=200)  # a label for people and diffs; ignored on import
+    category: str  # a DeckFileCategory.id of the same file
+    question: str
+    options: list[str] | None = None  # null = open-ended
+    answer: str  # for multiple choice, one of `options`
+    difficulty: int = 1
+    grand_prize: bool = False
+
+
+class DeckFile(Strict):
+    """SER-3: a deck file, with the categories its cards use."""
+
+    schema_version: Literal[2]
+    id: str | None = Field(default=None, max_length=200)
+    name: FileName
+    description: FileText = ""
+    categories: list[DeckFileCategory] = Field(max_length=100)
+    cards: list[DeckFileCard] = Field(max_length=5000)
+
+    _version = field_validator("schema_version", mode="before")(_check_version)
+
+    @model_serializer(mode="wrap")
+    def _omit_no_id(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
+        data = handler(self)
+        if data.get("id") is None:
+            data.pop("id", None)
+        return data
+
+
+class OrganizationFile(Strict):
+    """SER-10: everything an organization made: all its categories (even unused ones), and every deck
+    and board as a complete deck / board file, so each one can also be cut out and imported alone."""
+
+    schema_version: Literal[2]
+    kind: Literal["organization"]
+    name: FileName  # the organization's, for people; the import goes wherever it's sent
+    exported_at: str | None = None
+    categories: list[DeckFileCategory] = Field(default=[], max_length=500)
+    decks: list[DeckFile] = Field(default=[], max_length=1000)
+    boards: list[BoardFile] = Field(default=[], max_length=1000)
+
+    _version = field_validator("schema_version", mode="before")(_check_version)
 
 
 # ---------- game snapshot (frozen copy taken when a game starts) ----------

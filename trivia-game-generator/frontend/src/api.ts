@@ -339,6 +339,18 @@ function errorList(data: unknown): string[] {
   return [];
 }
 
+/** What an organization file added (SER-11). Decks and boards whose name was taken are skipped. */
+export interface OrganizationImport {
+  decks_created: string[];
+  decks_skipped: string[];
+  boards_created: string[];
+  boards_skipped: string[];
+  cards_created: number;
+  categories_created: string[];
+  categories_matched: string[];
+  background_images_missing: string[];
+}
+
 /** Where a copy goes (default: your organization) and its name (default: the original's, "(copy)" if taken). */
 export interface CopyInput {
   organization_id?: number;
@@ -367,6 +379,9 @@ export const api = {
   ) =>
     request<Organization>("PATCH", `/organizations/${id}`, body),
   deleteOrganization: (id: number) => request<void>("DELETE", `/organizations/${id}`),
+  // Organization files (rules.md SER-10, SER-11): every category, deck and board in one file
+  exportOrganization: (id: number) => request<object>("GET", `/organizations/${id}/export`),
+  importOrganization: (id: number, file: unknown) => request<OrganizationImport>("POST", `/organizations/${id}/import`, file),
 
   listUsers: (organizationId?: number) =>
     request<User[]>("GET", `/users${organizationId ? `?organization_id=${organizationId}` : ""}`),
@@ -391,6 +406,10 @@ export const api = {
   createCard: (deckId: number, body: CardInput) => request<Card>("POST", `/decks/${deckId}/cards`, body),
   updateCard: (deckId: number, cardId: number, body: Partial<CardInput>) => request<Card>("PATCH", `/decks/${deckId}/cards/${cardId}`, body),
   deleteCard: (deckId: number, cardId: number) => request<void>("DELETE", `/decks/${deckId}/cards/${cardId}`),
+  // Deck files (rules.md SER-7 … SER-9). An import is a new deck; its categories are matched by name or created.
+  exportDeck: (id: number) => request<DeckFile>("GET", `/decks/${id}/export`),
+  importDeck: (file: unknown, orgId?: number) =>
+    request<{ deck: Deck; categories_created: string[]; categories_matched: string[] }>("POST", withOrg("/decks/import", orgId), file),
 
   // Card generation (rules.md §2.2.1). A deck has at most one generation running or under review.
   generationProviders: (deckId: number) => request<ProviderInfo[]>("GET", `/decks/${deckId}/generation/providers`),
@@ -408,6 +427,10 @@ export const api = {
   updateBoard: (id: number, body: { name?: string; description?: string; definition?: BoardDefinition }) =>
     request<Board>("PATCH", `/boards/${id}`, body),
   deleteBoard: (id: number) => request<void>("DELETE", `/boards/${id}`),
+  // Board files (SER-7 … SER-9). The background travels as settings; its image only if your library has it.
+  exportBoard: (id: number) => request<BoardFile>("GET", `/boards/${id}/export`),
+  importBoard: (file: unknown, orgId?: number) =>
+    request<{ board: Board; background_image_missing: boolean }>("POST", withOrg("/boards/import", orgId), file),
 
   // Image library (rules.md §2.1.2). The files are served at /media/<key>, not under /api.
   listImages: (orgId?: number) => request<LibraryImage[]>("GET", withOrg("/images", orgId)),

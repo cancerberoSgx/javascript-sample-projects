@@ -3,8 +3,9 @@ import { api, type BoardDefinition } from "../api";
 import { BoardEditor } from "../boardEditor/BoardEditor";
 import { loadManifest, type ManifestEntry } from "../engine/loader";
 import type { BoardFile } from "../engine/types";
-import { ErrorBox, hasErrors, NotFound, PublicChip, useList, useRouteSelection } from "./common";
+import { ErrorBox, hasErrors, NotFound, PublicChip, useAction, useList, useRouteSelection } from "./common";
 import { NameForm } from "./DecksPage";
+import { ImportButton, readJsonFile } from "./files";
 
 const BLANK: BoardDefinition = {
   config: { track_type: "linear", win_conditions: ["finish"] },
@@ -31,6 +32,29 @@ export function BoardsPage({ orgId }: { orgId: number }) {
   const [creating, setCreating] = useState(false);
   const [examples, setExamples] = useState<ManifestEntry[]>([]);
   const [template, setTemplate] = useState("blank");
+  const importing = useAction();
+  const [imported, setImported] = useState<string | null>(null);
+
+  const importFile = (file: File) => {
+    if (!leaveOk()) return;
+    setImported(null);
+    importing.run(async () => {
+      const { board, background_image_missing } = await api.importBoard(await readJsonFile(file), orgId);
+      dirty.current = false;
+      await boards.reload();
+      navigateTo(board.id);
+      setImported(
+        [
+          `Imported "${board.name}".`,
+          hasErrors(board) && "It has errors, so it's a draft until they're fixed.",
+          background_image_missing &&
+            "Its background image isn't in your image library, so it was left out (the other background settings were kept). Pick an image in the Background panel.",
+        ]
+          .filter(Boolean)
+          .join(" "),
+      );
+    });
+  };
 
   useEffect(() => {
     loadManifest().then((m) => setExamples(m.boards), () => {});
@@ -41,11 +65,16 @@ export function BoardsPage({ orgId }: { orgId: number }) {
       <section className="panel org-list">
         <div className="row between">
           <h2>Boards</h2>
-          <button className="small" onClick={() => leaveOk() && setCreating(true)}>
-            + New
-          </button>
+          <div className="row">
+            <ImportButton label="⬆ Import" disabled={importing.busy} onFile={importFile} />
+            <button className="small" onClick={() => leaveOk() && setCreating(true)}>
+              + New
+            </button>
+          </div>
         </div>
         <ErrorBox error={boards.error} />
+        <ErrorBox error={importing.error} />
+        {imported && <div className="ok small">{imported}</div>}
         {creating && (
           <NameForm
             placeholder="Board name"

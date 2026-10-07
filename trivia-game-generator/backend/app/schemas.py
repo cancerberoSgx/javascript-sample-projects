@@ -551,3 +551,30 @@ class CardsCopyOut(BaseModel):
     skipped_duplicates: list[str]  # questions the deck already has (SHR-6)
     categories_created: list[str]
 
+
+
+# ---------- files: export / import (rules.md SER-7 … SER-9) ----------
+
+
+class DeckImportOut(BaseModel):
+    deck: DeckOut
+    categories_created: list[str]  # SER-8: the file's categories the organization didn't have
+    categories_matched: list[str]  # SER-8: already in the organization (same name), reused
+
+
+class BoardImportOut(BaseModel):
+    board: BoardOut
+    background_image_missing: bool  # SER-8: the file's background image isn't in this organization's library, so it was left out
+
+
+class OrganizationImportOut(BaseModel):
+    """SER-11: what an organization file added. Decks and boards whose name the organization already has are skipped."""
+
+    decks_created: list[str]
+    decks_skipped: list[str]
+    boards_created: list[str]
+    boards_skipped: list[str]
+    cards_created: int
+    categories_created: list[str]
+    categories_matched: list[str]
+    background_images_missing: list[str]  # boards whose background image isn't in the library (left out, SER-8)

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, type Card, type CardInput, type Category, type Deck } from "../api";
 import { CopiedFromNote, ErrorBox, NotFound, PublicChip, PublishControl, useAction, useList, useRouteSelection } from "./common";
+import { downloadJson, fileName, ImportButton, readJsonFile } from "./files";
 import { GenerateForm, GenerationPanel, useGeneration } from "./GenerateCards";
 
 export function DecksPage({ orgId }: { orgId: number }) {
@@ -8,17 +9,34 @@ export function DecksPage({ orgId }: { orgId: number }) {
   const categories = useList(() => api.listCategories(orgId), [orgId]);
   const { selectedId, selected, select, missing } = useRouteSelection("/decks", decks, orgId);
   const [creating, setCreating] = useState(false);
+  const importing = useAction();
+  const [imported, setImported] = useState<string | null>(null);
+
+  const importFile = (file: File) => {
+    setImported(null);
+    importing.run(async () => {
+      const r = await api.importDeck(await readJsonFile(file), orgId);
+      await Promise.all([decks.reload(), categories.reload()]);
+      select(r.deck.id);
+      setImported(importSummary(r));
+    });
+  };
 
   return (
     <div className="orgs-page">
       <section className="panel org-list">
         <div className="row between">
           <h2>Decks</h2>
-          <button className="small" onClick={() => setCreating(true)}>
-            + New
-          </button>
+          <div className="row">
+            <ImportButton label="⬆ Import" disabled={importing.busy} onFile={importFile} />
+            <button className="small" onClick={() => setCreating(true)}>
+              + New
+            </button>
+          </div>
         </div>
         <ErrorBox error={decks.error} />
+        <ErrorBox error={importing.error} />
+        {imported && <div className="ok small">{imported}</div>}
         {creating && (
           <NameForm
             placeholder="Deck name"
@@ -61,6 +79,13 @@ export function DecksPage({ orgId }: { orgId: number }) {
       </div>
     </div>
   );
+}
+
+function importSummary(r: { deck: Deck; categories_created: string[]; categories_matched: string[] }) {
+  const parts = [`Imported "${r.deck.name}" with ${r.deck.card_count} cards.`];
+  if (r.categories_created.length) parts.push(`New categories: ${r.categories_created.join(", ")}.`);
+  if (r.categories_matched.length) parts.push(`Uses your categories: ${r.categories_matched.join(", ")}.`);
+  return parts.join(" ");
 }
 
 /** Small name + description form used to create decks and boards. */
@@ -148,7 +173,16 @@ function DeckEditor({
           <input value={description} onChange={(e) => setDescription(e.target.value)} />
           <span />
           <div className="row between">
-            <button className="primary">Save</button>
+            <div className="row">
+              <button className="primary">Save</button>
+              <button
+                type="button"
+                title="Download this deck and its categories as a .json file, to keep or to import elsewhere"
+                onClick={() => action.run(async () => downloadJson(fileName(deck.name, "deck"), await api.exportDeck(deck.id)))}
+              >
+                ⬇ Export JSON
+              </button>
+            </div>
             <button
               type="button"
               className="danger"

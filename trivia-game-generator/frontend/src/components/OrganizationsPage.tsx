@@ -1,7 +1,8 @@
 import { Fragment, useCallback, useEffect, useState } from "react";
-import { api, type Organization, type Role, type User, type UserInput } from "../api";
+import { api, type Organization, type OrganizationImport, type Role, type User, type UserInput } from "../api";
 import { useAuth } from "../auth";
-import { NotFound, useRouteSelection } from "./common";
+import { ErrorBox, NotFound, useAction, useRouteSelection } from "./common";
+import { downloadJson, fileName, ImportButton, readJsonFile } from "./files";
 
 // The backend enforces every rule; the UI only hides actions that would be rejected.
 // Root: all organizations and users. Member: own organization (read-only), create users
@@ -78,12 +79,70 @@ export function OrganizationsPage() {
               onChanged={reload}
               onDeleted={async () => (await reload(), select(null, true))}
             />
+            <BackupPanel key={`backup-${selected.id}`} org={selected} />
             <UsersPanel org={selected} orgs={orgs} onChanged={reload} />
           </>
         )}
       </div>
     </div>
   );
+}
+
+/** Rules.md SER-10, SER-11: the organization's categories, decks (with cards) and boards as one file, and back. */
+function BackupPanel({ org }: { org: Organization }) {
+  const action = useAction();
+  const [result, setResult] = useState<string[] | null>(null);
+  return (
+    <section className="panel">
+      <h2>Backup</h2>
+      <p className="muted small">
+        One <code>.json</code> file with every category, deck (with its cards) and board of {org.name}. Import it into any organization, for
+        example a new empty one after a database reset. Decks and boards whose name the organization already has are skipped, so importing
+        twice adds nothing. Not included: games, users, API keys and background image files (boards keep their background settings).
+      </p>
+      <div className="row">
+        <button
+          className="small"
+          disabled={action.busy}
+          onClick={() => (setResult(null), action.run(async () => downloadJson(fileName(org.name, "organization"), await api.exportOrganization(org.id))))}
+        >
+          ⬇ Export everything
+        </button>
+        <ImportButton
+          label={`⬆ Import into ${org.name}`}
+          disabled={action.busy}
+          onFile={(file) =>
+            confirm(`Add the decks, boards and categories of ${file.name} to ${org.name}?`) &&
+            (setResult(null), action.run(async () => setResult(importSummary(await api.importOrganization(org.id, await readJsonFile(file))))))
+          }
+        />
+      </div>
+      <ErrorBox error={action.error} />
+      {result && (
+        <div className="ok small">
+          {result.map((line) => (
+            <div key={line}>{line}</div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function importSummary(r: OrganizationImport): string[] {
+  const list = (names: string[]) => names.join(", ");
+  return [
+    `Added ${r.decks_created.length} deck(s) with ${r.cards_created} cards and ${r.boards_created.length} board(s).`,
+    r.decks_created.length ? `Decks: ${list(r.decks_created)}.` : "",
+    r.boards_created.length ? `Boards: ${list(r.boards_created)}.` : "",
+    r.categories_created.length ? `New categories: ${list(r.categories_created)}.` : "",
+    r.categories_matched.length ? `Used existing categories: ${list(r.categories_matched)}.` : "",
+    r.decks_skipped.length ? `Skipped decks (name already taken): ${list(r.decks_skipped)}.` : "",
+    r.boards_skipped.length ? `Skipped boards (name already taken): ${list(r.boards_skipped)}.` : "",
+    r.background_images_missing.length
+      ? `Background images to pick again (not in this organization's image library): ${list(r.background_images_missing)}.`
+      : "",
+  ].filter(Boolean);
 }
 
 function NewOrganizationForm({ onDone }: { onDone: (created: Organization | null) => void }) {

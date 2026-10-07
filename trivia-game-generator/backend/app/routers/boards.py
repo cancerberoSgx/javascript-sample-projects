@@ -1,11 +1,15 @@
-from fastapi import APIRouter, Response, status
+from typing import Annotated
+
+from fastapi import APIRouter, Query, Response, status
 from psycopg import errors
 
 from ..auth import Conn, Me
+from ..formats import BoardFile
 from ..models import Board, BoardChanges, NewBoard
 from ..permissions import conflict, list_org, not_found, target_org, visible
 from ..repositories import boards
-from ..schemas import BoardCreate, BoardOut, BoardUpdate
+from ..schemas import BoardCreate, BoardImportOut, BoardOut, BoardUpdate
+from ..transfer import board_definition, board_file, file_name, new_name
 from ..validation import validate_board
 from .images import check_background
 
@@ -38,6 +42,39 @@ def create_board(body: BoardCreate, me: Me, conn: Conn):
     except errors.ForeignKeyViolation:
         raise not_found("Organization not found")
     return _out(boards.get(conn, new_id))
+
+
+@router.post("/import", response_model=BoardImportOut, status_code=status.HTTP_201_CREATED)
+def import_board(
+    file: BoardFile,
+    me: Me,
+    conn: Conn,
+    organization_id: int | None = None,
+    name: Annotated[str | None, Query(min_length=1, max_length=200)] = None,
+):
+    """SER-8: a new board from a board file (the body). Boards with errors import as drafts (SER-5).
+    A background image the organization's library doesn't have is left out (its settings stay)."""
+    org_id = target_org(me, organization_id)
+    definition, missing = board_definition(conn, org_id, file)
+    try:
+        with conn.transaction():
+            board_name = new_name(conn, "trivia_boards", org_id, file.name, name and name.strip(), "imported")
+            new_id = boards.create(
+                conn, NewBoard(organization_id=org_id, name=board_name, description=file.description, definition=definition)
+            )
+    except errors.UniqueViolation:
+        raise conflict("That name was just taken. Try again.")
+    except errors.ForeignKeyViolation:
+        raise not_found("Organization not found")
+    return BoardImportOut(board=_out(boards.get(conn, new_id)), background_image_missing=missing)
+
+
+@router.get("/{board_id}/export", response_model=BoardFile)
+def export_board(board_id: int, me: Me, conn: Conn, response: Response):
+    """SER-7: the board as a board file. Its background keeps its settings and image key, not the image."""
+    board = visible(me, boards.get(conn, board_id), "Board")
+    response.headers["Content-Disposition"] = f'attachment; filename="{file_name(board.name, "board")}"'
+    return board_file(board)
 
 
 @router.get("/{board_id}", response_model=BoardOut)

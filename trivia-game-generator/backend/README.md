@@ -88,6 +88,7 @@ Tests also run inside the container: `docker compose -f docker/docker-compose.ym
 | Choose an organization's OpenAI / Gemini model | ✔ | own organization (only the models: `PATCH /api/organizations/{id}` with `openai_model` / `gemini_model`) |
 | Generate cards for a deck (with the organization's keys) | every organization | own organization |
 | Image library: upload, import, rename, delete | every organization | own organization |
+| Export / import deck, board and organization files (SER-7 … SER-11) | every organization | own organization |
 | Load an image file (`/media/<key>`) | anyone, no login (BKG-8) | anyone |
 | Publish / unpublish a board, deck, category or image (SHR-1) | every organization (moderation) | own organization |
 | Browse the Library (public items of every organization) | ✔ | ✔ (read-only: copying is the only way to use them) |
@@ -134,6 +135,20 @@ How it works: the request is planned into exact counts per (category, difficulty
 A `Background` (`formats.Background`) is `{image?, fit?, crop?, position?, zoom?, tile_size?, opacity?, fade?, blur?, grayscale?, color?}`; only what was chosen is stored. Boards and games can only use images from their own organization's library (422, BKG-4). Starting a game copies the background it shows (its own, else its board's) into `snapshot.board.background`, and the live view sends it as `game.background`.
 
 **Why files and not rows.** Every player of a game loads the image, so serving it must cost nothing: the key is the SHA-256 of the stored file, so its URL never changes and devices cache it for a year without asking again. The database holds only the library rows, and organizations that upload the same image share one file. Decoding uploads runs at most two at a time (`routers/images.py`), so large images can't take over the API's threads. **In production**, let the web server or a CDN serve `MEDIA_DIR` at `/media` (the app's mount is then never reached), and put a body limit on uploads there too (e.g. nginx `client_max_body_size 11m`): the app only refuses an oversized upload after receiving it. Moving the files to S3-compatible storage means another `ImageStore` in `storage.py` plus a public base URL. In Docker the files live in the `media` volume.
+
+## Board, deck and organization files (rules.md SER-7 … SER-11)
+
+| Endpoint | What |
+|---|---|
+| `GET /api/decks/{id}/export` | The deck as a deck file (`formats.DeckFile`, SER-3), with a `Content-Disposition` file name. `curl -OJ` saves it |
+| `POST /api/decks/import?organization_id=&name=` (body: a deck file) | SER-8: a new private deck; categories matched by name or created. 422 lists every problem (SER-9). `{deck, categories_created, categories_matched}` |
+| `GET /api/boards/{id}/export` | The board as a board file (`formats.BoardFile`, SER-2), with its background settings and image key, not the image |
+| `POST /api/boards/import?organization_id=&name=` (body: a board file) | SER-8: a new private board (drafts allowed). `{board, background_image_missing}`: true when the library lacks the image, which was left out |
+
+| `GET /api/organizations/{id}/export` | SER-10: every category, deck (with cards) and board of the organization in one file (`formats.OrganizationFile`). Members: their own organization |
+| `POST /api/organizations/{id}/import` (body: an organization file) | SER-11: adds everything, all or nothing; decks and boards whose name is taken are skipped. `{decks_created, decks_skipped, boards_created, boards_skipped, cards_created, categories_created, categories_matched, background_images_missing}` |
+
+The body *is* the file, so a script can do `curl -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' --data @deck.json localhost:8000/api/decks/import`. The code lives in `app/transfer.py` (shared with the Library's copies: `new_name`, `CategoryMatcher`). Permissions are the ordinary ones: export what you can see, import into your own organization (root: any).
 
 ## The public Library (rules.md §2.8)
 

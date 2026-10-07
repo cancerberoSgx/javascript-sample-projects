@@ -18,6 +18,10 @@ Open http://localhost:5173 and log in with `ROOT_EMAIL` / `ROOT_PASSWORD` from `
 | `.env.example` | All configuration; copy it to `.env` (or run `init-env.sh`) |
 
 
+## Backing up and sharing decks and boards
+
+Every deck and board has **⬇ Export JSON** (in its editor), and the Decks and Boards lists have **⬆ Import**. A file is the same format as the examples in `frontend/public/` (rules.md §7b), one line per card or space, so it is easy to edit by hand, with a script, or with an LLM, and to keep in git. Importing always creates a new deck or board ("(imported)" is added if the name is taken). Deck categories are matched by name or created. A board file keeps its background *settings* but not the image: keep the image file too, and pick it again after importing into another organization or a fresh database. **Whole organization:** the organization page (Organizations / My organization) has a **Backup** panel. **⬇ Export everything** saves every category, deck (with its cards) and board in one `<org>.organization.json`; **⬆ Import** adds a backup to the selected organization, e.g. a new empty one after a database reset. Decks and boards whose name is already there are skipped, so importing twice is harmless. Games, users and API keys are not in the file. Scripts can use the API directly (`GET /api/decks/{id}/export`, `POST /api/decks/import`, same for boards; see `backend/README.md`).
+
 ## Play with friends over the internet (ngrok)
 
 You can host a game from your own machine and let friends join from their phones anywhere. Only the

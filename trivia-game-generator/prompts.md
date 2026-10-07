@@ -212,7 +212,13 @@ is it possible to "publish" this app from local server using ngrok so I can invi
 
 # export deck and cards
 
-once I generated a good deck with cards, I want to export to .json file save it in my machine and being able to share that file with others so they can load it in their own organizations, review, modify, etc programatically or manually. So implement save deck and cards as json and being able to import a .json file into a new deck.
+once I generated a good deck with cards, I want to export to .json file save it in my machine and being able to share that file with others so they can load it in their own organizations, review, modify, etc programatically or manually. So implement save deck and cards as json and being able to import a .json file into a new deck. 
+
+The same for boards, implement export and import to json
+
+One important motivation right now is to being able to create cool decks and boards and backup them as files because the local dev env is unstable and maybe the DB will be reseted. 
+
+do you have any questions before starting ? 
 
 # FUTURE
 

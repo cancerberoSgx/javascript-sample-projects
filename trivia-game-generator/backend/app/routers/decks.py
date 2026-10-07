@@ -1,10 +1,13 @@
-from fastapi import APIRouter, Response, status
+from typing import Annotated
+
+from fastapi import APIRouter, Query, Response, status
 from fastapi.exceptions import RequestValidationError
 from psycopg import errors
 from pydantic import ValidationError
 
 from ..auth import Conn, CurrentUser, Me
 from ..db import DbConn
+from ..formats import DeckFile
 from ..models import Card, CardChanges, Deck, DeckChanges, NewCard, NewDeck
 from ..permissions import conflict, list_org, not_found, target_org, visible
 from ..repositories import categories, decks
@@ -14,8 +17,17 @@ from ..schemas import (
     CardUpdate,
     DeckCreate,
     DeckDetailOut,
+    DeckImportOut,
     DeckOut,
     DeckUpdate,
+)
+from ..transfer import (
+    CategoryMatcher,
+    checked_cards,
+    create_deck_from_file,
+    deck_file,
+    file_name,
+    new_name,
 )
 
 router = APIRouter(prefix="/api/decks", tags=["decks"])
@@ -59,6 +71,38 @@ def create_deck(body: DeckCreate, me: Me, conn: Conn):
     except errors.ForeignKeyViolation:
         raise not_found("Organization not found")
     return _out(decks.get(conn, new_id))
+
+
+@router.post("/import", response_model=DeckImportOut, status_code=status.HTTP_201_CREATED)
+def import_deck(
+    file: DeckFile,
+    me: Me,
+    conn: Conn,
+    organization_id: int | None = None,
+    name: Annotated[str | None, Query(min_length=1, max_length=200)] = None,
+):
+    """SER-8: a new deck from a deck file (the body). Its categories are matched by name or created.
+    `name` overrides the file's; the file's name gets " (imported)" when the organization has it."""
+    org_id = target_org(me, organization_id)
+    cards = checked_cards(file)
+    try:
+        with conn.transaction():
+            deck_name = new_name(conn, "trivia_decks", org_id, file.name, name and name.strip(), "imported")
+            matcher = CategoryMatcher(conn, org_id)
+            new_id = create_deck_from_file(conn, org_id, file, deck_name, cards, matcher)
+    except errors.UniqueViolation:
+        raise conflict("That name was just taken. Try again.")
+    except errors.ForeignKeyViolation:
+        raise not_found("Organization not found")
+    return DeckImportOut(deck=_out(decks.get(conn, new_id)), categories_created=matcher.created, categories_matched=matcher.matched)
+
+
+@router.get("/{deck_id}/export", response_model=DeckFile)
+def export_deck(deck_id: int, me: Me, conn: Conn, response: Response):
+    """SER-7: the deck as a deck file, with the categories its cards use."""
+    deck = _visible_deck(me, conn, deck_id)
+    response.headers["Content-Disposition"] = f'attachment; filename="{file_name(deck.name, "deck")}"'
+    return deck_file(conn, deck)
 
 
 @router.get("/{deck_id}", response_model=DeckDetailOut)

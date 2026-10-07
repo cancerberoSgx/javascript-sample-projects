@@ -1,8 +1,10 @@
 from fastapi import APIRouter, HTTPException, Response, status
 from psycopg import errors
 
-from .. import llm
-from ..auth import Conn, Me
+from .. import llm, transfer
+from ..auth import Conn, CurrentUser, Me
+from ..db import DbConn
+from ..formats import OrganizationFile
 from ..models import Organization, OrganizationChanges, Provider
 from ..permissions import (
     can_view_organization,
@@ -13,8 +15,14 @@ from ..permissions import (
 )
 from ..repositories import images
 from ..repositories import organizations as orgs
-from ..schemas import OrganizationCreate, OrganizationOut, OrganizationUpdate
+from ..schemas import (
+    OrganizationCreate,
+    OrganizationImportOut,
+    OrganizationOut,
+    OrganizationUpdate,
+)
 from ..security import decrypt_secret, encrypt_secret, mask_secret
+from ..transfer import file_name, organization_file
 from .images import delete_files_of
 
 router = APIRouter(prefix="/api/organizations", tags=["organizations"])
@@ -67,6 +75,33 @@ def get_organization(org_id: int, me: Me, conn: Conn):
     if row is None:
         raise not_found("Organization not found")
     return to_out(row)
+
+
+def _visible_org(me: CurrentUser, conn: DbConn, org_id: int) -> Organization:
+    row = orgs.get(conn, org_id) if can_view_organization(me, org_id) else None
+    if row is None:
+        raise not_found("Organization not found")
+    return row
+
+
+@router.get("/{org_id}/export", response_model=OrganizationFile)
+def export_organization(org_id: int, me: Me, conn: Conn, response: Response):
+    """SER-10: all the organization's categories, decks (with cards) and boards in one file."""
+    org = _visible_org(me, conn, org_id)
+    response.headers["Content-Disposition"] = f'attachment; filename="{file_name(org.name, "organization")}"'
+    return organization_file(conn, org)
+
+
+@router.post("/{org_id}/import", response_model=OrganizationImportOut)
+def import_organization(org_id: int, file: OrganizationFile, me: Me, conn: Conn):
+    """SER-11: adds an organization file's content (skipping decks and boards whose name is taken)."""
+    _visible_org(me, conn, org_id)
+    try:
+        return transfer.import_organization(conn, org_id, file)
+    except errors.UniqueViolation:
+        raise conflict("A deck or board with one of these names was just created. Try again.")
+    except errors.ForeignKeyViolation:
+        raise not_found("Organization not found")
 
 
 @router.patch("/{org_id}", response_model=OrganizationOut)

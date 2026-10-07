@@ -5,6 +5,7 @@ import { SLOT_COLORS, placeholderMapping, resolveBoard } from "../engine/resolve
 import type { BoardIssue, GameConfig, SpaceType, WinCondition } from "../engine/types";
 import { CopiedFromNote, ErrorBox, PublishControl, boardFile, hasErrors, useAction } from "../components/common";
 import { BackgroundEditor, boardAspect } from "../components/BackgroundEditor";
+import { downloadJson, fileName } from "../components/files";
 import { EditorCanvas, type Pending, type Selection } from "./EditorCanvas";
 import * as ops from "./ops";
 import type { Def, Pos } from "./ops";
@@ -236,6 +237,20 @@ export function BoardEditor({
               }}
             >
               {errors.length ? "Save draft" : "Save board"}
+            </button>
+            <button
+              title={
+                dirty
+                  ? "Exports the last saved version. Save first to include your changes."
+                  : "Download this board as a .json file, to keep or to import elsewhere. The background travels as settings, without its image."
+              }
+              disabled={action.busy}
+              onClick={() =>
+                (!dirty || confirm("This board has unsaved changes. Export the last saved version?")) &&
+                action.run(async () => downloadJson(fileName(board.name, "board"), await api.exportBoard(board.id)))
+              }
+            >
+              ⬇ Export JSON
             </button>
             <StatusLine errors={errors.length} warnings={issues.length - errors.length} />
           </div>
