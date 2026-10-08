@@ -145,7 +145,7 @@ def test_live_game(client, acme, world, connect):
 
     # Someone without the link, a player token or access to the organization can't watch
     stranger = connect(gid, code="NOPE", token=login(client, "gus@globex.dev", "guspass123")["Authorization"][7:])
-    assert stranger.receive_json() == {"type": "error", "message": "Game not found. The link may be out of date: ask the host for a new one.", "fatal": True}
+    assert stranger.receive_json() == {"type": "error", "message": "Game not found. The link may be out of date: ask the host for a new one.", "code": "error.badLink", "fatal": True}
 
     assert client.post(f"/api/games/{gid}/start", headers=ana).status_code == 200
     started = until(p2, phase("AWAIT_ROLL"))

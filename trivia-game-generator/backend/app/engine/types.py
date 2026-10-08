@@ -81,10 +81,22 @@ class LastMove(TypedDict):
     path: list[int]
 
 
+MessageParams = dict[str, str | int]
+
+
+class Message(TypedDict):
+    """A translatable message (rules.md §2.9, I18N-6): a catalog key and its params."""
+
+    key: str
+    params: MessageParams
+
+
 class LogEntry(TypedDict):
     round: int
     player_id: str | None
-    text: str
+    text: str  # English; entries from before I18N-6 have only this
+    key: NotRequired[str]
+    params: NotRequired[MessageParams]
 
 
 class GameState(TypedDict):

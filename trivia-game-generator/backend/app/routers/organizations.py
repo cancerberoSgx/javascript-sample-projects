@@ -23,6 +23,7 @@ from ..schemas import (
 )
 from ..security import decrypt_secret, encrypt_secret, mask_secret
 from ..transfer import file_name, organization_file
+from .i18n import require_language
 from .images import delete_files_of
 
 router = APIRouter(prefix="/api/organizations", tags=["organizations"])
@@ -42,6 +43,7 @@ def to_out(org: Organization | None) -> OrganizationOut:
         gemini_api_key_masked=mask_secret(decrypt_secret(gemini)) if gemini else None,
         openai_model=org.openai_model,
         gemini_model=org.gemini_model,
+        language=org.language,
         default_openai_model=llm.default_model("openai"),
         default_gemini_model=llm.default_model("gemini"),
         user_count=org.user_count,
@@ -121,6 +123,9 @@ def update_organization(org_id: int, body: OrganizationUpdate, me: Me, conn: Con
     for field in ("openai_model", "gemini_model"):
         if field in body.model_fields_set:  # null = back to the app's default
             setattr(changes, field, getattr(body, field))
+    if body.language is not None:  # I18N-3: its games' default UI language
+        require_language(conn, body.language)
+        changes.language = body.language
     try:
         with conn.transaction():
             found = orgs.update(conn, org_id, changes)

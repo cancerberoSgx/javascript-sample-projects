@@ -23,6 +23,7 @@ Every tab has its own address ([React Router](https://reactrouter.com), `Browser
 | `/categories`, `/categories/:id` | The categories table; with an id, that category's edit form |
 | `/organizations/:id` | That organization and its users. Members only ever see their own |
 | `/library/:kind/:id` | The Library (`boards`, `decks`, `categories`, `images`), with that public item selected. `/library` opens the boards |
+| `/translations/:lang` | Translations (root only): `/translations/en` lists the catalog's keys with their context; another language shows its translations to edit |
 | `/demo` | Boards demo (root only; others are sent to `/games`) |
 
 - Logged out, the login page shows on the requested URL and opens it after login.
@@ -104,6 +105,16 @@ The player page doesn't use the admin layout: `PlayScreen` draws the board full 
 - `html.play-mode` (set while the page is mounted) stops page scroll, overscroll and pull-to-refresh; the board and buttons use `touch-action` so pinches never zoom the page.
 - PWA: `public/manifest.webmanifest` + `public/icons/` (PNG icons rendered from `icon.svg`). It has no `start_url`, so adding the game to the home screen opens that game's link. No service worker (a live game is useless offline).
 - The host's game page links to the play screen ("Open the play screen ↗" in the invite panel), where the host can play the players they added by name.
+
+## Translations (rules.md §2.9)
+
+`src/i18n/`:
+
+- `catalog.ts`: every key of the game experience with its English ICU message, `area`, `description`, `placeholders` and `maxLength`. `MessageKey` is its key type, so `t("typo")` doesn't compile. `catalog.test.ts` checks every message parses, that its placeholders are documented, that every key is used somewhere (keys built at runtime use the prefixes listed there), that the backend's bundled translations fit the catalog, and writes `backend/app/i18n/catalog.json` with `UPDATE_CONFORMANCE=1 npx vitest run src/i18n`.
+- `index.tsx`: `I18nProvider` (inside `AuthProvider`), `useT()` → `t(key, params)` for strings and `t.rich(key, params)` for messages with tags (`<b>` is bold by default; other tags are functions in `params`). Messages are formatted with `intl-messageformat`; a missing or broken translation falls back to English. The language follows I18N-3: `useLanguageHint(code)` lets a page say which language suits it (`PlayerGamePage` passes the game's). `LanguagePicker` sets the device's choice (`localStorage` `trivia.lang`) and, logged in, the user's preference. A language's messages are cached in `localStorage` (`trivia.i18n.<code>`) and refreshed on load.
+- `game.ts`: game words (space types, win conditions, answer results, the Grand Prize) and `logText`, which shows engine log lines in the device's language. `icu.ts`: placeholders and tags of a message, and `checkTranslation`.
+
+Translated: `src/play/`, `PlayerGamePage`, `LiveGame.tsx`, `PlayTable.tsx`, `TurnPanel.tsx`, `PlayersPanel.tsx`, `BoardCanvas` tile labels, and `ErrorBox` for errors with a `code`. Admin pages, and the Boards demo's dev controls, stay English. To add a text: add the key to `catalog.ts` (with a real description: it's what translators and the AI see), use it, regenerate the catalog JSON, and add its Spanish to `backend/app/i18n/bundled/es.json` (or translate it later on the Translations tab). `TranslationsPage.tsx` is the root editor: filters, live preview with sample values, AI batches of 30, export / import.
 
 ## Generating cards
 

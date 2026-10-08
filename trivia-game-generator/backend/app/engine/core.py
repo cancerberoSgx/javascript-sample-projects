@@ -22,6 +22,8 @@ from .types import (
     DeckDefinition,
     DeckState,
     GameState,
+    Message,
+    MessageParams,
     Phase,
     Player,
     PlayerSetup,
@@ -33,6 +35,16 @@ from .types import (
 class ActionOutcome:
     state: GameState
     error: str | None = None
+    error_i18n: Message | None = None  # the error as a translatable message (I18N-6); `error` is its English text
+
+
+@dataclass(frozen=True)
+class _Failure:
+    """An action the engine rejects: the English text and its translation key (I18N-6)."""
+
+    key: str
+    params: MessageParams
+    text: str
 
 
 def resolve_config(board: BoardDefinition) -> dict[str, Any]:
@@ -81,17 +93,21 @@ def create_game(board: BoardDefinition, deck: DeckDefinition, players: list[Play
         "rng": rng,
         "log": [],
     }
-    _log(s, f'Game started on "{board["name"]}" with {len(players)} player(s).', None)
+    _log(s, "log.gameStarted", {"board": board["name"], "count": len(players)}, f'Game started on "{board["name"]}" with {len(players)} player(s).', None)
     _start_turn(s, now)
     return s
 
 
 def apply_action(state: GameState, action: Action, now: int) -> ActionOutcome:
     if state["phase"] == "GAME_OVER":
-        return ActionOutcome(state, "The game is over (INV-4).")
+        return _failed(state, _Failure("engine.gameOver", {}, "The game is over (INV-4)."))
     s = copy.deepcopy(state)
     error = _dispatch(s, action, now)
-    return ActionOutcome(state, error) if error else ActionOutcome(s)
+    return _failed(state, error) if error else ActionOutcome(s)
+
+
+def _failed(state: GameState, f: _Failure) -> ActionOutcome:
+    return ActionOutcome(state, f.text, {"key": f.key, "params": f.params})
 
 
 def active_player(s: GameState) -> Player:
@@ -133,11 +149,13 @@ def _js_str(value: Any) -> str:
     return str(value)
 
 
-def _dispatch(s: GameState, action: Action, now: int) -> str | None:
+def _dispatch(s: GameState, action: Action, now: int) -> _Failure | None:
     kind = action.get("type")
 
-    def expect(phase: Phase) -> str | None:
-        return None if s["phase"] == phase else f"Can't {kind} now: waiting for {s['phase']} (SM-1)."
+    def expect(phase: Phase) -> _Failure | None:
+        if s["phase"] == phase:
+            return None
+        return _Failure("engine.wrongPhase", {"action": _js_str(kind), "phase": s["phase"]}, f"Can't {kind} now: waiting for {s['phase']} (SM-1).")
 
     match kind:
         case "ROLL":
@@ -148,13 +166,15 @@ def _dispatch(s: GameState, action: Action, now: int) -> str | None:
             if value is None:
                 value, s["rng"] = random_int(s["rng"], 1, sides)
             elif not isinstance(value, int) or isinstance(value, bool) or value < 1 or value > sides:
-                return f"Roll must be between 1 and {sides}."
+                return _Failure("engine.rollRange", {"sides": sides}, f"Roll must be between 1 and {sides}.")
             s["rolls_this_turn"] += 1
             s["last_roll"] = value
             s["destinations"] = legal_destinations(s["board"]["spaces"], active_player(s)["current_space"], value)
             s["phase"] = "AWAIT_MOVE"
-            rigged = " (rigged)" if action.get("value") is not None else ""
-            _log(s, f"rolled a {value}{rigged}. Can move to: {', '.join(s['destinations'])}.")
+            rigged = action.get("value") is not None
+            options = ", ".join(s["destinations"])
+            params: MessageParams = {"value": value, "rigged": "yes" if rigged else "no", "options": options}
+            _log(s, "log.rolled", params, f"rolled a {value}{' (rigged)' if rigged else ''}. Can move to: {options}.")
             return None
 
         case "MOVE":
@@ -164,13 +184,19 @@ def _dispatch(s: GameState, action: Action, now: int) -> str | None:
             path = s["destinations"].get(_js_str(to))
             if path is None:
                 legal = ", ".join(s["destinations"])
-                return f"Space {_js_str(to)} can't be reached with a roll of {s['last_roll']}. Legal: {legal}."
+                roll = s["last_roll"]
+                return _Failure(
+                    "engine.unreachable",
+                    {"space": to, "roll": roll if roll is not None else 0, "legal": legal},  # pyright: ignore[reportArgumentType]
+                    f"Space {_js_str(to)} can't be reached with a roll of {_js_str(roll) if roll is not None else 'null'}. Legal: {legal}.",
+                )
             p = active_player(s)
             seq = (s["last_move"]["seq"] if s["last_move"] else 0) + 1
             s["last_move"] = {"seq": seq, "player_id": p["id"], "path": [p["current_space"], *path]}
             p["current_space"] = int(to)  # pyright: ignore[reportArgumentType]
             s["destinations"] = {}
-            _log(s, f"moved along {' → '.join(str(i) for i in path)}.")
+            joined = " → ".join(str(i) for i in path)
+            _log(s, "log.moved", {"path": joined}, f"moved along {joined}.")
             _resolve_space(s, now)
             return None
 
@@ -179,9 +205,9 @@ def _dispatch(s: GameState, action: Action, now: int) -> str | None:
                 return bad
             category = action.get("category")
             if not any(c["id"] == category for c in s["board"]["categories"]):
-                return f"Unknown category '{_js_str(category)}'."
+                return _Failure("engine.unknownCategory", {"category": category}, f"Unknown category '{_js_str(category)}'.")  # pyright: ignore[reportArgumentType]
             assert isinstance(category, str)
-            _log(s, f"chose {_category_name(s, category)} on the wildcard.")
+            _log(s, "log.choseCategory", {"category": category}, f"chose {_category_name(s, category)} on the wildcard.")
             _draw_card(s, category, grand_prize=False, from_hq=False, now=now)
             return None
 
@@ -206,7 +232,7 @@ def _dispatch(s: GameState, action: Action, now: int) -> str | None:
             q = s["question"]
             assert q is not None
             if q["deadline"] is None or now < q["deadline"]:
-                return "The timer hasn't expired yet."
+                return _Failure("engine.timerRunning", {}, "The timer hasn't expired yet.")
             _apply_result(s, "timeout", "", now)
             return None
 
@@ -218,24 +244,25 @@ def _dispatch(s: GameState, action: Action, now: int) -> str | None:
             return None
 
         case "SKIP_TURN":
-            _log(s, "had their turn skipped by the host.")
+            _log(s, "log.skippedByHost", {}, "had their turn skipped by the host.")
             _end_turn(s, now)
             return None
 
         case "REMOVE_PLAYER":
             p = next((x for x in s["players"] if x["id"] == action.get("player_id")), None)
             if p is None or p.get("removed"):
-                return f"Unknown player '{_js_str(action.get('player_id'))}'."
+                player = action.get("player_id")
+                return _Failure("engine.unknownPlayer", {"player": player}, f"Unknown player '{_js_str(player)}'.")  # pyright: ignore[reportArgumentType]
             if sum(not x.get("removed") for x in s["players"]) == 1:
-                return "Can't remove the last player: finish the game instead."
+                return _Failure("engine.lastPlayer", {}, "Can't remove the last player: finish the game instead.")
             p["removed"] = True
             p["skip_next_turn"] = False
-            _log(s, "was removed from the game by the host.", p["id"])
+            _log(s, "log.removedByHost", {}, "was removed from the game by the host.", p["id"])
             if p is active_player(s):
                 _end_turn(s, now)
             return None
 
-    return f"Unknown action '{_js_str(kind)}'."
+    return _Failure("engine.unknownAction", {"action": _js_str(kind)}, f"Unknown action '{_js_str(kind)}'.")
 
 
 # §4.1 TURN_START
@@ -248,11 +275,11 @@ def _start_turn(s: GameState, now: int) -> None:
 
     if p["skip_next_turn"]:
         p["skip_next_turn"] = False  # TS-2 / PEN-2
-        _log(s, "skips this turn (penalty).")
+        _log(s, "log.skipsPenalty", {}, "skips this turn (penalty).")
         _end_turn(s, now)
         return
     if s["config"]["track_type"] == "linear" and _space_at(s, p["current_space"])["type"] == "finish":
-        _log(s, "is still on the finish space and tries another Grand Prize question (TS-3).")
+        _log(s, "log.stillOnFinish", {}, "is still on the finish space and tries another Grand Prize question (TS-3).")
         _draw_card(s, GRAND_PRIZE, grand_prize=True, from_hq=False, now=now)
         return
     s["phase"] = "AWAIT_ROLL"
@@ -264,28 +291,28 @@ def _resolve_space(s: GameState, now: int) -> None:
     space = _space_at(s, p["current_space"])
     match space["type"]:
         case "start":
-            _log(s, "landed on Start. No card.")
+            _log(s, "log.landedStart", {}, "landed on Start. No card.")
             _end_turn(s, now)
         case "category" | "hq":
             assert space["category"] is not None
             _draw_card(s, space["category"], grand_prize=False, from_hq=space["type"] == "hq", now=now)
         case "wildcard":
-            _log(s, "landed on a Wildcard and picks a category.")
+            _log(s, "log.landedWildcard", {}, "landed on a Wildcard and picks a category.")
             s["phase"] = "AWAIT_CATEGORY"
         case "roll_again":
             limit = s["config"]["max_rolls_per_turn"]
             if s["rolls_this_turn"] < limit:
-                _log(s, "landed on Roll Again.")
+                _log(s, "log.landedRollAgain", {}, "landed on Roll Again.")
                 s["phase"] = "AWAIT_ROLL"
                 return
-            _log(s, f"landed on Roll Again but already used {limit} rolls this turn.")
+            _log(s, "log.rollAgainUsedUp", {"limit": limit}, f"landed on Roll Again but already used {limit} rolls this turn.")
             _end_turn(s, now)
         case "penalty":
             p["skip_next_turn"] = True  # PEN-1
-            _log(s, "landed on a Penalty space and will skip their next turn.")
+            _log(s, "log.landedPenalty", {}, "landed on a Penalty space and will skip their next turn.")
             _end_turn(s, now)
         case "finish":
-            _log(s, "reached the finish and gets a Grand Prize question!")
+            _log(s, "log.reachedFinish", {}, "reached the finish and gets a Grand Prize question!")
             _draw_card(s, GRAND_PRIZE, grand_prize=True, from_hq=False, now=now)
 
 
@@ -300,7 +327,7 @@ def _draw_card(s: GameState, category: str, *, grand_prize: bool, from_hq: bool,
         if not deck["draw"]:
             deck["draw"], s["rng"] = shuffle(deck["used"], s["rng"])
             deck["used"] = []
-            _log(s, f"{_category_name(s, category)} deck ran out and was reshuffled.", None)
+            _log(s, "log.deckReshuffled", {"category": category}, f"{_category_name(s, category)} deck ran out and was reshuffled.", None)
         card_id = deck["draw"].pop(0)
         deck["used"].append(card_id)
     limit = s["config"]["answer_time_limit_sec"]
@@ -340,15 +367,18 @@ def _apply_result(s: GameState, result: AnswerResult, given: str, now: int) -> N
     s["question"] = None
 
     if result != "correct":
-        _log(s, "ran out of time." if result == "timeout" else f"answered wrong ({given}).")
+        if result == "timeout":
+            _log(s, "log.timeout", {}, "ran out of time.")
+        else:
+            _log(s, "log.answeredWrong", {"given": given}, f"answered wrong ({given}).")
         _end_turn(s, now)  # RES-6
         return
 
     p["score"] += card["difficulty"]  # RES-1
-    _log(s, f"answered correctly (+{card['difficulty']}).")
+    _log(s, "log.answeredCorrectly", {"points": card["difficulty"]}, f"answered correctly (+{card['difficulty']}).")
     if q["from_hq"] and card["category"] not in p["inventory"]:
         p["inventory"] = sorted([*p["inventory"], card["category"]])  # RES-2, PLY-2
-        _log(s, f"earned the {_category_name(s, card['category'])} token!")
+        _log(s, "log.earnedToken", {"category": card["category"]}, f"earned the {_category_name(s, card['category'])} token!")
 
     # RES-3 / RES-4: check for a win before any bonus roll
     wins = s["config"]["win_conditions"]
@@ -359,7 +389,7 @@ def _apply_result(s: GameState, result: AnswerResult, given: str, now: int) -> N
 
     # RES-5
     if s["config"]["bonus_roll_on_correct"] and s["rolls_this_turn"] < s["config"]["max_rolls_per_turn"]:
-        _log(s, "gets a bonus roll.")
+        _log(s, "log.bonusRoll", {}, "gets a bonus roll.")
         s["phase"] = "AWAIT_ROLL"
         return
     _end_turn(s, now)
@@ -391,7 +421,7 @@ def _finish_by_turn_limit(s: GameState) -> None:
     if len(ranked) > 1 and key(ranked[0]) == key(ranked[1]):
         s["result"] = {"type": "draw"}
         s["phase"] = "GAME_OVER"
-        _log(s, "Round limit reached. It's a draw!", None)
+        _log(s, "log.draw", {}, "Round limit reached. It's a draw!", None)
         return
     _win(s, ranked[0], "turn_limit")
 
@@ -402,12 +432,13 @@ _WHY = {"finish": "answered the Grand Prize", "collection": "collected every cat
 def _win(s: GameState, p: Player, reason: str) -> None:
     s["result"] = {"type": "win", "player_id": p["id"], "reason": reason}
     s["phase"] = "GAME_OVER"
-    _log(s, f"WINS: {_WHY[reason]}!", p["id"])
+    _log(s, "log.wins", {"reason": reason}, f"WINS: {_WHY[reason]}!", p["id"])
 
 
 _DEFAULT = object()
 
 
-def _log(s: GameState, text: str, player_id: Any = _DEFAULT) -> None:
+def _log(s: GameState, key: str, params: MessageParams, text: str, player_id: Any = _DEFAULT) -> None:
+    """Adds a log line: its English text, and its key and params for translating it (I18N-6)."""
     pid = active_player(s)["id"] if player_id is _DEFAULT else player_id
-    s["log"].append({"round": s["round"], "player_id": pid, "text": text})
+    s["log"].append({"round": s["round"], "player_id": pid, "text": text, "key": key, "params": params})

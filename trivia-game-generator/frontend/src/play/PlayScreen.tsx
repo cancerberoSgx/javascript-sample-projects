@@ -7,8 +7,9 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { Link } from "react-router";
 import type { LiveMessage } from "../api";
 import { useAuth } from "../auth";
-import { SPACE_TYPE_NAMES, WIN_CONDITION_NAMES } from "../engine/board";
 import { activePlayer } from "../engine/engine";
+import { LanguagePicker, useT, type MessageKey } from "../i18n";
+import { joinList, logText, spaceName, winName } from "../i18n/game";
 import type { GameView, Space } from "../engine/types";
 import { BoardCanvas } from "../components/BoardCanvas";
 import type { Insets } from "../components/camera";
@@ -23,11 +24,11 @@ import { Floating, Layer } from "./layers";
 import { AnswerReveal, CategoryPicker, DiceRoll, GameOver, QuestionCard, cardCategory } from "./moments";
 
 type SheetName = "players" | "log" | "legend" | "info";
-const SHEETS: [SheetName, IconName, string][] = [
-  ["players", "players", "Players"],
-  ["log", "log", "Log"],
-  ["legend", "legend", "Legend"],
-  ["info", "info", "Board"],
+const SHEETS: [SheetName, IconName, MessageKey][] = [
+  ["players", "players", "play.nav.players"],
+  ["log", "log", "play.nav.log"],
+  ["legend", "legend", "play.nav.legend"],
+  ["info", "info", "play.nav.board"],
 ];
 
 const TYPE_COLORS: Partial<Record<Space["type"], string>> = {
@@ -39,6 +40,7 @@ const TYPE_COLORS: Partial<Record<Space["type"], string>> = {
 };
 
 export function PlayScreen({ live }: { live: LiveGame }) {
+  const t = useT();
   const msg = live.msg!;
   const state = msg.state!;
   const finished = msg.game.status === "finished";
@@ -115,17 +117,17 @@ export function PlayScreen({ live }: { live: LiveGame }) {
   // The tab title says when it's your turn (useful when the tab is in the background)
   useEffect(() => {
     const old = document.title;
-    document.title = canAct ? "● Your turn · Trivia" : "Trivia";
+    document.title = canAct ? t("play.tabYourTurn") : t("common.appName");
     return () => {
       document.title = old;
     };
-  }, [canAct]);
+  }, [canAct, t]);
 
   // ---- Moves ----
   const onSpaceClick = (index: number) => {
     if (!canAct || state.phase !== "AWAIT_MOVE") return;
     if (index in state.destinations) dispatch({ type: "MOVE", to: index });
-    else showToast("Tap one of the glowing spaces.");
+    else showToast(t("play.tapGlowing"));
   };
 
   const questionKey = state.question ? `${state.question.card.id}-${state.log.length}` : null;
@@ -152,14 +154,14 @@ export function PlayScreen({ live }: { live: LiveGame }) {
           <button
             className="icon-btn"
             onClick={() => setSound(!sound)}
-            aria-label={sound ? "Mute sounds" : "Turn sounds on"}
+            aria-label={sound ? t("play.soundOff") : t("play.soundOn")}
             aria-pressed={sound}
-            title={sound ? "Sound on" : "Sound off"}
+            title={sound ? t("play.soundIsOn") : t("play.soundIsOff")}
           >
             <Icon name={sound ? "soundOn" : "soundOff"} />
           </button>
           {fullscreen.supported && (
-            <button className="icon-btn" onClick={fullscreen.toggle} aria-label={fullscreen.on ? "Exit full screen" : "Full screen"} aria-pressed={fullscreen.on}>
+            <button className="icon-btn" onClick={fullscreen.toggle} aria-label={fullscreen.on ? t("play.exitFullscreen") : t("play.fullscreen")} aria-pressed={fullscreen.on}>
               <Icon name={fullscreen.on ? "shrink" : "expand"} />
             </button>
           )}
@@ -167,14 +169,14 @@ export function PlayScreen({ live }: { live: LiveGame }) {
         <TurnPill state={state} canAct={canAct} finished={finished} endedByHost={endedByHost} rolling={!!roll} />
       </div>
 
-      <div className="play-zoom" role="group" aria-label="Board view">
-        <button className="icon-btn zoom-step" onClick={() => camera({ kind: "zoomIn" })} aria-label="Zoom in">
+      <div className="play-zoom" role="group" aria-label={t("play.boardView")}>
+        <button className="icon-btn zoom-step" onClick={() => camera({ kind: "zoomIn" })} aria-label={t("play.zoomIn")}>
           <Icon name="plus" />
         </button>
-        <button className="icon-btn zoom-step" onClick={() => camera({ kind: "zoomOut" })} aria-label="Zoom out">
+        <button className="icon-btn zoom-step" onClick={() => camera({ kind: "zoomOut" })} aria-label={t("play.zoomOut")}>
           <Icon name="minus" />
         </button>
-        <button className="icon-btn" onClick={() => camera({ kind: "fit" })} aria-label="Show the whole board">
+        <button className="icon-btn" onClick={() => camera({ kind: "fit" })} aria-label={t("play.fit")}>
           <Icon name="fit" />
         </button>
         <button
@@ -183,7 +185,7 @@ export function PlayScreen({ live }: { live: LiveGame }) {
             const me = state.players.find((p) => p.id === you) ?? active;
             if (me) camera({ kind: "focus", spaces: [me.current_space], force: true });
           }}
-          aria-label={you ? "Find my token" : "Find the active player"}
+          aria-label={you ? t("play.findMe") : t("play.findActive")}
         >
           <Icon name="locate" />
         </button>
@@ -202,28 +204,35 @@ export function PlayScreen({ live }: { live: LiveGame }) {
           errorSeq={errorSeq}
           setHighlight={setHighlight}
         />
-        <nav className="play-nav" aria-label="Game info">
+        <nav className="play-nav" aria-label={t("play.nav.label")}>
           {SHEETS.map(([name, icon, label]) => (
             <button key={name} className="nav-btn" onClick={() => setSheet(name)} aria-haspopup="dialog">
               <Icon name={icon} />
-              <span>{label}</span>
+              <span>{t(label)}</span>
             </button>
           ))}
         </nav>
       </div>
 
       {sheet === "players" && (
-        <Layer title={`Players · round ${state.round}${state.config.max_rounds ? ` of ${state.config.max_rounds}` : ""}`} onClose={() => setSheet(null)}>
+        <Layer
+          title={
+            state.config.max_rounds
+              ? t("play.playersTitleMax", { round: state.round, max: state.config.max_rounds })
+              : t("play.playersTitle", { round: state.round })
+          }
+          onClose={() => setSheet(null)}
+        >
           <PlayersSheet msg={msg} state={state} you={you} />
         </Layer>
       )}
       {sheet === "log" && (
-        <Layer title="Game log" onClose={() => setSheet(null)} className="log-sheet">
+        <Layer title={t("play.logTitle")} onClose={() => setSheet(null)} className="log-sheet">
           <LogList game={state} />
         </Layer>
       )}
       {sheet === "legend" && (
-        <Layer title="Legend" onClose={() => setSheet(null)}>
+        <Layer title={t("play.legendTitle")} onClose={() => setSheet(null)}>
           <LegendSheet state={state} />
         </Layer>
       )}
@@ -251,12 +260,12 @@ export function PlayScreen({ live }: { live: LiveGame }) {
 
       {showYourTurn && (
         <Floating className="your-turn" bump={yourTurn}>
-          Your turn!
+          {t("play.yourTurn")}
         </Floating>
       )}
       {!live.connected && (
         <Floating className="offline" role="alert">
-          <span className="spinner" aria-hidden="true" /> Connection lost. Reconnecting…
+          <span className="spinner" aria-hidden="true" /> {t("common.reconnecting")}
         </Floating>
       )}
       {toastMessage && (
@@ -294,6 +303,7 @@ function useInsets(top: React.RefObject<HTMLDivElement | null>, bottom: React.Re
 
 /** Who this device is: a player, the host or a spectator. */
 function Identity({ msg }: { msg: LiveMessage }) {
+  const t = useT();
   const me = msg.game.players.find((p) => p.id === msg.you.player_id);
   const color = me && msg.state?.players.find((p) => p.id === String(me.id))?.color;
   return (
@@ -304,19 +314,12 @@ function Identity({ msg }: { msg: LiveMessage }) {
           <strong>{me.name}</strong>
         </>
       ) : (
-        <strong>{msg.you.can_host ? "Host" : "Watching"}</strong>
+        <strong>{msg.you.can_host ? t("common.host") : t("common.watching")}</strong>
       )}
-      <span className={`status status-${msg.game.status}`}>{msg.game.status === "running" ? "live" : msg.game.status}</span>
+      <span className={`status status-${msg.game.status}`}>{t(`play.status.${msg.game.status}`)}</span>
     </span>
   );
 }
-
-const DOING: Record<string, string> = {
-  AWAIT_ROLL: "rolling",
-  AWAIT_MOVE: "moving",
-  AWAIT_CATEGORY: "picking a category",
-  AWAIT_ANSWER: "answering",
-};
 
 /** Whose turn it is and the latest thing that happened. */
 function TurnPill({
@@ -333,6 +336,7 @@ function TurnPill({
   /** The dice are still tumbling: don't give the roll away yet. */
   rolling: boolean;
 }) {
+  const t = useT();
   const last = rolling ? state.log[state.log.length - 2] : state.log[state.log.length - 1];
   const phase = rolling ? "AWAIT_ROLL" : state.phase;
   const lastPlayer = last && state.players.find((p) => p.id === last.player_id);
@@ -340,20 +344,14 @@ function TurnPill({
   if (state.phase === "GAME_OVER" || endedByHost) {
     const r = state.result;
     const winner = r?.type === "win" ? state.players.find((p) => p.id === r.player_id) : null;
-    head = <strong>{winner ? `🏆 ${winner.name} wins` : endedByHost ? "Game ended" : "It's a draw"}</strong>;
+    head = <strong>{winner ? t("play.pill.wins", { name: winner.name }) : endedByHost ? t("play.pill.ended") : t("play.pill.draw")}</strong>;
   } else {
     const p = activePlayer(state);
     head = (
       <>
         <span className="dot" style={{ background: p.color }} />
-        {canAct ? (
-          <strong>Your turn{phase === "AWAIT_ROLL" ? "" : `: ${DOING[phase]}`}</strong>
-        ) : (
-          <span>
-            <strong>{p.name}</strong> is {DOING[phase]}
-          </span>
-        )}
-        <span className="round">R{state.round}</span>
+        {canAct ? <strong>{t("play.pill.mine", { phase })}</strong> : <span>{t.rich("play.pill.other", { name: p.name, phase })}</span>}
+        <span className="round">{t("play.roundShort", { round: state.round })}</span>
       </>
     );
   }
@@ -363,7 +361,7 @@ function TurnPill({
       {last && (
         <div className="ticker" key={state.log.length}>
           {lastPlayer && <strong style={{ color: lastPlayer.color }}>{lastPlayer.name} </strong>}
-          {last.text}
+          {logText(t, state, last)}
         </div>
       )}
     </div>
@@ -396,6 +394,7 @@ function Dock({
   errorSeq: number;
   setHighlight: (i: number | null) => void;
 }) {
+  const t = useT();
   const [sent, setSent] = useState<string | null>(null);
   // One tap per state: a second tap before the server answers would be rejected anyway
   const stateKey = `${state.log.length}-${state.phase}`;
@@ -411,7 +410,7 @@ function Dock({
     return (
       <div className="dock">
         <button className="dock-btn" onClick={onShowResults}>
-          🏆 Final results
+          {t("play.finalResults")}
         </button>
       </div>
     );
@@ -419,7 +418,7 @@ function Dock({
     return (
       <div className="dock">
         <button className="dock-btn primary" onClick={onShowQuestion}>
-          ❓ Back to the question
+          {t("play.backToQuestion")}
         </button>
       </div>
     );
@@ -431,7 +430,7 @@ function Dock({
           <span className="roll-die" aria-hidden="true">
             🎲
           </span>
-          {state.rolls_this_turn > 0 ? "Roll again" : "Roll the dice"}
+          {state.rolls_this_turn > 0 ? t("play.rollAgain") : t("play.rollDice")}
         </button>
       </div>
     );
@@ -441,13 +440,11 @@ function Dock({
       .sort((a, b) => a - b);
     return (
       <div className="dock move-dock">
-        <p className="dock-hint">
-          Rolled <strong>{state.last_roll}</strong>. {dests.length > 1 ? "Tap a glowing space or pick one:" : "Tap the glowing space or:"}
-        </p>
+        <p className="dock-hint">{t.rich("play.moveHint", { value: state.last_roll ?? 0, count: dests.length })}</p>
         <div className="move-strip" onPointerLeave={() => setHighlight(null)}>
           {dests.map((i) => {
             const s = state.board.spaces.find((x) => x.index === i)!;
-            const cat = s.category ? cardCategory(state, s.category) : null;
+            const cat = s.category ? cardCategory(t, state, s.category) : null;
             return (
               <button
                 key={i}
@@ -461,9 +458,9 @@ function Dock({
                 <span className="swatch" style={{ background: cat?.color ?? TYPE_COLORS[s.type] ?? "var(--muted)" }} />
                 <span className="move-label">
                   {s.type === "hq" && "★ "}
-                  {cat?.name ?? SPACE_TYPE_NAMES[s.type]}
+                  {cat?.name ?? spaceName(t, s.type)}
                 </span>
-                <span className="move-index">#{i}</span>
+                <span className="move-index">{t("play.spaceNumber", { index: i })}</span>
               </button>
             );
           })}
@@ -475,28 +472,26 @@ function Dock({
 }
 
 function PlayersSheet({ msg, state, you }: { msg: LiveMessage; state: GameView; you: string | null }) {
+  const t = useT();
   const online = Object.fromEntries(msg.game.players.map((p) => [String(p.id), p.online || !p.joined]));
   return (
     <>
       <PlayersTable game={state} online={online} you={you} />
-      <p className="muted small">Score: points from correct answers. Tokens: one per category, from its HQ space.</p>
+      <p className="muted small">{t("play.scoreHelp")}</p>
     </>
   );
 }
 
 function LegendSheet({ state }: { state: GameView }) {
+  const t = useT();
   return (
     <div className="legend-sheet">
       <Legend board={state.board} />
       <ul className="legend-notes">
-        <li>
-          <strong>★ HQ</strong> spaces award the category's token for a correct answer.
-        </li>
-        <li>
-          <strong>⑂</strong> marks a fork: accent arrows leave it, and you pick the branch.
-        </li>
-        <li>After a roll, the spaces you can reach glow and everything else dims.</li>
-        <li>Pinch or use + / − to zoom, drag to move the board, double-tap to zoom in.</li>
+        <li>{t.rich("play.legend.hq")}</li>
+        <li>{t.rich("play.legend.fork")}</li>
+        <li>{t("play.legend.glow")}</li>
+        <li>{t("play.legend.gestures")}</li>
       </ul>
     </div>
   );
@@ -504,35 +499,43 @@ function LegendSheet({ state }: { state: GameView }) {
 
 function InfoSheet({ msg, state }: { msg: LiveMessage; state: GameView }) {
   const { user } = useAuth();
+  const t = useT();
   const config = state.config;
   return (
     <dl className="info-list">
-      <dt>Game</dt>
+      <dt>{t("play.info.game")}</dt>
       <dd>{msg.game.name}</dd>
-      <dt>Track</dt>
-      <dd>{config.track_type === "loop" ? "Loop" : "Linear (start to finish)"}</dd>
-      <dt>To win</dt>
-      <dd>{config.win_conditions.map((w) => WIN_CONDITION_NAMES[w]).join(" or ")}</dd>
-      <dt>Dice</dt>
+      <dt>{t("play.info.track")}</dt>
+      <dd>{config.track_type === "loop" ? t("play.info.loop") : t("play.info.linear")}</dd>
+      <dt>{t("play.info.toWin")}</dt>
       <dd>
-        {config.dice_sides} sides, up to {config.max_rolls_per_turn} roll{config.max_rolls_per_turn === 1 ? "" : "s"} per turn
-        {config.bonus_roll_on_correct && ", bonus roll after a correct answer"}
+        {joinList(
+          t,
+          config.win_conditions.map((w) => winName(t, w)),
+          "disjunction",
+        )}
       </dd>
-      <dt>Answer time</dt>
-      <dd>{config.answer_time_limit_sec ? `${config.answer_time_limit_sec} seconds` : "No limit"}</dd>
+      <dt>{t("play.info.dice")}</dt>
+      <dd>{t("play.info.diceRules", { sides: config.dice_sides, max: config.max_rolls_per_turn, bonus: config.bonus_roll_on_correct ? "yes" : "no" })}</dd>
+      <dt>{t("play.info.answerTime")}</dt>
+      <dd>{config.answer_time_limit_sec ? t("play.info.seconds", { count: config.answer_time_limit_sec }) : t("play.info.noLimit")}</dd>
       {config.max_rounds && (
         <>
-          <dt>Rounds</dt>
+          <dt>{t("play.info.rounds")}</dt>
           <dd>{config.max_rounds}</dd>
         </>
       )}
-      <dt>Players</dt>
+      <dt>{t("play.info.players")}</dt>
       <dd>{state.players.filter((p) => !p.removed).length}</dd>
+      <dt>{t("common.language")}</dt>
+      <dd>
+        <LanguagePicker label={false} />
+      </dd>
       {user && (
         <>
-          <dt>Admin</dt>
+          <dt>{t("play.info.admin")}</dt>
           <dd>
-            <Link to={`/games/${msg.game.id}`}>Open this game in the app →</Link>
+            <Link to={`/games/${msg.game.id}`}>{t("play.info.openAdmin")}</Link>
           </dd>
         </>
       )}

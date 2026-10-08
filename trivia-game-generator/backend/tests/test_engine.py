@@ -67,6 +67,7 @@ def test_replays_typescript_games(scenario):
     for i, step in enumerate(scenario["steps"]):
         out = apply_action(s, step["action"], step["now"])
         assert out.error == step.get("error"), f"step {i}: {step['action']}"
+        assert out.error_i18n == step.get("error_i18n"), f"step {i}: {step['action']}"
         s = out.state
         assert digest(dict(s)) == step["state"], f"step {i}: {step['action']}"
     final = {k: v for k, v in s.items() if k not in ("board", "cards")}

@@ -3,12 +3,16 @@ import { Link, useNavigate, useParams } from "react-router";
 import { api, ApiError, type Board, type BoardDefinition, type GameSnapshot, type ShareableKind, type Sharing } from "../api";
 import { placeholderMapping, resolveBoard } from "../engine/resolve";
 import type { Background, BoardFile, Category, SlotMapping } from "../engine/types";
+import { errorText, useT } from "../i18n";
 import { BoardCanvas } from "./BoardCanvas";
 
 /** Shows an error; server validation lists are shown as bullet points. */
 export function ErrorBox({ error }: { error: unknown }) {
+  const t = useT();
   if (!error) return null;
   const details = error instanceof ApiError ? error.details : [];
+  // Errors players can see come with a catalog key (I18N-7)
+  if (error instanceof ApiError && error.code) return <div className="error">{errorText(t, error)}</div>;
   return (
     <div className="error">
       {details.length > 1 ? (

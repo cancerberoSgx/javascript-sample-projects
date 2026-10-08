@@ -127,6 +127,7 @@ class Hub:
                     status=game.status,
                     board_name=game.board_name if game.snapshot is None else game.snapshot.board.name,
                     background=game.snapshot.board.background if game.snapshot else None,
+                    language=game.language or game.organization_language,
                     players=[LivePlayerOut(**p.model_dump(include={"id", "name", "position", "joined", "removed"}), online=p.id in online) for p in players],
                 ),
                 state=engine.public_view(live.state.to_engine()) if live else None,

@@ -12,6 +12,10 @@ export interface User {
   name: string;
   email: string;
   role: Role;
+  /** Preferred UI language; null = automatic (I18N-3). */
+  language: string | null;
+  /** The organization's language, the default of its games. */
+  organization_language: string;
   created_at: string;
   updated_at: string;
 }
@@ -28,6 +32,8 @@ export interface Organization {
   gemini_model: string | null;
   default_openai_model: string;
   default_gemini_model: string;
+  /** The UI language of its games, unless a game picks another (I18N-3). */
+  language: string;
   user_count: number;
   created_at: string;
   updated_at: string;
@@ -44,6 +50,7 @@ export interface UserInput {
   email?: string;
   password?: string;
   role?: Role;
+  language?: string | null;
 }
 
 // ---------- sharing (rules.md §2.8, SHR-*) ----------
@@ -222,6 +229,9 @@ export interface Game {
   background: Background | null;
   /** Players join with /games/:id?code=<join_code> (MPL-1). */
   join_code: string;
+  /** The UI language players get by default; null = the organization's (I18N-3). */
+  language: string | null;
+  organization_language: string;
   started_at: string | null;
   finished_at: string | null;
   created_at: string;
@@ -238,6 +248,7 @@ export interface GameInput {
   deck_id?: number | null;
   categories?: Record<string, number>;
   background?: Background | null;
+  language?: string | null;
 }
 
 // ---------- multiplayer (rules.md §2.7) ----------
@@ -252,6 +263,8 @@ export interface LiveMessage {
     board_name: string | null;
     /** What the started game draws (frozen in its snapshot, BKG-6). */
     background: Background | null;
+    /** The language players see by default: the game's, else its organization's (I18N-3). */
+    language: string;
     players: (GamePlayer & { online: boolean })[];
   };
   /** The engine state without its secrets (MPL-6); null until the game starts. */
@@ -262,7 +275,16 @@ export interface LiveMessage {
   you: { player_id: number | null; can_host: boolean };
 }
 
-export type LiveServerMessage = LiveMessage | { type: "error"; message: string; fatal?: boolean } | { type: "gone" };
+/** An error the server sent over the socket. code + params: its translation (I18N-7). */
+export interface LiveError {
+  type: "error";
+  message: string;
+  code?: string;
+  params?: Record<string, string | number>;
+  fatal?: boolean;
+}
+
+export type LiveServerMessage = LiveMessage | LiveError | { type: "gone" };
 
 export class ApiError extends Error {
   constructor(
@@ -270,6 +292,9 @@ export class ApiError extends Error {
     message: string,
     /** Individual messages, when the server sent a list (e.g. board validation errors). */
     public details: string[] = [],
+    /** Catalog key of errors players can see, so the UI can translate them (I18N-7). */
+    public code?: string,
+    public params: Record<string, string | number> = {},
   ) {
     super(message);
   }
@@ -323,7 +348,8 @@ async function request<T>(method: string, path: string, body?: unknown, extraHea
     // A 401 from login is a wrong password, and from logout an already-invalid token: neither means "session lost"
     if (res.status === 401 && path !== "/auth/login" && path !== "/auth/logout") onUnauthorized(token);
     const details = errorList(data);
-    throw new ApiError(res.status, details.join("; ") || `${res.status} ${res.statusText}`, details);
+    const coded = data as { code?: string; params?: Record<string, string | number> } | null;
+    throw new ApiError(res.status, details.join("; ") || `${res.status} ${res.statusText}`, details, coded?.code, coded?.params);
   }
   return data as T;
 }
@@ -375,7 +401,14 @@ export const api = {
   /** Keys: omit to keep, null to remove, string to replace. Models: null = back to the default. Members may only send models. */
   updateOrganization: (
     id: number,
-    body: { name?: string; openai_api_key?: string | null; gemini_api_key?: string | null; openai_model?: string | null; gemini_model?: string | null },
+    body: {
+      name?: string;
+      openai_api_key?: string | null;
+      gemini_api_key?: string | null;
+      openai_model?: string | null;
+      gemini_model?: string | null;
+      language?: string;
+    },
   ) =>
     request<Organization>("PATCH", `/organizations/${id}`, body),
   deleteOrganization: (id: number) => request<void>("DELETE", `/organizations/${id}`),
@@ -481,7 +514,67 @@ export const api = {
   removePlayer: (id: number, playerId: number) => request<GameDetail>("DELETE", `/games/${id}/players/${playerId}`),
   skipTurn: (id: number) => request<void>("POST", `/games/${id}/skip-turn`),
   newJoinCode: (id: number) => request<GameDetail>("POST", `/games/${id}/join-code`),
+
+  // UI translations (rules.md §2.9). Public: the enabled languages and one language's messages.
+  languages: () => request<Language[]>("GET", "/i18n/languages"),
+  messages: (code: string) => request<{ language: string; version: string; messages: Record<string, string> }>("GET", `/i18n/messages/${code}`),
+  // Root only: keys with their context, languages, translations, AI and files
+  translationKeys: () => request<TranslationKey[]>("GET", "/translations/keys"),
+  translationLanguages: () => request<LanguageStats[]>("GET", "/translations/languages"),
+  createLanguage: (body: { code: string; name: string; native_name: string }) => request<LanguageStats>("POST", "/translations/languages", body),
+  updateLanguage: (code: string, body: { name?: string; native_name?: string; enabled?: boolean }) =>
+    request<LanguageStats>("PATCH", `/translations/languages/${code}`, body),
+  deleteLanguage: (code: string) => request<void>("DELETE", `/translations/languages/${code}`),
+  translations: (code: string) => request<Translation[]>("GET", `/translations/${code}`),
+  saveTranslation: (code: string, key: string, body: { message: string; status?: TranslationStatus }) =>
+    request<Translation>("PUT", `/translations/${code}/${key}`, body),
+  deleteTranslation: (code: string, key: string) => request<void>("DELETE", `/translations/${code}/${key}`),
+  translateWithAi: (code: string, body: { organization_id: number; provider: Provider | null; keys: string[] }) =>
+    request<{ translated: Translation[]; failed: { key: string; reason: string }[] }>("POST", `/translations/${code}/ai`, body),
+  exportTranslations: (code: string) => request<object>("GET", `/translations/${code}/export`),
+  importTranslations: (code: string, file: unknown) => request<{ imported: number; unchanged: number }>("POST", `/translations/${code}/import`, file),
 };
+
+// ---------- translations (rules.md §2.9, I18N-*) ----------
+
+export interface Language {
+  code: string; // "es", "pt-BR"
+  name: string; // in English
+  native_name: string; // "Español"
+}
+
+export interface LanguageStats extends Language {
+  enabled: boolean;
+  translated: number;
+  missing: number;
+  outdated: number;
+  machine: number;
+}
+
+export interface TranslationKey {
+  key: string;
+  area: string;
+  source: string; // the English message (ICU MessageFormat)
+  description: string;
+  placeholders: Record<string, string>;
+  max_length: number | null;
+  obsolete: boolean;
+  updated_at: string;
+}
+
+export type TranslationStatus = "machine" | "reviewed";
+
+export interface Translation {
+  key: string;
+  message: string;
+  status: TranslationStatus;
+  /** Written for an older English text (I18N-5). */
+  outdated: boolean;
+  /** Placeholders or tags of the English text the translation leaves out. */
+  warnings: string[];
+  updated_by_name: string | null;
+  updated_at: string;
+}
 
 /** The link players open on their own devices (MPL-1). */
 export const joinLink = (game: Pick<Game, "id" | "join_code">) => `${location.origin}/games/${game.id}?code=${game.join_code}`;

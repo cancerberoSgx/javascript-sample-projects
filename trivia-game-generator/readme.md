@@ -9,6 +9,20 @@ docker compose -f docker/docker-compose.yml up --build
 
 Open http://localhost:5173 and log in with `ROOT_EMAIL` / `ROOT_PASSWORD` from `.env`.
 
+
+
+## dev env fast notes
+
+make sure db is running - if not invoke above docker compose command and make sure container is running.
+
+cd backend; uv run uvicorn app.main:app --reload       # reads DATABASE_URL from ../.env
+
+cd frontend: npm run dev
+
+
+
+# file structure
+
 | Folder | What |
 |---|---|
 | `frontend/` | React + Vite app: login, Organizations tab, Boards demo (root only). See [frontend/README.md](frontend/README.md) |
@@ -69,12 +83,9 @@ Good to know:
   hosting notes at the end of this file.
 
 
-## dev env fast notes
 
-make sure db is running - if not invoke above docker compose command and make sure container is running.
 
-cd backend; uv run uvicorn app.main:app --reload       # reads DATABASE_URL from ../.env
-cd frontend: npm run dev
+---
 
 
 # old notes:

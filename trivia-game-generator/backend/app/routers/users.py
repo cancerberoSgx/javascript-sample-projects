@@ -16,6 +16,7 @@ from ..repositories import organizations as orgs
 from ..repositories import users
 from ..schemas import UserCreate, UserOut, UserUpdate
 from ..security import hash_password
+from .i18n import require_language
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 
@@ -72,15 +73,18 @@ def get_user(user_id: int, me: Me, conn: Conn):
 @router.patch("/{user_id}", response_model=UserOut)
 def update_user(user_id: int, body: UserUpdate, me: Me, conn: Conn):
     target = _visible_user(me, conn, user_id)
-    # Fields sent as null are treated as "not sent": none of these columns is nullable
-    sent = {k: v for k, v in body.model_dump(exclude_unset=True).items() if v is not None}
-    if "password" in sent:
-        sent["password_hash"] = hash_password(sent.pop("password"))
+    # Fields sent as null are treated as "not sent" (those columns aren't nullable), except language: null = automatic
+    sent = {k: v for k, v in body.model_dump(exclude_unset=True).items() if v is not None or k == "language"}
+    if body.password is not None:
+        sent.pop("password")
+        sent["password_hash"] = hash_password(body.password)
     changes = UserChanges(**sent)
     check_update_user(me, target, changes)
 
     if changes.organization_id is not None and orgs.get(conn, changes.organization_id) is None:
         raise not_found("Organization not found")
+    if changes.language is not None:
+        require_language(conn, changes.language)
     try:
         with conn.transaction():
             if target.role == "root" and changes.role == "member" and users.count_roots(conn) <= 1:

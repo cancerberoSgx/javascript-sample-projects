@@ -185,10 +185,23 @@ export type GameResult =
   | { type: "win"; player_id: string; reason: WinCondition }
   | { type: "draw" };
 
+/** Values for a message's {placeholders} (I18N-6). Only JSON scalars, so states stay serializable. */
+export type MessageParams = Record<string, string | number>;
+
+/** A translatable message: a key of the i18n catalog and its params (rules.md §2.9). */
+export interface Message {
+  key: string;
+  params: MessageParams;
+}
+
 export interface LogEntry {
   round: number;
   player_id: string | null;
+  /** English. Shown as is for entries written before log lines had keys (I18N-6). */
   text: string;
+  /** Catalog key and params. A `category` param holds a category id, shown as its name. */
+  key?: string;
+  params?: MessageParams;
 }
 
 export interface GameState {

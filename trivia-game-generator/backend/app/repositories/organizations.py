@@ -8,7 +8,7 @@ from ._sql import update_row
 
 _SELECT = """
     SELECT o.id, o.name, o.openai_api_key_encrypted, o.gemini_api_key_encrypted,
-           o.openai_model, o.gemini_model, o.created_at, o.updated_at,
+           o.openai_model, o.gemini_model, o.language, o.created_at, o.updated_at,
            (SELECT count(*) FROM trivia_users u WHERE u.organization_id = o.id) AS user_count
     FROM trivia_organizations o
 """

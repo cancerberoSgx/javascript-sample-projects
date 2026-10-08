@@ -1263,6 +1263,17 @@ html.play-mode body:has(.play-lobby) {
 .lobby-admin {
   color: var(--muted);
 }
+.lobby-language {
+  color: var(--muted);
+  font-size: 14px;
+}
+.lobby-language select,
+.info-list select {
+  height: 36px;
+  border-radius: 10px;
+  padding: 0 8px;
+  font-size: 15px;
+}
 
 @media (prefers-reduced-motion: reduce) {
   .play-screen *,

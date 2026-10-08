@@ -12,6 +12,8 @@ import { LibraryPage } from "./components/LibraryPage";
 import { LoginPage } from "./components/LoginPage";
 import { OrganizationsPage } from "./components/OrganizationsPage";
 import { PlayerGamePage } from "./components/PlayerGamePage";
+import { TranslationsPage } from "./components/TranslationsPage";
+import { I18nProvider, LanguagePicker } from "./i18n";
 
 // Every tab has its own URL: /games, /games/:id, /boards/:id, /decks/:id, /categories/:id,
 // /organizations/:id, /library/:kind/:id and /demo. The list URL opens the first item (see useRouteSelection).
@@ -39,7 +41,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <Shell />
+        <I18nProvider>
+          <Shell />
+        </I18nProvider>
       </AuthProvider>
     </BrowserRouter>
   );
@@ -86,7 +90,12 @@ function AppShell() {
     ["/categories", "Categories"],
     ["/library", "🌐 Library"],
     ["/organizations", isRoot ? "Organizations" : "My organization"],
-    ...(isRoot ? ([["/demo", "Boards demo"]] as [string, string][]) : []),
+    ...(isRoot
+      ? ([
+          ["/translations", "Translations"],
+          ["/demo", "Boards demo"],
+        ] as [string, string][])
+      : []),
   ];
 
   return (
@@ -119,6 +128,7 @@ function AppShell() {
             {user.name} <span className={`chip role-${user.role}`}>{user.role}</span>
           </span>
           <span className="muted small">{user.organization_name}</span>
+          <LanguagePicker label={false} className="small" />
           <button className="small" onClick={logout}>
             Log out
           </button>
@@ -167,6 +177,9 @@ function AppShell() {
           ))}
           <Route path="/organizations" element={<OrganizationsPage />} />
           <Route path="/organizations/:id" element={<OrganizationsPage />} />
+          {["/translations", "/translations/:lang"].map((path) => (
+            <Route key={path} path={path} element={isRoot ? <TranslationsPage /> : <Navigate to="/games" replace />} />
+          ))}
           <Route path="/demo" element={isRoot ? <BoardsDemo /> : <Navigate to="/games" replace />} />
           <Route
             path="*"

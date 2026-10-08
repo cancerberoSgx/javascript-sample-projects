@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { isFork } from "../engine/board";
-import type { Background, BoardDefinition, GameView, Space } from "../engine/types";
+import type { Background, BoardDefinition, GameView, Space, SpaceType } from "../engine/types";
+import { useT } from "../i18n";
 import { BackgroundLayer, boardArea, hasBackground, useBackgroundImage, type Rect } from "./background";
 import { NO_INSETS, boundsOf, toWorld, type Insets } from "./camera";
 import { useBoardCamera, type CameraCommand } from "./useBoardCamera";
@@ -25,12 +26,16 @@ interface Props {
 const WORLD_CELL = 96;
 
 const STEP_MS = 160;
-const SPECIAL_LABEL: Record<string, string> = {
+/** Text inside the special spaces, and "★ HQ" over a headquarters' category. Translated on the
+ *  play board (I18N-1); the board editor keeps these English defaults. */
+export type TileLabels = Partial<Record<SpaceType, string>>;
+const SPECIAL_LABEL: TileLabels = {
   start: "START",
   finish: "FINISH",
   roll_again: "ROLL\nAGAIN",
   penalty: "SKIP\nTURN",
   wildcard: "WILD",
+  hq: "★ HQ",
 };
 
 interface Layout {
@@ -192,6 +197,7 @@ export function drawTile(
   tile: number,
   categoryColor: string | undefined,
   categoryName: string | undefined,
+  labels: TileLabels = SPECIAL_LABEL,
 ) {
   const half = tile / 2;
   roundRect(ctx, x - half, y - half, tile, tile, tile * 0.16);
@@ -208,7 +214,7 @@ export function drawTile(
     ctx.fillText("⑂", x + half - tile * 0.08, y - half + tile * 0.07);
   }
 
-  const main = s.type === "hq" ? `★ HQ\n${categoryName ?? ""}` : s.category ? (categoryName ?? s.category) : (SPECIAL_LABEL[s.type] ?? s.type);
+  const main = s.type === "hq" ? `${labels.hq}\n${categoryName ?? ""}` : s.category ? (categoryName ?? s.category) : (labels[s.type] ?? s.type);
   const lines = main.split("\n");
   const size = Math.max(8, tile * (lines.some((l) => l.length > 8) ? 0.13 : 0.16));
   const lift = s.label ? tile * 0.06 : 0;
@@ -245,6 +251,18 @@ export function BoardCanvas({ board, background, game, onSpaceClick, onHover, vi
   const byIndex = useMemo(() => new Map(board.spaces.map((s) => [s.index, s])), [board]);
   const categoryColor = useMemo(() => Object.fromEntries(board.categories.map((c) => [c.id, c.color])), [board]);
   const categoryName = useMemo(() => Object.fromEntries(board.categories.map((c) => [c.id, c.name])), [board]);
+  const t = useT();
+  const labels = useMemo<TileLabels>(
+    () => ({
+      start: t("board.tile.start"),
+      finish: t("board.tile.finish"),
+      roll_again: t("board.tile.roll_again"),
+      penalty: t("board.tile.penalty"),
+      wildcard: t("board.tile.wildcard"),
+      hq: t("board.tile.hq"),
+    }),
+    [t],
+  );
 
   // Track container width
   useEffect(() => {
@@ -440,7 +458,7 @@ export function BoardCanvas({ board, background, game, onSpaceClick, onHover, vi
         ctx.fill();
         ctx.restore();
       }
-      drawTile(ctx, theme, s, { x, y }, tile, s.category ? categoryColor[s.category] : undefined, s.category ? categoryName[s.category] : undefined);
+      drawTile(ctx, theme, s, { x, y }, tile, s.category ? categoryColor[s.category] : undefined, s.category ? categoryName[s.category] : undefined, labels);
       if (hovered === s.index) {
         roundRect(ctx, x - half, y - half, tile, tile, tile * 0.16);
         ctx.fillStyle = "rgba(255,255,255,0.18)";
@@ -502,7 +520,7 @@ export function BoardCanvas({ board, background, game, onSpaceClick, onHover, vi
         ctx.fillText(p.name.slice(0, 1).toUpperCase(), tx, ty + 0.5);
       });
     }
-  }, [board, game, layout, hovered, anim, now, themeTick, byIndex, categoryColor, categoryName, destinations, previewPath, background, bgImage, bgLayer, viewport, cam, view]);
+  }, [board, game, layout, hovered, anim, now, themeTick, byIndex, categoryColor, categoryName, destinations, previewPath, background, bgImage, bgLayer, viewport, cam, view, labels]);
 
   // ---- Hit testing ----
   const spaceAtPoint = (e: React.MouseEvent<HTMLCanvasElement>): Space | null => {

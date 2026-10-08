@@ -67,6 +67,7 @@ class Device:
 @dataclass(frozen=True)
 class Applied:
     error: str | None = None
+    error_i18n: engine.Message | None = None  # the error as a translatable message (I18N-7)
     finished: bool = False  # this action ended the game
 
 
@@ -80,13 +81,14 @@ def apply(conn: DbConn, game_id: int, action: engine.Action, *, device: Device |
         live = game_states.get(conn, game_id, for_update=True)
         game = games.get(conn, game_id)
         if live is None or game is None or game.status != "running":
-            return Applied("This game isn't running.")
+            return Applied("This game isn't running.", {"key": "error.notRunning", "params": {}})
         state = live.state.to_engine()
         if device is not None and not _may_play(conn, game_id, engine.active_player(state)["id"], device):
-            return Applied(f"It's {engine.active_player(state)['name']}'s turn.")
+            name = engine.active_player(state)["name"]
+            return Applied(f"It's {name}'s turn.", {"key": "error.notYourTurn", "params": {"name": name}})
         out = engine.apply_action(state, action, now_ms())
         if out.error:
-            return Applied(out.error)
+            return Applied(out.error, out.error_i18n)
         game_states.save(conn, game_id, EngineState.model_validate(out.state))
         # MPL-10: a game that reaches GAME_OVER is finished
         finished = out.state["phase"] == "GAME_OVER" and games.mark_finished(conn, game_id)

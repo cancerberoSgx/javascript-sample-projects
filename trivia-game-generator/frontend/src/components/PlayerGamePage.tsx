@@ -5,6 +5,7 @@
 import { useEffect } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
 import { useAuth } from "../auth";
+import { LanguagePicker, useLanguageHint, useT } from "../i18n";
 import "../play/play.css";
 import { PlayScreen } from "../play/PlayScreen";
 import { JoinForm, LeaveButton, LobbyPlayers, useLiveGame } from "./LiveGame";
@@ -14,6 +15,9 @@ export function PlayerGamePage() {
   const code = useSearchParams()[0].get("code");
   const live = useLiveGame(gameId, code);
   const msg = live.msg;
+  const t = useT();
+  // Players see the game's language unless they pick their own (I18N-3)
+  useLanguageHint(msg?.game.language);
 
   // A game screen, not a page: no pull-to-refresh, overscroll or page zoom from stray gestures
   useEffect(() => {
@@ -23,23 +27,23 @@ export function PlayerGamePage() {
 
   if (live.fatal)
     return (
-      <PlayCard title="Can't open this game">
+      <PlayCard title={t("lobby.cantOpen")}>
         <p>{live.fatal}</p>
       </PlayCard>
     );
   if (!msg)
     return (
-      <PlayCard title="Trivia">
+      <PlayCard title={t("common.appName")}>
         <p className="muted row">
-          <span className="spinner" aria-hidden="true" /> Connecting to the game…
+          <span className="spinner" aria-hidden="true" /> {t("lobby.connecting")}
         </p>
       </PlayCard>
     );
   if (msg.game.status !== "awaiting" && msg.state) return <PlayScreen live={live} />;
   if (msg.game.status !== "awaiting")
     return (
-      <PlayCard title="Game over">
-        <p className="muted">This game ended before live play existed, so there's no board to show.</p>
+      <PlayCard title={t("common.gameOver")}>
+        <p className="muted">{t("lobby.noBoard")}</p>
       </PlayCard>
     );
   return <Lobby gameId={gameId} code={code} live={live} />;
@@ -60,16 +64,17 @@ function PlayCard({ title, children }: { title: string; children: React.ReactNod
 function Lobby({ gameId, code, live }: { gameId: number; code: string | null; live: ReturnType<typeof useLiveGame> }) {
   const msg = live.msg!;
   const { user } = useAuth();
+  const t = useT();
   const me = msg.game.players.find((p) => p.id === msg.you.player_id);
   return (
     <div className="play-lobby">
       <section className="lobby-card">
-        <p className="lobby-kicker">Trivia{msg.game.board_name ? ` · ${msg.game.board_name}` : ""}</p>
+        <p className="lobby-kicker">{msg.game.board_name ? t("lobby.kicker", { board: msg.game.board_name }) : t("common.appName")}</p>
         {me ? (
           <>
-            <h1>You're in, {me.name}!</h1>
+            <h1>{t("lobby.youreIn", { name: me.name })}</h1>
             <p className="lobby-wait">
-              <span className="pulse-dot" aria-hidden="true" /> Waiting for the host to start the game. Keep this page open: the board shows up here.
+              <span className="pulse-dot" aria-hidden="true" /> {t("lobby.waitingHost")}
             </p>
             <div className="row">
               <LeaveButton gameId={gameId} onLeft={live.reconnect} />
@@ -77,25 +82,26 @@ function Lobby({ gameId, code, live }: { gameId: number; code: string | null; li
           </>
         ) : code ? (
           <>
-            <h1>Join the game</h1>
+            <h1>{t("lobby.join")}</h1>
             <JoinForm gameId={gameId} code={code} onJoined={live.reconnect} />
           </>
         ) : (
           <>
-            <h1>Join the game</h1>
-            <p className="muted">Ask the host for the game's link to join.</p>
+            <h1>{t("lobby.join")}</h1>
+            <p className="muted">{t("lobby.askForLink")}</p>
           </>
         )}
-        {!live.connected && <p className="lobby-offline">Connection lost. Reconnecting…</p>}
+        {!live.connected && <p className="lobby-offline">{t("common.reconnecting")}</p>}
       </section>
       <section className="lobby-card">
-        <h2>Players · {msg.game.players.length}</h2>
+        <h2>{t("lobby.players", { count: msg.game.players.length })}</h2>
         <LobbyPlayers msg={msg} />
-        <p className="muted small">Players take turns in this order.</p>
+        <p className="muted small">{t("lobby.turnOrder")}</p>
       </section>
+      <LanguagePicker className="lobby-language" />
       {user && (
         <Link className="small lobby-admin" to={`/games/${gameId}`}>
-          Open in the app →
+          {t("lobby.openInApp")}
         </Link>
       )}
     </div>

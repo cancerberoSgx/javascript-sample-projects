@@ -4,6 +4,8 @@
 import { useCallback, useRef, useState } from "react";
 import { activePlayer, applyAction } from "../engine/engine";
 import type { Action, Background, BoardDefinition, GameState, GameView, Space } from "../engine/types";
+import { errorText, useT } from "../i18n";
+import { spaceName } from "../i18n/game";
 import { BoardCanvas } from "./BoardCanvas";
 import { LogPanel, PlayersPanel } from "./PlayersPanel";
 import { TurnPanel, type TurnOptions } from "./TurnPanel";
@@ -13,6 +15,7 @@ export const PLAYER_COLORS = ["#e11d48", "#7c3aed", "#0891b2", "#ea580c", "#16a3
 
 /** Plays locally: actions go to the engine in this browser (Boards demo). */
 export function useLocalGamePlay(game: GameState | null, setGame: (s: GameState) => void) {
+  const t = useT();
   const gameRef = useRef(game);
   gameRef.current = game;
   const run = useCallback(
@@ -20,10 +23,10 @@ export function useLocalGamePlay(game: GameState | null, setGame: (s: GameState)
       const current = gameRef.current;
       if (!current) return;
       const out = applyAction(current, action);
-      if (out.error) return out.error;
+      if (out.error) return errorText(t, { message: out.error, code: out.errorI18n?.key, params: out.errorI18n?.params });
       setGame(out.state);
     },
-    [setGame],
+    [setGame, t],
   );
   return useGamePlay(game, run);
 }
@@ -34,6 +37,7 @@ export function useLocalGamePlay(game: GameState | null, setGame: (s: GameState)
  * canAct: false shows a toast instead of sending, e.g. when it's another player's turn.
  */
 export function useGamePlay(game: GameView | null, run: (action: Action) => string | void, canAct = true) {
+  const t = useT();
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<number>(undefined);
   const showToast = useCallback((msg: string) => {
@@ -52,9 +56,9 @@ export function useGamePlay(game: GameView | null, run: (action: Action) => stri
 
   const onSpaceClick = (index: number) => {
     if (!game || game.phase === "GAME_OVER") return;
-    if (!canAct) showToast(`It's ${activePlayer(game).name}'s turn.`);
+    if (!canAct) showToast(t("table.notYourTurn", { name: activePlayer(game).name }));
     else if (game.phase === "AWAIT_MOVE") dispatch({ type: "MOVE", to: index });
-    else showToast(`Nothing to move right now. Waiting for ${game.phase}.`);
+    else showToast(t("table.nothingToMove"));
   };
 
   return { dispatch, onSpaceClick, showToast, toast: toast && <div className="toast">{toast}</div>, toastMessage: toast };
@@ -72,6 +76,7 @@ export function BoardView({
   game: GameView | null;
   onSpaceClick: (index: number) => void;
 }) {
+  const t = useT();
   const [hovered, setHovered] = useState<Space | null>(null);
   return (
     <>
@@ -80,10 +85,7 @@ export function BoardView({
         {hovered ? (
           <code>{JSON.stringify(hovered)}</code>
         ) : (
-          <span className="muted">
-            Hover a space to see its JSON. Accent arrows leave a fork (⑂). ★ HQ spaces award a category token. After a roll, legal moves glow and everything else is
-            dimmed.
-          </span>
+          <span className="muted">{t("table.hoverHelp")}</span>
         )}
       </div>
       <Legend board={board} />
@@ -93,6 +95,7 @@ export function BoardView({
 
 /** Category colors and the special spaces. */
 export function Legend({ board }: { board: BoardDefinition }) {
+  const t = useT();
   return (
     <div className="legend">
       {board.categories.map((c) => (
@@ -101,16 +104,16 @@ export function Legend({ board }: { board: BoardDefinition }) {
         </span>
       ))}
       <span>
-        <i className="sp-roll" /> Roll again
+        <i className="sp-roll" /> {spaceName(t, "roll_again")}
       </span>
       <span>
-        <i className="sp-penalty" /> Penalty
+        <i className="sp-penalty" /> {spaceName(t, "penalty")}
       </span>
       <span>
-        <i className="sp-wild" /> Wildcard
+        <i className="sp-wild" /> {spaceName(t, "wildcard")}
       </span>
       <span>
-        <i className="sp-finish" /> Finish
+        <i className="sp-finish" /> {spaceName(t, "finish")}
       </span>
     </div>
   );

@@ -17,13 +17,14 @@ from .core import (
     public_view,
 )
 from .resolve import resolve_snapshot
-from .types import Action, GameState, PlayerSetup
+from .types import Action, GameState, Message, PlayerSetup
 
 __all__ = [
     "Action",
     "ActionOutcome",
     "active_player",
     "GameState",
+    "Message",
     "PlayerSetup",
     "apply_action",
     "create_game",

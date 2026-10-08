@@ -39,7 +39,7 @@ Tests also run inside the container: `docker compose -f docker/docker-compose.ym
 
 | Path | What |
 |---|---|
-| `app/main.py` | App factory; startup runs migrations, seeds and the root bootstrap |
+| `app/main.py` | App factory; startup runs migrations, the i18n catalog sync, the root bootstrap and seeds |
 | `app/config.py` | Settings from env vars / the root `.env` |
 | `app/db.py` | Connection pool. Connections are autocommit; writes use `with conn.transaction():` |
 | `app/migrations.py` | Migration runner and CLI |
@@ -54,6 +54,7 @@ Tests also run inside the container: `docker compose -f docker/docker-compose.ym
 | `app/play.py` | Multiplayer play: deals a started game's opening state and applies actions (turn checks, auto-finish). The only code that changes a live state |
 | `app/generation.py`, `app/llm.py` | Card generation (rules.md §2.2.1): exact-mix planning, batches, duplicate detection, the background runner; `llm.py` calls OpenAI / Gemini over HTTP with a JSON schema |
 | `app/images.py`, `app/storage.py` | Background images (rules.md §2.1.2): decoding and re-encoding uploads to WebP, URL import with SSRF checks; `storage.py` writes the files to `MEDIA_DIR` and serves them at `/media` (`MediaFiles`) |
+| `app/i18n/` | UI translations (rules.md §2.9): `catalog.json` (written by the frontend's `src/i18n/catalog.test.ts`), `bundled/<lang>.json` (translations shipped with the code), `sync()` on startup, `icu.py` (a small ICU MessageFormat reader: placeholders, tags, validity) and `ai.py` (translating keys with OpenAI / Gemini) |
 | `app/live.py` | The in-memory WebSocket hub: who watches which game, broadcasts, presence and the server-side question timer |
 | `app/validation.py` | Board issues (`validate_board`, a line-by-line port of `validateBoardFile` in `frontend/src/engine/board.ts`) and game-setup checks (port of `resolve.ts`). `tests/test_validation.py` replays the frontend's fixture to keep them identical |
 | `migrations/`, `seeds/` | Numbered `.sql` files |
@@ -93,6 +94,9 @@ Tests also run inside the container: `docker compose -f docker/docker-compose.ym
 | Publish / unpublish a board, deck, category or image (SHR-1) | every organization (moderation) | own organization |
 | Browse the Library (public items of every organization) | ✔ | ✔ (read-only: copying is the only way to use them) |
 | Copy a public item | into any organization | into own organization |
+| Read the enabled languages and a language's messages (`/api/i18n/*`) | anyone, no login | anyone |
+| Manage translations: languages, keys, edits, AI, files (`/api/translations/*`) | ✔ | ✘ |
+| Own UI language (`PATCH /api/users/{id}` `{language}`) and the organization's (`PATCH /api/organizations/{id}` `{language}`) | ✔ | own user (and members of own organization), own organization |
 
 Players don't need an account (rules.md §2.7). The game's join code lets anyone join while it's awaiting, and the player token they get proves which player a device is. Who can watch a game's WebSocket: its organization's users (and root), its players, and anyone with its join code.
 
@@ -163,6 +167,23 @@ The body *is* the file, so a script can do `curl -H "Authorization: Bearer $TOKE
 | `POST /api/library/categories/{id}/copy`, `POST /api/library/images/{id}/copy` | A category (409 if the name exists) or an image (the existing one if the library has the file) |
 
 Boards, decks, categories and images all have `visibility`, `published_at` and `copied_from` (`{id, name, organization_name}`, kept as plain JSON, not a foreign key, so the original can go away). Copy names follow SHR-4 (`" (copy)"`, `" (copy 2)"`, …; a name you send must be free, 409). Public items are never used across organizations in place, so every other endpoint keeps its own-organization rules (rules.md §9.18). Migration `0008` also makes cards cascade with their category, which fixes deleting an organization whose decks have cards. Seed `0003` publishes the `Default` organization's example boards, sample deck and its categories.
+
+## Translations (rules.md §2.9)
+
+The UI's texts are keys of a catalog declared in `frontend/src/i18n/catalog.ts` (English message + area, description, placeholders, length hint). Its test writes `app/i18n/catalog.json`, and every startup runs `i18n.sync()`: new keys are added to `trivia_i18n_keys`, changed ones updated (their translations become outdated: `trivia_translations.source_hash` no longer matches the key's), and dropped keys marked `obsolete`. `app/i18n/bundled/<lang>.json` translations are inserted only for keys new in that sync, or for a language with no translations yet, so they never overwrite root's edits. Migrations `0009`/`0010` create the tables, add `language` to organizations (default `en`), users and games (null = automatic / the organization's), and add English and Spanish.
+
+| Endpoint | Who | What |
+|---|---|---|
+| `GET /api/i18n/languages` | anyone | Enabled languages, English first |
+| `GET /api/i18n/messages/{code}` | anyone | `{language, version, messages}` for keys in use. `ETag` = version; `If-None-Match` → 304. English returns `{}` (the frontend has it) |
+| `GET /api/translations/keys` | root | Every key with its context, obsolete ones last |
+| `GET/POST /api/translations/languages`, `PATCH/DELETE /api/translations/languages/{code}` | root | Languages with counts (`translated`, `missing`, `outdated`, `machine`). English can't be disabled or deleted |
+| `GET /api/translations/{code}` | root | The language's translations, with `outdated` and `warnings` (placeholders left out) |
+| `PUT /api/translations/{code}/{key}` `{message, status?}`, `DELETE …` | root | Save (422 with the problems if invalid, I18N-4) or delete (back to English) |
+| `POST /api/translations/{code}/ai` `{organization_id, provider?, keys}` | root | I18N-8: ≤ 40 keys per call, with that organization's key and model. `{translated, failed}`; results saved as `machine`. 502 when the provider fails |
+| `GET /api/translations/{code}/export`, `POST …/import` | root | I18N-9: the language as a file (`format: "trivia-translations"`), import all or nothing |
+
+**Errors players see** are `permissions.CodedError`s: the response is `{detail, code, params}` (`code` is a catalog key such as `error.nameTaken`), and WebSocket errors carry the same `code` / `params`. The engine's errors and log lines come with keys too (`ActionOutcome.error_i18n`, `log[].key/params`, I18N-6).
 
 ## Multiplayer (rules.md §2.7)
 

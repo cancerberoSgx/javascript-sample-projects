@@ -2,15 +2,17 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
-from . import db, generation
+from . import db, generation, i18n
 from .auth import Conn
 from .bootstrap import ensure_root_user
 from .config import get_settings
 from .live import hub
 from .migrations import apply_pending
+from .permissions import CodedError
 from .repositories import generation_jobs
 from .routers import (
     auth,
@@ -27,6 +29,9 @@ from .routers import (
 from .routers import (
     generation as generation_router,
 )
+from .routers import (
+    i18n as i18n_router,
+)
 from .storage import MEDIA_URL, MediaFiles
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
@@ -40,6 +45,7 @@ async def lifespan(_: FastAPI):
     db.open_pool(settings.database_url)
     try:
         with db.connection() as conn:
+            i18n.sync(conn)  # the UI texts of this version of the code (I18N-2)
             ensure_root_user(conn, settings)
             with conn.transaction():
                 if n := generation_jobs.fail_interrupted(conn):
@@ -66,11 +72,18 @@ def create_app() -> FastAPI:
             allow_methods=["*"],
             allow_headers=["*"],
         )
+    @app.exception_handler(CodedError)
+    async def coded_error(_: Request, exc: CodedError):
+        """Errors players see carry a catalog key, so the UI can show them translated (I18N-7)."""
+        return JSONResponse({"detail": exc.detail, "code": exc.code, "params": exc.params}, status_code=exc.status_code, headers=exc.headers)
+
     app.include_router(auth.router)
     app.include_router(organizations.router)
     app.include_router(users.router)
     for content in (categories, decks, generation_router, boards, games, play, images, library):
         app.include_router(content.router)
+    app.include_router(i18n_router.public)
+    app.include_router(i18n_router.router)
 
     # Background images (BKG-8): static, immutable files. In production, serve settings.media_dir
     # at /media from the web server or a CDN instead, and this mount is never reached.

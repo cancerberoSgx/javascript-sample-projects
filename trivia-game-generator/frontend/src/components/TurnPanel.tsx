@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
-import { activePlayer, categoryName } from "../engine/engine";
+import { activePlayer } from "../engine/engine";
 import type { Action, GameView } from "../engine/types";
+import { useT } from "../i18n";
+import { categoryLabel, resultName, winName } from "../i18n/game";
 
 export interface TurnOptions {
   /** This screen may act for the active player. Otherwise it only shows what they do. */
@@ -17,16 +19,19 @@ interface Props extends TurnOptions {
 }
 
 export function TurnPanel({ game, dispatch, canAct = true, dev = true, clockOffset = 0 }: Props) {
+  const t = useT();
   const [rigged, setRigged] = useState<string>("random");
   const p = activePlayer(game);
+
+  const rolled = (value: number | null) => t.rich("table.rolled", { value: value ?? 0, die: (chunks) => <span className="die">{chunks}</span> });
 
   if (game.phase === "GAME_OVER") {
     const r = game.result!;
     const winner = r.type === "win" ? game.players.find((x) => x.id === r.player_id)! : null;
     return (
       <section className="panel turn">
-        <h2>Game over</h2>
-        <p className="big">{winner ? `🏆 ${winner.name} wins (${r.type === "win" ? r.reason : ""})` : "It's a draw."}</p>
+        <h2>{t("common.gameOver")}</h2>
+        <p className="big">{winner && r.type === "win" ? t("table.wins", { name: winner.name, reason: winName(t, r.reason) }) : t("common.draw")}</p>
       </section>
     );
   }
@@ -36,22 +41,20 @@ export function TurnPanel({ game, dispatch, canAct = true, dev = true, clockOffs
       <div className="turn-head">
         <span className="dot" style={{ background: p.color }} />
         <strong>{p.name}</strong>
-        <span className="muted">
-          · round {game.round} · roll {game.rolls_this_turn}/{game.config.max_rolls_per_turn}
-        </span>
+        <span className="muted">{t("table.roundRoll", { round: game.round, rolls: game.rolls_this_turn, max: game.config.max_rolls_per_turn })}</span>
       </div>
 
       {!canAct && game.phase !== "AWAIT_ANSWER" && (
         <p className="muted">
-          Waiting for {p.name} to {game.phase === "AWAIT_ROLL" ? "roll" : game.phase === "AWAIT_MOVE" ? "move" : "pick a category"}…
-          {game.phase === "AWAIT_MOVE" && <> Rolled <span className="die">{game.last_roll}</span></>}
+          {t("table.waitingFor", { name: p.name, phase: game.phase })}
+          {game.phase === "AWAIT_MOVE" && <> {rolled(game.last_roll)}</>}
         </p>
       )}
 
       {canAct && game.phase === "AWAIT_ROLL" && (
         <div className="row">
           <button className="primary" onClick={() => dispatch({ type: "ROLL", value: rigged === "random" ? undefined : Number(rigged) })}>
-            🎲 Roll {rigged !== "random" && `(${rigged})`}
+            {t("table.roll")} {rigged !== "random" && `(${rigged})`}
           </button>
           {dev && (
           <label className="muted small">
@@ -71,20 +74,17 @@ export function TurnPanel({ game, dispatch, canAct = true, dev = true, clockOffs
 
       {canAct && game.phase === "AWAIT_MOVE" && (
         <div>
-          <p className="big">
-            Rolled <span className="die">{game.last_roll}</span>
-          </p>
+          <p className="big">{rolled(game.last_roll)}</p>
           <p>
-            Click a highlighted space to move.{" "}
-            {Object.keys(game.destinations).length > 1 && <strong>A fork is in reach: pick your branch.</strong>}
+            {t("table.clickToMove")} {Object.keys(game.destinations).length > 1 && <strong>{t("table.fork")}</strong>}
           </p>
-          <p className="muted small">Legal: {Object.keys(game.destinations).join(", ")}</p>
+          <p className="muted small">{t("table.legal", { spaces: Object.keys(game.destinations).join(", ") })}</p>
         </div>
       )}
 
       {canAct && game.phase === "AWAIT_CATEGORY" && (
         <div>
-          <p>Wildcard: pick a category.</p>
+          <p>{t("table.pickCategory")}</p>
           <div className="row wrap">
             {game.board.categories.map((c) => (
               <button key={c.id} style={{ background: c.color, color: "#fff" }} onClick={() => dispatch({ type: "CHOOSE_CATEGORY", category: c.id })}>
@@ -101,17 +101,15 @@ export function TurnPanel({ game, dispatch, canAct = true, dev = true, clockOffs
 
       {game.last_answer && game.phase !== "AWAIT_ANSWER" && (
         <p className={`small result ${game.last_answer.result}`}>
-          Last answer: <strong>{game.last_answer.result}</strong>
-          {game.last_answer.result !== "correct" && (
-            <>
-              {" "}
-              · correct was “
-              {game.last_answer.card.options
-                ? game.last_answer.card.options[game.last_answer.card.correct_answer as number]
-                : game.last_answer.card.correct_answer}
-              ”
-            </>
-          )}
+          {t.rich("table.lastAnswer", { result: resultName(t, game.last_answer.result) })}
+          {game.last_answer.result !== "correct" &&
+            t("table.correctWas", {
+              answer: String(
+                game.last_answer.card.options
+                  ? game.last_answer.card.options[game.last_answer.card.correct_answer as number]
+                  : game.last_answer.card.correct_answer,
+              ),
+            })}
         </p>
       )}
     </section>
@@ -119,6 +117,7 @@ export function TurnPanel({ game, dispatch, canAct = true, dev = true, clockOffs
 }
 
 function Question({ game, dispatch, canAct, dev, clockOffset }: Props & Required<TurnOptions>) {
+  const t = useT();
   const q = game.question!;
   const [text, setText] = useState("");
   const [now, setNow] = useState(Date.now() + clockOffset);
@@ -139,10 +138,10 @@ function Question({ game, dispatch, canAct, dev, clockOffset }: Props & Required
     <div className="question">
       <div className="row between">
         <span className="chip">
-          {q.grand_prize ? "🏆 Grand Prize" : categoryName(game, q.card.category)}
-          {q.from_hq && " · HQ"} · {"★".repeat(q.card.difficulty)}
+          {q.grand_prize ? `🏆 ${t("common.grandPrize")}` : categoryLabel(t, game, q.card.category)}
+          {q.from_hq && t("table.hqSuffix")} · {"★".repeat(q.card.difficulty)}
         </span>
-        {remaining !== null && <span className={`timer ${remaining <= 5 ? "low" : ""}`}>{remaining}s</span>}
+        {remaining !== null && <span className={`timer ${remaining <= 5 ? "low" : ""}`}>{t("table.seconds", { count: remaining })}</span>}
       </div>
       <p className="big">{q.card.question}</p>
       {!canAct ? (
@@ -154,7 +153,7 @@ function Question({ game, dispatch, canAct, dev, clockOffset }: Props & Required
               ))}
             </ol>
           )}
-          <p className="muted small">Waiting for {activePlayer(game).name} to answer…</p>
+          <p className="muted small">{t("table.waitingAnswer", { name: activePlayer(game).name })}</p>
         </>
       ) : q.card.options ? (
         <div className="options">
@@ -172,9 +171,9 @@ function Question({ game, dispatch, canAct, dev, clockOffset }: Props & Required
             if (text.trim()) dispatch({ type: "ANSWER", answer: text });
           }}
         >
-          <input autoFocus value={text} onChange={(e) => setText(e.target.value)} placeholder="Type your answer" />
+          <input autoFocus value={text} onChange={(e) => setText(e.target.value)} placeholder={t("moments.typeAnswer")} />
           <button className="primary" type="submit">
-            Answer
+            {t("moments.answer")}
           </button>
         </form>
       )}

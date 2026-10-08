@@ -17,7 +17,19 @@ from .auth import CurrentUser
 from .models import Game, Player, Role, User, UserChanges
 
 
-def not_found(what: str = "Not found") -> HTTPException:
+class CodedError(HTTPException):
+    """An error players can see, so the UI shows it translated (rules.md I18N-7). The response is
+    {"detail": English text, "code": catalog key, "params": {…}}; main.py adds code and params."""
+
+    def __init__(self, status_code: int, detail: str, code: str, params: dict[str, str | int] | None = None) -> None:
+        super().__init__(status_code, detail)
+        self.code = code
+        self.params = params or {}
+
+
+def not_found(what: str = "Not found", code: str | None = None) -> HTTPException:
+    if code:
+        return CodedError(status.HTTP_404_NOT_FOUND, what, code)
     return HTTPException(status.HTTP_404_NOT_FOUND, what)
 
 
@@ -25,7 +37,9 @@ def forbidden(detail: str) -> HTTPException:
     return HTTPException(status.HTTP_403_FORBIDDEN, detail)
 
 
-def conflict(detail: str) -> HTTPException:
+def conflict(detail: str, code: str | None = None, params: dict[str, str | int] | None = None) -> HTTPException:
+    if code:
+        return CodedError(status.HTTP_409_CONFLICT, detail, code, params)
     return HTTPException(status.HTTP_409_CONFLICT, detail)
 
 
@@ -38,7 +52,7 @@ def can_view_organization(me: CurrentUser, org_id: int) -> bool:
     return me.is_root or me.organization_id == org_id
 
 
-MEMBER_ORGANIZATION_FIELDS = frozenset({"openai_model", "gemini_model"})
+MEMBER_ORGANIZATION_FIELDS = frozenset({"openai_model", "gemini_model", "language"})
 
 
 def check_update_organization(me: CurrentUser, org_id: int, fields: set[str]) -> None:
@@ -48,7 +62,7 @@ def check_update_organization(me: CurrentUser, org_id: int, fields: set[str]) ->
     if me.organization_id != org_id:
         raise not_found("Organization not found")
     if fields - MEMBER_ORGANIZATION_FIELDS:
-        raise forbidden("Members can only change their organization's models")
+        raise forbidden("Members can only change their organization's models and language")
 
 
 def can_view_user(me: CurrentUser, target: User) -> bool:
@@ -131,14 +145,25 @@ def join_code_matches(game: Game, code: str | None) -> bool:
     return hmac.compare_digest(code.strip().upper().encode(), game.join_code.encode())
 
 
+BAD_LINK = "Game not found. The link may be out of date: ask the host for a new one."
+
+
 def check_join(game: Game, code: str | None) -> None:
     """MPL-1, MPL-2: a valid link, and only while the game is awaiting players."""
     if not join_code_matches(game, code):
-        raise not_found("Game not found. The link may be out of date: ask the host for a new one.")
+        raise not_found(BAD_LINK, "error.badLink")
     if game.status != "awaiting":
-        raise conflict("This game has already started, so it can't be joined anymore")
+        raise conflict("This game has already started, so it can't be joined anymore", "error.alreadyStarted")
 
 
 def can_watch(me: CurrentUser | None, game: Game, player: Player | None, code: str | None) -> bool:
     """MPL-5: who may open a game's live view. Its organization (and root), its players, and anyone with its link."""
     return (me is not None and can_access_org(me, game.organization_id)) or player is not None or join_code_matches(game, code)
+
+
+# ---------- UI translations (rules.md §2.9) ----------
+
+
+def check_manage_translations(me: CurrentUser) -> None:
+    """I18N-1: translations are shared by every organization, so only root users edit them."""
+    require_root(me)

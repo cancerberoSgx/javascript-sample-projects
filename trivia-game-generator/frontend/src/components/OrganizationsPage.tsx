@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useState } from "react";
 import { api, type Organization, type OrganizationImport, type Role, type User, type UserInput } from "../api";
 import { useAuth } from "../auth";
+import { useI18n } from "../i18n";
 import { ErrorBox, NotFound, useAction, useRouteSelection } from "./common";
 import { downloadJson, fileName, ImportButton, readJsonFile } from "./files";
 
@@ -265,7 +266,43 @@ function OrganizationPanel({
       )}
       {msg && <div className={msg.ok ? "ok" : "error"}>{msg.text}</div>}
       <ModelsForm org={org} onChanged={onChanged} />
+      <LanguageForm org={org} onChanged={onChanged} />
     </section>
+  );
+}
+
+/** The language its games are played in unless a game picks another (I18N-3). Any user of the
+ *  organization can change it. Players can still pick their own on their device. */
+function LanguageForm({ org, onChanged }: { org: Organization; onChanged: () => Promise<void> }) {
+  const { languages } = useI18n();
+  const { user, refresh } = useAuth();
+  const action = useAction();
+  return (
+    <div className="grid-form">
+      <label htmlFor="org-language">Game language</label>
+      <select
+        id="org-language"
+        value={org.language}
+        disabled={action.busy}
+        onChange={(e) =>
+          action.run(async () => {
+            await api.updateOrganization(org.id, { language: e.target.value });
+            await onChanged();
+            if (user?.organization_id === org.id) await refresh();
+          })
+        }
+      >
+        {languages.map((l) => (
+          <option key={l.code} value={l.code}>
+            {l.native_name} ({l.name})
+          </option>
+        ))}
+      </select>
+      <span className="span muted small">
+        What players see by default in this organization's games (a game can pick another). Each player can still switch on their own device.
+      </span>
+      <ErrorBox error={action.error} />
+    </div>
   );
 }
 

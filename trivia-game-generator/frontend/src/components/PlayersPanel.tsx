@@ -1,11 +1,14 @@
 import { useEffect, useRef } from "react";
 import type { GameView } from "../engine/types";
+import { useT } from "../i18n";
+import { logText } from "../i18n/game";
 
 /** online: engine player id -> has a device connected (multiplayer). you: this device's player id. */
 export function PlayersPanel(props: PlayersProps) {
+  const t = useT();
   return (
     <section className="panel">
-      <h2>Players</h2>
+      <h2>{t("table.players")}</h2>
       <PlayersTable {...props} />
     </section>
   );
@@ -18,14 +21,15 @@ interface PlayersProps {
 }
 
 export function PlayersTable({ game, online, you }: PlayersProps) {
+  const t = useT();
   return (
     <table className="players">
       <thead>
         <tr>
           <th></th>
-          <th>Space</th>
-          <th>Score</th>
-          <th>Tokens</th>
+          <th>{t("table.col.space")}</th>
+          <th>{t("table.col.score")}</th>
+          <th>{t("table.col.tokens")}</th>
         </tr>
       </thead>
       <tbody>
@@ -33,10 +37,14 @@ export function PlayersTable({ game, online, you }: PlayersProps) {
           <tr key={p.id} className={[i === game.active_player && game.phase !== "GAME_OVER" ? "active" : "", p.removed ? "removed" : ""].join(" ")}>
             <td>
               <span className="dot" style={{ background: p.color }} /> {p.name}
-              {p.id === you && <span className="chip">you</span>}
-              {online && !p.removed && online[p.id] === false && <span className="chip muted" title="No device connected">offline</span>}
-              {p.removed && <span className="chip">removed</span>}
-              {p.skip_next_turn && <span className="chip warn">skips next</span>}
+              {p.id === you && <span className="chip">{t("common.you")}</span>}
+              {online && !p.removed && online[p.id] === false && (
+                <span className="chip muted" title={t("table.noDevice")}>
+                  {t("table.offline")}
+                </span>
+              )}
+              {p.removed && <span className="chip">{t("table.removed")}</span>}
+              {p.skip_next_turn && <span className="chip warn">{t("table.skipsNext")}</span>}
             </td>
             <td>{p.current_space}</td>
             <td>{p.score}</td>
@@ -60,15 +68,17 @@ export function PlayersTable({ game, online, you }: PlayersProps) {
 }
 
 export function LogPanel({ game }: { game: GameView }) {
+  const t = useT();
   return (
     <section className="panel">
-      <h2>Log</h2>
+      <h2>{t("table.log")}</h2>
       <LogList game={game} />
     </section>
   );
 }
 
 export function LogList({ game }: { game: GameView }) {
+  const t = useT();
   const ref = useRef<HTMLOListElement>(null);
   useEffect(() => {
     ref.current?.scrollTo({ top: ref.current.scrollHeight });
@@ -81,13 +91,13 @@ export function LogList({ game }: { game: GameView }) {
         const p = name(e.player_id);
         return (
           <li key={i}>
-            <span className="muted">R{e.round}</span>{" "}
+            <span className="muted">{t("play.roundShort", { round: e.round })}</span>{" "}
             {p && (
               <strong style={{ color: p.color }}>
                 {p.name}{" "}
               </strong>
             )}
-            {e.text}
+            {logText(t, game, e)}
           </li>
         );
       })}

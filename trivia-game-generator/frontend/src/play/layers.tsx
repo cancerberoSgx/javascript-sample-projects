@@ -2,6 +2,7 @@
 // (question, answer, game over) and floating notices that stay above them.
 
 import { useEffect, useRef, useState } from "react";
+import { useT } from "../i18n";
 import { Icon } from "./icons";
 
 /**
@@ -26,6 +27,7 @@ export function Layer({
   children: React.ReactNode;
   labelledBy?: string;
 }) {
+  const t = useT();
   const ref = useRef<HTMLDialogElement>(null);
   const [drag, setDrag] = useState(0);
   const dragStart = useRef<number | null>(null);
@@ -85,7 +87,7 @@ export function Layer({
             {swipe && <span className="grabber" aria-hidden="true" />}
             {title && <h2>{title}</h2>}
             {swipe && (
-              <button className="icon-btn ghost" onClick={onClose} aria-label="Close">
+              <button className="icon-btn ghost" onClick={onClose} aria-label={t("common.close")}>
                 <Icon name="close" size={20} />
               </button>
             )}

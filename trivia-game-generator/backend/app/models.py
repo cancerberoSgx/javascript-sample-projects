@@ -16,6 +16,7 @@ GameStatus = Literal["awaiting", "running", "finished"]
 Provider = Literal["openai", "gemini"]
 GenerationStatus = Literal["running", "done", "failed", "accepted"]
 Visibility = Literal["private", "public"]  # rules.md §2.8, SHR-1
+TranslationStatus = Literal["machine", "reviewed"]  # rules.md §2.9, I18N-5
 
 
 class Row(BaseModel):
@@ -60,6 +61,7 @@ class Organization(Row):
     gemini_api_key_encrypted: str | None
     openai_model: str | None  # None = the app's default (llm.default_model)
     gemini_model: str | None
+    language: str  # the default UI language of its games (I18N-3)
     user_count: int  # computed by the query
     created_at: datetime
     updated_at: datetime
@@ -71,6 +73,7 @@ class OrganizationChanges(Changes):
     gemini_api_key_encrypted: str | None = None
     openai_model: str | None = None
     gemini_model: str | None = None
+    language: str | None = None
 
 
 # ---------- trivia_users ----------
@@ -84,6 +87,8 @@ class User(Row):
     email: str
     password_hash: str
     role: Role
+    language: str | None  # preferred UI language; None = automatic (I18N-3)
+    organization_language: str  # joined from trivia_organizations
     created_at: datetime
     updated_at: datetime
 
@@ -102,6 +107,7 @@ class UserChanges(Changes):
     email: str | None = None
     password_hash: str | None = None
     role: Role | None = None
+    language: str | None = None
 
 
 # ---------- trivia_categories ----------
@@ -241,6 +247,8 @@ class Game(Row):
     deck_id: int | None
     deck_name: str | None  # joined
     background: Background | None  # None = the board's (BKG-5)
+    language: str | None  # UI language players get by default; None = the organization's (I18N-3)
+    organization_language: str  # joined
     snapshot: GameSnapshot | None
     join_code: str
     started_at: datetime | None
@@ -262,6 +270,7 @@ class GameChanges(Changes):
     board_id: int | None = None
     deck_id: int | None = None
     background: Background | None = None
+    language: str | None = None
 
 
 # ---------- trivia_images (rules.md §2.1.2, BKG-*) ----------
@@ -396,3 +405,88 @@ class NewGenerationJob(BaseModel):
     provider: Provider
     model: str
     request: GenerationSpec
+
+
+# ---------- trivia_languages, trivia_i18n_keys, trivia_translations (rules.md §2.9, I18N-*) ----------
+
+
+class Language(Row):
+    code: str  # "es", "pt-BR"
+    name: str  # in English
+    native_name: str  # "Español"
+    enabled: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+class LanguageStats(Language):
+    """A language with how far its translation is (computed over the keys that aren't obsolete)."""
+
+    translated: int
+    missing: int
+    outdated: int  # translated from an English text that changed since (I18N-5)
+    machine: int  # written by a model and not reviewed yet
+
+
+class NewLanguage(BaseModel):
+    code: str
+    name: str
+    native_name: str
+
+
+class LanguageChanges(Changes):
+    name: str | None = None
+    native_name: str | None = None
+    enabled: bool | None = None
+
+
+class CatalogKey(BaseModel):
+    """One entry of the code's catalog (app/i18n/catalog.json), as written into trivia_i18n_keys."""
+
+    key: str
+    area: str
+    source: str  # the English message
+    source_hash: str
+    description: str
+    placeholders: dict[str, str]
+    max_length: int | None
+
+
+class I18nKey(Row):
+    key: str
+    area: str
+    source: str
+    source_hash: str
+    description: str
+    placeholders: dict[str, str]
+    max_length: int | None
+    obsolete: bool  # no longer in the catalog
+    updated_at: datetime
+
+
+class Translation(Row):
+    language: str
+    key: str
+    message: str
+    status: TranslationStatus
+    source_hash: str
+    outdated: bool  # computed: source_hash differs from the key's (I18N-5)
+    updated_by: int | None
+    updated_by_name: str | None  # joined
+    updated_at: datetime
+
+
+class TranslationMessage(Row):
+    """What the public messages endpoint sends: a key and its message."""
+
+    key: str
+    message: str
+
+
+class NewTranslation(BaseModel):
+    language: str
+    key: str
+    message: str
+    status: TranslationStatus
+    source_hash: str
+    updated_by: int | None

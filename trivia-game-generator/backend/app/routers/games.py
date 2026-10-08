@@ -17,6 +17,7 @@ from ..permissions import conflict, list_org, not_found, target_org, visible
 from ..repositories import boards, categories, decks, game_states, games
 from ..schemas import GameCreate, GameDetailOut, GameOut, GameUpdate, PlayerOut
 from ..validation import validate_game_setup
+from .i18n import require_language
 from .images import check_background
 
 router = APIRouter(prefix="/api/games", tags=["games"])
@@ -118,8 +119,12 @@ def update_game(game_id: int, body: GameUpdate, me: Me, conn: Conn):
     sent = body.model_fields_set
     _check_refs(conn, game.organization_id, body.board_id, body.deck_id, body.categories)
     check_background(conn, game.organization_id, body.background)
-    # name: null is ignored; board_id/deck_id: null clears the reference; background: null = the board's (BKG-5)
-    changes = GameChanges(**{k: getattr(body, k) for k in ("name", "board_id", "deck_id", "background") if k in sent and (k != "name" or body.name)})
+    if body.language is not None:
+        require_language(conn, body.language)
+    # name: null is ignored; board_id/deck_id: null clears the reference; background: null = the board's (BKG-5);
+    # language: null = the organization's (I18N-3)
+    fields = ("name", "board_id", "deck_id", "background", "language")
+    changes = GameChanges(**{k: getattr(body, k) for k in fields if k in sent and (k != "name" or body.name)})
     with conn.transaction():
         games.update(conn, game_id, changes)
         if body.categories is not None:

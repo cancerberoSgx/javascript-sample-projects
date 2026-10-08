@@ -8,7 +8,7 @@ from ._sql import update_row
 
 _SELECT = """
     SELECT u.id, u.organization_id, o.name AS organization_name, u.name, u.email,
-           u.password_hash, u.role, u.created_at, u.updated_at
+           u.password_hash, u.role, u.language, o.language AS organization_language, u.created_at, u.updated_at
     FROM trivia_users u
     JOIN trivia_organizations o ON o.id = u.organization_id
 """

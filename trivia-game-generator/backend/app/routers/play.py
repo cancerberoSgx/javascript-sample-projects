@@ -3,6 +3,7 @@ controls, and the WebSocket every device watches the game through."""
 
 import asyncio
 import json
+from dataclasses import dataclass
 from typing import Annotated
 
 from fastapi import (
@@ -21,7 +22,14 @@ from starlette.concurrency import run_in_threadpool
 from .. import db, play
 from ..auth import Conn, CurrentUser, Me, user_from_token
 from ..live import Viewer, hub
-from ..permissions import can_access_org, can_watch, check_join, conflict, not_found
+from ..permissions import (
+    BAD_LINK,
+    can_access_org,
+    can_watch,
+    check_join,
+    conflict,
+    not_found,
+)
 from ..repositories import games
 from ..schemas import (
     GameDetailOut,
@@ -54,10 +62,17 @@ def _add_player(conn: Conn, game_id: int, name: str, token_hash: str | None, cod
             elif game.status != "awaiting":
                 raise conflict("This game has already started, so its players can't change")
             if games.player_count(conn, game_id) >= play.MAX_PLAYERS:
-                raise conflict(GAME_FULL)
+                raise conflict(GAME_FULL, "error.gameFull", {"max": play.MAX_PLAYERS})
             return games.add_player(conn, game_id, name, token_hash)
     except errors.UniqueViolation:
-        raise conflict(NAME_TAKEN)
+        raise conflict(NAME_TAKEN, "error.nameTaken")
+
+
+def _rejected(applied: play.Applied) -> HTTPException:
+    """An action the game refused, as a 409 the UI can translate (I18N-7)."""
+    assert applied.error is not None
+    i18n = applied.error_i18n
+    return conflict(applied.error, i18n["key"], i18n["params"]) if i18n else conflict(applied.error)
 
 
 # ---------- players (no account needed) ----------
@@ -79,12 +94,12 @@ def leave_game(game_id: int, conn: Conn, x_player_token: Annotated[str, Header()
     """A player leaves the lobby from their own device. Once the game runs, only the host can remove players."""
     player = games.player_by_token(conn, game_id, play.hash_player_token(x_player_token))
     if player is None:
-        raise not_found("Player not found")
+        raise not_found("Player not found", "error.playerNotFound")
     with conn.transaction():
         games.lock(conn, game_id)
         game = games.get(conn, game_id)
         if game is None or game.status != "awaiting":
-            raise conflict("The game has already started: ask the host to remove you")
+            raise conflict("The game has already started: ask the host to remove you", "error.leaveStarted")
         games.delete_player(conn, game_id, player.id)
     hub.publish_soon(game_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -129,7 +144,7 @@ def remove_player(game_id: int, player_id: int, me: Me, conn: Conn):
     elif game.status == "running":
         with conn.transaction():
             if (applied := play.apply(conn, game_id, {"type": "REMOVE_PLAYER", "player_id": str(player_id)})).error:
-                raise conflict(applied.error)
+                raise _rejected(applied)
             games.mark_player_removed(conn, game_id, player_id)
     else:
         raise conflict("This game is finished")
@@ -142,7 +157,7 @@ def skip_turn(game_id: int, me: Me, conn: Conn):
     """Ends the active player's turn, e.g. when they're away (MPL-8)."""
     _visible_game(me, conn, game_id)
     if (applied := play.apply(conn, game_id, {"type": "SKIP_TURN"})).error:
-        raise conflict(applied.error)
+        raise _rejected(applied)
     hub.publish_soon(game_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -165,12 +180,20 @@ def new_join_code(game_id: int, me: Me, conn: Conn):
 _incoming = TypeAdapter(SocketAction)
 
 
-def _authorize(game_id: int, hello: SocketHello) -> tuple[bool, int | None] | str:
+@dataclass(frozen=True)
+class _Denied:
+    """Why a device can't watch: English text and catalog key (I18N-7)."""
+
+    message: str
+    code: str
+
+
+def _authorize(game_id: int, hello: SocketHello) -> tuple[bool, int | None] | _Denied:
     """(can_host, the device's player) for a newcomer, or why they can't watch."""
     with db.connection() as conn:
         game = games.get(conn, game_id)
         if game is None:
-            return "Game not found"
+            return _Denied("Game not found", "error.gameNotFound")
         me: CurrentUser | None = None
         if hello.token:
             try:
@@ -179,7 +202,7 @@ def _authorize(game_id: int, hello: SocketHello) -> tuple[bool, int | None] | st
                 pass  # an expired session can still watch with the link or a player token
         player = games.player_by_token(conn, game_id, play.hash_player_token(hello.player_token)) if hello.player_token else None
         if not can_watch(me, game, player, hello.code):
-            return "Game not found. The link may be out of date: ask the host for a new one."
+            return _Denied(BAD_LINK, "error.badLink")
         play.ensure_live_state(conn, game)
         can_host = me is not None and can_access_org(me, game.organization_id)
         return can_host, player.id if player and not player.removed else None
@@ -199,8 +222,8 @@ async def live_game(ws: WebSocket, game_id: int):
         await ws.close(4400, "Expected a hello message")
         return
     access = await run_in_threadpool(_authorize, game_id, hello)
-    if isinstance(access, str):
-        await ws.send_json({"type": "error", "message": access, "fatal": True})
+    if isinstance(access, _Denied):
+        await ws.send_json({"type": "error", "message": access.message, "code": access.code, "fatal": True})
         await ws.close(4404)
         return
     viewer = Viewer(ws=ws, game_id=game_id, can_host=access[0], player_id=access[1])
@@ -214,12 +237,13 @@ async def live_game(ws: WebSocket, game_id: int):
                 await ws.send_json({"type": "error", "message": f"Invalid message: {e}"})
                 continue
             if viewer.player_id is None and not viewer.can_host:
-                await ws.send_json({"type": "error", "message": "Join the game to play."})
+                await ws.send_json({"type": "error", "message": "Join the game to play.", "code": "error.joinToPlay"})
                 continue
             device = play.Device(player_id=viewer.player_id, can_host=viewer.can_host)
             applied = await run_in_threadpool(_apply_device_action, game_id, message.action.model_dump(), device)
             if applied.error:
-                await ws.send_json({"type": "error", "message": applied.error})
+                coded = {"code": applied.error_i18n["key"], "params": applied.error_i18n["params"]} if applied.error_i18n else {}
+                await ws.send_json({"type": "error", "message": applied.error, **coded})
             else:
                 await hub.publish(game_id)
     except WebSocketDisconnect:

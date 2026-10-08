@@ -21,6 +21,7 @@ from .models import (
     GenerationStatus,
     Provider,
     Role,
+    TranslationStatus,
     User,
     Visibility,
 )
@@ -29,6 +30,8 @@ from .validation import BoardIssue
 Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
 # bcrypt only uses the first 72 bytes, so longer passwords are rejected rather than silently truncated
 Password = Annotated[str, Field(min_length=8, max_length=72)]
+# A BCP 47 tag the app can store (I18N-1): "es", "pt-BR", "zh-Hant", "es-419"
+LanguageCode = Annotated[str, StringConstraints(pattern=r"^[a-z]{2,3}(-[A-Z][a-z]{3})?(-([A-Z]{2}|[0-9]{3}))?$")]
 
 
 class LoginIn(BaseModel):
@@ -43,6 +46,8 @@ class UserOut(BaseModel):
     name: str
     email: str
     role: Role
+    language: str | None  # preferred UI language; null = automatic (I18N-3)
+    organization_language: str
     created_at: datetime
     updated_at: datetime
 
@@ -78,6 +83,7 @@ class UserUpdate(BaseModel):
     email: EmailStr | None = None
     password: Password | None = None
     role: Role | None = None
+    language: LanguageCode | None = None  # null = automatic
 
 
 class OrganizationOut(BaseModel):
@@ -91,6 +97,7 @@ class OrganizationOut(BaseModel):
     gemini_model: str | None
     default_openai_model: str
     default_gemini_model: str
+    language: str  # its games' default UI language (I18N-3)
     user_count: int
     created_at: datetime
     updated_at: datetime
@@ -115,6 +122,7 @@ class OrganizationUpdate(BaseModel):
     gemini_api_key: ApiKey | None = None
     openai_model: ModelName | None = None
     gemini_model: ModelName | None = None
+    language: LanguageCode | None = None
 
 
 # ---------- shared ----------
@@ -315,6 +323,8 @@ class GameOut(BaseModel):
     players: list[PlayerOut]
     background: Background | None  # the game's own background; null = the board's (BKG-5)
     join_code: str  # players join with /games/{id}?code={join_code} (MPL-1)
+    language: str | None  # the UI language players get by default; null = the organization's (I18N-3)
+    organization_language: str
     started_at: datetime | None
     finished_at: datetime | None
     created_at: datetime
@@ -344,6 +354,7 @@ class GameUpdate(BaseModel):
     deck_id: int | None = None
     categories: dict[str, int] | None = None
     background: Background | None = None  # null = use the board's (BKG-5); a Background without image = none
+    language: LanguageCode | None = None  # null = the organization's (I18N-3)
 
 
 # ---------- multiplayer (rules.md §2.7, MPL-*) ----------
@@ -376,6 +387,7 @@ class LiveGameOut(BaseModel):
     status: GameStatus
     board_name: str | None
     background: Background | None  # what the started game draws (its snapshot's, BKG-6); null before the start
+    language: str  # the UI language players see unless they pick theirs: the game's, else its organization's (I18N-3)
     players: list[LivePlayerOut]
 
 
@@ -578,3 +590,110 @@ class OrganizationImportOut(BaseModel):
     categories_created: list[str]
     categories_matched: list[str]
     background_images_missing: list[str]  # boards whose background image isn't in the library (left out, SER-8)
+
+
+# ---------- UI translations (rules.md §2.9, I18N-*) ----------
+
+
+class LanguageOut(BaseModel):
+    code: str
+    name: str  # in English
+    native_name: str
+
+
+class LanguageStatsOut(LanguageOut):
+    enabled: bool
+    translated: int
+    missing: int
+    outdated: int
+    machine: int
+
+
+class LanguageCreate(BaseModel):
+    code: LanguageCode
+    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]
+    native_name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]
+
+
+class LanguageUpdate(BaseModel):
+    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)] | None = None
+    native_name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)] | None = None
+    enabled: bool | None = None
+
+
+class MessagesOut(BaseModel):
+    """One language's messages for the UI. English isn't here: it comes with the code."""
+
+    language: str
+    version: str  # changes whenever a message changes (also the ETag)
+    messages: dict[str, str]
+
+
+class I18nKeyOut(BaseModel):
+    key: str
+    area: str  # where it shows: play, lobby, host, log, errors…
+    source: str  # the English message (ICU MessageFormat)
+    description: str
+    placeholders: dict[str, str]
+    max_length: int | None
+    obsolete: bool  # the code no longer uses it
+    updated_at: datetime
+
+
+class TranslationOut(BaseModel):
+    key: str
+    message: str
+    status: TranslationStatus
+    outdated: bool  # translated from an older English text (I18N-5)
+    warnings: list[str]  # placeholders or tags of the English text it leaves out
+    updated_by_name: str | None
+    updated_at: datetime
+
+
+class TranslationIn(BaseModel):
+    message: Annotated[str, StringConstraints(min_length=1, max_length=5000)]
+    status: TranslationStatus = "reviewed"
+
+
+class AiTranslateIn(BaseModel):
+    """I18N-8: translate these keys with the key of `organization_id` (OpenAI or Gemini)."""
+
+    organization_id: int
+    provider: Provider | None = None  # needed when the organization has both keys
+    keys: list[str] = Field(min_length=1, max_length=40)
+
+
+class AiFailure(BaseModel):
+    key: str
+    reason: str
+
+
+class AiTranslateOut(BaseModel):
+    translated: list[TranslationOut]
+    failed: list[AiFailure]
+
+
+class TranslationFileEntry(BaseModel):
+    key: str
+    area: str = ""
+    description: str = ""
+    placeholders: dict[str, str] = {}
+    english: str = ""
+    translation: str | None = None  # empty: not translated (skipped on import)
+    status: TranslationStatus = "reviewed"
+
+
+class TranslationFile(BaseModel):
+    """A language's translations with their context (I18N-9): export, translate anywhere, import."""
+
+    format: Literal["trivia-translations"] = "trivia-translations"
+    version: Literal[1] = 1
+    language: LanguageCode
+    language_name: str = ""
+    native_name: str = ""
+    entries: list[TranslationFileEntry] = Field(max_length=5000)
+
+
+class TranslationImportOut(BaseModel):
+    imported: int  # new or changed translations
+    unchanged: int

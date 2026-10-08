@@ -352,3 +352,24 @@ button.tiny { padding: 1px 6px; }
 .image-grid.library-images { max-height: none; }
 .image-grid a.thumb { display: block; }
 .image-grid li .chip.public { font-size: 10px; padding: 1px 5px; }
+
+/* ---------- Translations (rules.md §2.9) ---------- */
+.translations-page .stack { display: flex; flex-direction: column; gap: 4px; }
+.translations-page .spacer { flex: 1; }
+.translation-filters input[type="search"] { flex: 1 1 220px; }
+.translation-list { display: flex; flex-direction: column; }
+.translation-row { display: grid; grid-template-columns: minmax(200px, 1.1fr) minmax(160px, 1fr) minmax(220px, 1.4fr); gap: 12px; padding: 10px 0; border-top: 1px solid var(--border); align-items: start; }
+.translation-row.state-missing textarea { border-style: dashed; }
+.translation-row.state-outdated textarea, .translation-row.state-machine textarea { border-color: #ca8a04; }
+.translation-row textarea { resize: vertical; font-size: 14px; }
+.key-context p { margin: 4px 0 0; }
+.key-context code { font-size: 12px; word-break: break-all; }
+.key-context .placeholders { margin: 4px 0 0; padding-left: 16px; }
+.source-text { font-size: 14px; white-space: pre-wrap; background: var(--canvas-bg); border-radius: 8px; padding: 8px 10px; word-break: break-word; }
+.translation-row .preview { white-space: pre-wrap; background: var(--canvas-bg); border-radius: 6px; padding: 4px 8px; }
+.translation-row .preview::before { content: "Preview: "; color: var(--muted); }
+@media (max-width: 1000px) {
+  .translation-row { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+}
+.whoami .language-picker select, .whoami select { font-size: 12px; padding: 2px 4px; }
+.language-picker { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }

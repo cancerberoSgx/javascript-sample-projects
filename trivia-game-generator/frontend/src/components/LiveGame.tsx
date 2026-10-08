@@ -7,6 +7,8 @@ import { api, joinLink, playerTokenStore, tokenStore, type GameDetail, type Live
 import { activePlayer } from "../engine/engine";
 import { resolveConfig } from "../engine/board";
 import type { Action, GameView } from "../engine/types";
+import { errorText, useT } from "../i18n";
+import { joinList, winName } from "../i18n/game";
 import { ErrorBox, useAction } from "./common";
 import { BoardView, GamePanels, useGamePlay } from "./PlayTable";
 
@@ -38,6 +40,10 @@ export function useLiveGame(gameId: number, code: string | null = null): LiveGam
   const [attempt, setAttempt] = useState(0);
   const wsRef = useRef<WebSocket | null>(null);
   const errorHandler = useRef<(message: string) => void>(() => {});
+  // Errors are translated when they arrive (I18N-7); the socket's handlers outlive renders
+  const t = useT();
+  const tRef = useRef(t);
+  tRef.current = t;
 
   useEffect(() => {
     let closedByUs = false;
@@ -61,11 +67,11 @@ export function useLiveGame(gameId: number, code: string | null = null): LiveGam
           setClockOffset(data.server_now - Date.now());
           setMsg(data);
         } else if (data.type === "gone") {
-          setFatal("This game was deleted.");
+          setFatal(tRef.current("error.gameDeleted"));
         } else if (data.fatal) {
-          setFatal(data.message);
+          setFatal(errorText(tRef.current, data));
         } else {
-          errorHandler.current(data.message);
+          errorHandler.current(errorText(tRef.current, data));
         }
       };
       ws.onclose = (e) => {
@@ -85,7 +91,7 @@ export function useLiveGame(gameId: number, code: string | null = null): LiveGam
   const send = useCallback((action: Action) => {
     const ws = wsRef.current;
     if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "action", action }));
-    else errorHandler.current("Not connected. Reconnecting…");
+    else errorHandler.current(tRef.current("error.notConnected"));
   }, []);
   const reconnect = useCallback(() => setAttempt((n) => n + 1), []);
   const onError = useCallback((fn: (message: string) => void) => {
@@ -105,6 +111,7 @@ export function canActNow(msg: LiveMessage, state: GameView): boolean {
 
 /** The board and the turn, scoreboard and log panels, driven by the server's state. */
 export function LiveTable({ live, aside }: { live: LiveGame; aside?: React.ReactNode }) {
+  const t = useT();
   const msg = live.msg!;
   const state = msg.state!;
   const canAct = canActNow(msg, state);
@@ -118,8 +125,12 @@ export function LiveTable({ live, aside }: { live: LiveGame; aside?: React.React
       <main>
         <div className="left">
           <p className="desc">
-            <strong>{state.board.name}</strong> · {config.track_type} track · wins: {config.win_conditions.join(", ")}
-            {!live.connected && <span className="chip warn">reconnecting…</span>}
+            {t.rich("table.summary", {
+              board: state.board.name,
+              track: config.track_type,
+              wins: joinList(t, config.win_conditions.map((w) => winName(t, w))),
+            })}
+            {!live.connected && <span className="chip warn">{t("table.reconnecting")}</span>}
           </p>
           <BoardView board={state.board} background={msg.game.background} game={state} onSpaceClick={onSpaceClick} />
         </div>
@@ -144,24 +155,30 @@ export function LiveTable({ live, aside }: { live: LiveGame; aside?: React.React
 
 /** Whose device this is: the player it joined as, or a spectator. */
 export function YouBanner({ msg }: { msg: LiveMessage }) {
+  const t = useT();
   const me = msg.game.players.find((p) => p.id === msg.you.player_id);
-  if (me) return <span className="chip you">Playing as {me.name}</span>;
-  return <span className="chip">{msg.you.can_host ? "Host" : "Watching"}</span>;
+  if (me) return <span className="chip you">{t("lobby.playingAs", { name: me.name })}</span>;
+  return <span className="chip">{msg.you.can_host ? t("common.host") : t("common.watching")}</span>;
 }
 
 /** The lobby: who joined and who's online, live (MPL-5). */
 export function LobbyPlayers({ msg, children }: { msg: LiveMessage; children?: (p: LiveMessage["game"]["players"][number]) => React.ReactNode }) {
+  const t = useT();
   const players = msg.game.players;
   return (
     <>
-      {!players.length && <p className="muted small">No one has joined yet.</p>}
+      {!players.length && <p className="muted small">{t("lobby.noOneYet")}</p>}
       <ol className="players-list lobby">
         {players.map((p) => (
           <li key={p.id} className="row between">
             <span>
-              <span className={`presence ${p.online ? "on" : ""}`} title={p.joined ? (p.online ? "Online" : "Offline") : "Added by the host: plays on the host's screen"} /> {p.name}
-              {p.id === msg.you.player_id && <span className="chip">you</span>}
-              {!p.joined && <span className="chip">host's screen</span>}
+              <span
+                className={`presence ${p.online ? "on" : ""}`}
+                title={p.joined ? (p.online ? t("lobby.online") : t("lobby.offline")) : t("lobby.addedByHost")}
+              />{" "}
+              {p.name}
+              {p.id === msg.you.player_id && <span className="chip">{t("common.you")}</span>}
+              {!p.joined && <span className="chip">{t("lobby.hostsScreen")}</span>}
             </span>
             {children?.(p)}
           </li>
@@ -173,6 +190,7 @@ export function LobbyPlayers({ msg, children }: { msg: LiveMessage; children?: (
 
 /** Asks for a name and joins the game from this device (MPL-1..4). */
 export function JoinForm({ gameId, code, onJoined }: { gameId: number; code: string; onJoined: () => void }) {
+  const t = useT();
   const [name, setName] = useState("");
   const action = useAction();
   return (
@@ -188,12 +206,12 @@ export function JoinForm({ gameId, code, onJoined }: { gameId: number; code: str
       }}
     >
       <label className="stack">
-        Your name
-        <input autoFocus required maxLength={40} value={name} onChange={(e) => setName(e.target.value)} placeholder="How the others will see you" />
+        {t("lobby.yourName")}
+        <input autoFocus required maxLength={40} value={name} onChange={(e) => setName(e.target.value)} placeholder={t("lobby.namePlaceholder")} />
       </label>
       <ErrorBox error={action.error} />
       <button className="primary" disabled={action.busy || !name.trim()}>
-        Join the game
+        {t("lobby.join")}
       </button>
     </form>
   );
@@ -201,6 +219,7 @@ export function JoinForm({ gameId, code, onJoined }: { gameId: number; code: str
 
 /** Leave the lobby from this device (only before the game starts). */
 export function LeaveButton({ gameId, onLeft }: { gameId: number; onLeft: () => void }) {
+  const t = useT();
   const action = useAction();
   const token = playerTokenStore(gameId).get();
   if (!token) return null;
@@ -217,7 +236,7 @@ export function LeaveButton({ gameId, onLeft }: { gameId: number; onLeft: () => 
           })
         }
       >
-        Leave
+        {t("lobby.leave")}
       </button>
       <ErrorBox error={action.error} />
     </>
@@ -226,19 +245,16 @@ export function LeaveButton({ gameId, onLeft }: { gameId: number; onLeft: () => 
 
 /** The link to share, with copy and "new link" (MPL-1). */
 export function SharePanel({ game, onChanged }: { game: GameDetail; onChanged: (g: GameDetail) => void }) {
+  const t = useT();
   const link = joinLink(game);
   const [copied, setCopied] = useState(false);
   const action = useAction();
   return (
     <section className="panel">
-      <h2>Invite players</h2>
-      <p className="small">
-        {game.status === "awaiting"
-          ? "Share this link. Everyone who opens it picks a name and joins from their own device."
-          : "The game has started, so no one can join anymore. The link still lets people watch."}
-      </p>
+      <h2>{t("host.invite")}</h2>
+      <p className="small">{game.status === "awaiting" ? t("host.shareAwaiting") : t("host.shareRunning")}</p>
       <div className="row">
-        <input readOnly value={link} onFocus={(e) => e.target.select()} aria-label="Join link" />
+        <input readOnly value={link} onFocus={(e) => e.target.select()} aria-label={t("host.joinLink")} />
         <button
           className="small"
           onClick={() =>
@@ -248,22 +264,22 @@ export function SharePanel({ game, onChanged }: { game: GameDetail; onChanged: (
             )
           }
         >
-          {copied ? "✓ Copied" : "Copy"}
+          {copied ? t("host.copied") : t("host.copy")}
         </button>
         <button
           className="small"
-          title="The current link stops working. Players who already joined stay in."
-          onClick={() => confirm("Make a new link? The current one will stop working.") && action.run(async () => onChanged(await api.newJoinCode(game.id)))}
+          title={t("host.newLinkTitle")}
+          onClick={() => confirm(t("host.newLinkConfirm")) && action.run(async () => onChanged(await api.newJoinCode(game.id)))}
         >
-          New link
+          {t("host.newLink")}
         </button>
       </div>
       {game.status === "running" && (
         <p className="small">
           <a href={link} target="_blank" rel="noreferrer">
-            Open the play screen ↗
+            {t("host.openPlayScreen")}
           </a>{" "}
-          <span className="muted">(full screen, as players see it; you can play the players you added by name there)</span>
+          <span className="muted">{t("host.playScreenNote")}</span>
         </p>
       )}
       <ErrorBox error={action.error} />
@@ -273,6 +289,7 @@ export function SharePanel({ game, onChanged }: { game: GameDetail; onChanged: (
 
 /** Skip the active player's turn, remove players, end the game (MPL-8, MPL-9). */
 export function HostControls({ game, msg, onChanged }: { game: GameDetail; msg: LiveMessage; onChanged: (g: GameDetail) => void }) {
+  const t = useT();
   const action = useAction();
   const state = msg.state;
   if (!state || msg.game.status !== "running") return null;
@@ -280,11 +297,11 @@ export function HostControls({ game, msg, onChanged }: { game: GameDetail; msg: 
   const remaining = msg.game.players.filter((p) => !p.removed);
   return (
     <section className="panel">
-      <h2>Host</h2>
+      <h2>{t("host.title")}</h2>
       <ErrorBox error={action.error} />
       {active && (
         <button disabled={action.busy} onClick={() => action.run(() => api.skipTurn(game.id))}>
-          ⏭ Skip {active.name}'s turn
+          {t("host.skip", { name: active.name })}
         </button>
       )}
       <LobbyPlayers msg={msg}>
@@ -294,9 +311,9 @@ export function HostControls({ game, msg, onChanged }: { game: GameDetail; msg: 
             <button
               className="small danger"
               disabled={action.busy}
-              onClick={() => confirm(`Remove ${p.name} from the game? They can't come back.`) && action.run(async () => onChanged(await api.removePlayer(game.id, p.id)))}
+              onClick={() => confirm(t("host.removeConfirm", { name: p.name })) && action.run(async () => onChanged(await api.removePlayer(game.id, p.id)))}
             >
-              Remove
+              {t("host.remove")}
             </button>
           )
         }
@@ -304,9 +321,9 @@ export function HostControls({ game, msg, onChanged }: { game: GameDetail; msg: 
       <button
         className="danger"
         disabled={action.busy}
-        onClick={() => confirm("End the game now, for everyone? There will be no winner.") && action.run(async () => onChanged(await api.finishGame(game.id)))}
+        onClick={() => confirm(t("host.endConfirm")) && action.run(async () => onChanged(await api.finishGame(game.id)))}
       >
-        End game
+        {t("host.end")}
       </button>
     </section>
   );
@@ -314,13 +331,14 @@ export function HostControls({ game, msg, onChanged }: { game: GameDetail; msg: 
 
 /** Who won (or that it ended early), shown when a game is finished. */
 export function FinalResult({ msg }: { msg: LiveMessage }) {
+  const t = useT();
   const state = msg.state;
   const result = state?.result;
   const winner = result?.type === "win" ? state!.players.find((p) => p.id === result.player_id) : null;
   return (
     <section className="panel">
-      <h2>Game over</h2>
-      <p className="big">{winner ? `🏆 ${winner.name} wins!` : result?.type === "draw" ? "It's a draw." : "The host ended the game before anyone won."}</p>
+      <h2>{t("common.gameOver")}</h2>
+      <p className="big">{winner ? t("common.winsExclaim", { name: winner.name }) : result?.type === "draw" ? t("common.draw") : t("common.endedByHost")}</p>
     </section>
   );
 }

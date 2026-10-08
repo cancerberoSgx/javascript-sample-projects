@@ -1,0 +1,1755 @@
+{
+ "source_language": "en",
+ "keys": {
+  "common.appName": {
+   "area": "common",
+   "source": "Trivia",
+   "description": "The app's short name, in the browser tab and on top of the join screen.",
+   "placeholders": {},
+   "max_length": 20
+  },
+  "common.you": {
+   "area": "common",
+   "source": "you",
+   "description": "Small chip next to the name of the player who uses this device, in player lists.",
+   "placeholders": {},
+   "max_length": 8
+  },
+  "common.host": {
+   "area": "common",
+   "source": "Host",
+   "description": "Shown instead of a player name when this device belongs to the person running the game.",
+   "placeholders": {},
+   "max_length": 12
+  },
+  "common.watching": {
+   "area": "common",
+   "source": "Watching",
+   "description": "Shown instead of a player name when this device only watches the game (a spectator).",
+   "placeholders": {},
+   "max_length": 12
+  },
+  "common.grandPrize": {
+   "area": "common",
+   "source": "Grand Prize",
+   "description": "The final, hardest question of a game, asked when a player reaches the finish. Used like a category name.",
+   "placeholders": {},
+   "max_length": 20
+  },
+  "common.reconnecting": {
+   "area": "common",
+   "source": "Connection lost. Reconnecting…",
+   "description": "Notice while the device has lost its connection to the server and tries again on its own.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "common.language": {
+   "area": "common",
+   "source": "Language",
+   "description": "Label of the menu that picks the language of the app on this device.",
+   "placeholders": {},
+   "max_length": 14
+  },
+  "common.languageAuto": {
+   "area": "common",
+   "source": "Automatic ({language})",
+   "description": "First option of the language menu: follow the game's (or organization's) language instead of a fixed choice.",
+   "placeholders": {
+    "language": "The language that would be used, in its own name, e.g. Español"
+   },
+   "max_length": null
+  },
+  "common.gameOver": {
+   "area": "common",
+   "source": "Game over",
+   "description": "Heading when a game has ended.",
+   "placeholders": {},
+   "max_length": 24
+  },
+  "common.draw": {
+   "area": "common",
+   "source": "It's a draw.",
+   "description": "The game ended without a winner: several players tied when the round limit was reached.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "common.endedByHost": {
+   "area": "common",
+   "source": "The host ended the game before anyone won.",
+   "description": "The person running the game stopped it early, so nobody won.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "common.winsExclaim": {
+   "area": "common",
+   "source": "🏆 {name} wins!",
+   "description": "Announces the winner of the game.",
+   "placeholders": {
+    "name": "A player's name, as they typed it"
+   },
+   "max_length": null
+  },
+  "common.close": {
+   "area": "common",
+   "source": "Close",
+   "description": "Screen-reader label of the ✕ button that closes a panel.",
+   "placeholders": {},
+   "max_length": 12
+  },
+  "board.space.start": {
+   "area": "board",
+   "source": "Start",
+   "description": "Type of board space: where every player begins.",
+   "placeholders": {},
+   "max_length": 14
+  },
+  "board.space.category": {
+   "area": "board",
+   "source": "Category",
+   "description": "Type of board space: landing on it asks a question of its category.",
+   "placeholders": {},
+   "max_length": 14
+  },
+  "board.space.hq": {
+   "area": "board",
+   "source": "HQ",
+   "description": "Type of board space: a category's headquarters. A correct answer there wins the category's token. Usually kept as the abbreviation HQ.",
+   "placeholders": {},
+   "max_length": 8
+  },
+  "board.space.wildcard": {
+   "area": "board",
+   "source": "Wildcard",
+   "description": "Type of board space: the player picks any category for their question.",
+   "placeholders": {},
+   "max_length": 14
+  },
+  "board.space.roll_again": {
+   "area": "board",
+   "source": "Roll again",
+   "description": "Type of board space: the player rolls the die once more.",
+   "placeholders": {},
+   "max_length": 14
+  },
+  "board.space.penalty": {
+   "area": "board",
+   "source": "Skip turn",
+   "description": "Type of board space (a penalty): the player misses their next turn.",
+   "placeholders": {},
+   "max_length": 14
+  },
+  "board.space.finish": {
+   "area": "board",
+   "source": "Finish",
+   "description": "Type of board space: the end of a linear track. Reaching it earns the Grand Prize question.",
+   "placeholders": {},
+   "max_length": 14
+  },
+  "board.tile.start": {
+   "area": "board",
+   "source": "START",
+   "description": "Written in capitals inside the Start space on the board drawing. Very little room.",
+   "placeholders": {},
+   "max_length": 7
+  },
+  "board.tile.finish": {
+   "area": "board",
+   "source": "FINISH",
+   "description": "Written in capitals inside the Finish space on the board drawing. Very little room.",
+   "placeholders": {},
+   "max_length": 7
+  },
+  "board.tile.roll_again": {
+   "area": "board",
+   "source": "ROLL\nAGAIN",
+   "description": "Written inside the Roll again space on the board drawing, in capitals on two lines (keep the line break). At most ~7 letters per line.",
+   "placeholders": {},
+   "max_length": 14
+  },
+  "board.tile.penalty": {
+   "area": "board",
+   "source": "SKIP\nTURN",
+   "description": "Written inside the penalty space (miss your next turn) on the board drawing, in capitals on two lines (keep the line break). At most ~7 letters per line.",
+   "placeholders": {},
+   "max_length": 14
+  },
+  "board.tile.wildcard": {
+   "area": "board",
+   "source": "WILD",
+   "description": "Written inside the Wildcard space on the board drawing (the player picks any category). Very little room.",
+   "placeholders": {},
+   "max_length": 7
+  },
+  "board.tile.hq": {
+   "area": "board",
+   "source": "★ HQ",
+   "description": "Written inside a category's headquarters space on the board drawing, above the category name. Keep the star.",
+   "placeholders": {},
+   "max_length": 7
+  },
+  "board.win.finish": {
+   "area": "board",
+   "source": "Reach the finish",
+   "description": "A way to win the game: reach the last space and answer the Grand Prize question.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "board.win.collection": {
+   "area": "board",
+   "source": "Collect every category",
+   "description": "A way to win the game: win the token of every category (at their HQ spaces).",
+   "placeholders": {},
+   "max_length": null
+  },
+  "board.win.turn_limit": {
+   "area": "board",
+   "source": "Round limit",
+   "description": "A way to win the game: have the best score when the last round ends.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "board.result.correct": {
+   "area": "board",
+   "source": "correct",
+   "description": "Result of an answer, in lower case after “Last answer:”.",
+   "placeholders": {},
+   "max_length": 12
+  },
+  "board.result.incorrect": {
+   "area": "board",
+   "source": "wrong",
+   "description": "Result of an answer, in lower case after “Last answer:”.",
+   "placeholders": {},
+   "max_length": 12
+  },
+  "board.result.timeout": {
+   "area": "board",
+   "source": "time's up",
+   "description": "Result of an answer when the timer ran out, in lower case after “Last answer:”.",
+   "placeholders": {},
+   "max_length": 12
+  },
+  "lobby.cantOpen": {
+   "area": "lobby",
+   "source": "Can't open this game",
+   "description": "Heading when the game's link doesn't work (wrong or old link, deleted game).",
+   "placeholders": {},
+   "max_length": null
+  },
+  "lobby.connecting": {
+   "area": "lobby",
+   "source": "Connecting to the game…",
+   "description": "Shown while the phone connects to the game for the first time.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "lobby.noBoard": {
+   "area": "lobby",
+   "source": "This game ended before live play existed, so there's no board to show.",
+   "description": "Rare: a very old finished game that can't be shown.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "lobby.kicker": {
+   "area": "lobby",
+   "source": "Trivia · {board}",
+   "description": "Small line above the join heading: the app name and the game's board.",
+   "placeholders": {
+    "board": "The board's name, chosen by the organizer"
+   },
+   "max_length": null
+  },
+  "lobby.youreIn": {
+   "area": "lobby",
+   "source": "You're in, {name}!",
+   "description": "Heading after a player joined the game from their phone.",
+   "placeholders": {
+    "name": "A player's name, as they typed it"
+   },
+   "max_length": null
+  },
+  "lobby.waitingHost": {
+   "area": "lobby",
+   "source": "Waiting for the host to start the game. Keep this page open: the board shows up here.",
+   "description": "Under “You're in”: the player waits for the person running the game to start it.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "lobby.join": {
+   "area": "lobby",
+   "source": "Join the game",
+   "description": "Heading of the join screen, and the button that joins (after typing a name).",
+   "placeholders": {},
+   "max_length": 24
+  },
+  "lobby.askForLink": {
+   "area": "lobby",
+   "source": "Ask the host for the game's link to join.",
+   "description": "Shown when someone opens the game without the invitation link's code.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "lobby.players": {
+   "area": "lobby",
+   "source": "Players · {count}",
+   "description": "Heading of the list of players who joined, with how many there are.",
+   "placeholders": {
+    "count": "Number of players"
+   },
+   "max_length": null
+  },
+  "lobby.turnOrder": {
+   "area": "lobby",
+   "source": "Players take turns in this order.",
+   "description": "Note under the player list.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "lobby.openInApp": {
+   "area": "lobby",
+   "source": "Open in the app →",
+   "description": "Link for organizers (logged in) to the game's admin page.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "lobby.noOneYet": {
+   "area": "lobby",
+   "source": "No one has joined yet.",
+   "description": "Empty player list in the lobby.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "lobby.online": {
+   "area": "lobby",
+   "source": "Online",
+   "description": "Tooltip of the green dot next to a player: their device is connected.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "lobby.offline": {
+   "area": "lobby",
+   "source": "Offline",
+   "description": "Tooltip of the grey dot next to a player: their device isn't connected.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "lobby.addedByHost": {
+   "area": "lobby",
+   "source": "Added by the host: plays on the host's screen",
+   "description": "Tooltip next to a player the organizer added by name: they don't have their own phone and play on the organizer's screen.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "lobby.hostsScreen": {
+   "area": "lobby",
+   "source": "host's screen",
+   "description": "Chip next to a player who plays on the organizer's screen instead of their own phone.",
+   "placeholders": {},
+   "max_length": 16
+  },
+  "lobby.yourName": {
+   "area": "lobby",
+   "source": "Your name",
+   "description": "Label of the name field when joining a game.",
+   "placeholders": {},
+   "max_length": 20
+  },
+  "lobby.namePlaceholder": {
+   "area": "lobby",
+   "source": "How the others will see you",
+   "description": "Placeholder of the name field when joining a game.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "lobby.leave": {
+   "area": "lobby",
+   "source": "Leave",
+   "description": "Button: leave the lobby before the game starts.",
+   "placeholders": {},
+   "max_length": 12
+  },
+  "lobby.playingAs": {
+   "area": "lobby",
+   "source": "Playing as {name}",
+   "description": "Chip saying which player this device is.",
+   "placeholders": {
+    "name": "A player's name, as they typed it"
+   },
+   "max_length": null
+  },
+  "play.nav.players": {
+   "area": "play",
+   "source": "Players",
+   "description": "Bottom navigation button: opens the scoreboard.",
+   "placeholders": {},
+   "max_length": 10
+  },
+  "play.nav.log": {
+   "area": "play",
+   "source": "Log",
+   "description": "Bottom navigation button: opens the list of everything that happened.",
+   "placeholders": {},
+   "max_length": 10
+  },
+  "play.nav.legend": {
+   "area": "play",
+   "source": "Legend",
+   "description": "Bottom navigation button: opens the explanation of the board's colors and spaces.",
+   "placeholders": {},
+   "max_length": 10
+  },
+  "play.nav.board": {
+   "area": "play",
+   "source": "Board",
+   "description": "Bottom navigation button: opens information about the board and its rules.",
+   "placeholders": {},
+   "max_length": 10
+  },
+  "play.nav.label": {
+   "area": "play",
+   "source": "Game info",
+   "description": "Screen-reader label of the bottom navigation.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "play.tabYourTurn": {
+   "area": "play",
+   "source": "● Your turn · Trivia",
+   "description": "Browser tab title when it's this player's turn (they may be looking at another tab).",
+   "placeholders": {},
+   "max_length": null
+  },
+  "play.tapGlowing": {
+   "area": "play",
+   "source": "Tap one of the glowing spaces.",
+   "description": "Hint when the player tapped a space they can't move to; the reachable ones glow.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "play.soundOff": {
+   "area": "play",
+   "source": "Mute sounds",
+   "description": "Screen-reader label of the sound button while sounds are on.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "play.soundOn": {
+   "area": "play",
+   "source": "Turn sounds on",
+   "description": "Screen-reader label of the sound button while sounds are off.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "play.soundIsOn": {
+   "area": "play",
+   "source": "Sound on",
+   "description": "Tooltip of the sound button while sounds are on.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "play.soundIsOff": {
+   "area": "play",
+   "source": "Sound off",
+   "description": "Tooltip of the sound button while sounds are off.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "play.fullscreen": {
+   "area": "play",
+   "source": "Full screen",
+   "description": "Screen-reader label of the button that makes the game fill the screen.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "play.exitFullscreen": {
+   "area": "play",
+   "source": "Exit full screen",
+   "description": "Screen-reader label of the button that leaves full screen.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "play.boardView": {
+   "area": "play",
+   "source": "Board view",
+   "description": "Screen-reader label of the group of zoom buttons.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "play.zoomIn": {
+   "area": "play",
+   "source": "Zoom in",
+   "description": "Screen-reader label of the + button over the board.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "play.zoomOut": {
+   "area": "play",
+   "source": "Zoom out",
+   "description": "Screen-reader label of the − button over the board.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "play.fit": {
+   "area": "play",
+   "source": "Show the whole board",
+   "description": "Screen-reader label of the button that zooms out to the whole board.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "play.findMe": {
+   "area": "play",
+   "source": "Find my token",
+   "description": "Screen-reader label of the button that moves the view to this player's token.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "play.findActive": {
+   "area": "play",
+   "source": "Find the active player",
+   "description": "Screen-reader label of the button that moves the view to the token of the player whose turn it is.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "play.playersTitle": {
+   "area": "play",
+   "source": "Players · round {round}",
+   "description": "Heading of the scoreboard panel.",
+   "placeholders": {
+    "round": "Current round number"
+   },
+   "max_length": null
+  },
+  "play.playersTitleMax": {
+   "area": "play",
+   "source": "Players · round {round} of {max}",
+   "description": "Heading of the scoreboard panel when the game has a round limit.",
+   "placeholders": {
+    "round": "Current round number",
+    "max": "Last round"
+   },
+   "max_length": null
+  },
+  "play.logTitle": {
+   "area": "play",
+   "source": "Game log",
+   "description": "Heading of the panel listing everything that happened in the game.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "play.legendTitle": {
+   "area": "play",
+   "source": "Legend",
+   "description": "Heading of the panel explaining the board's colors and spaces.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "play.yourTurn": {
+   "area": "play",
+   "source": "Your turn!",
+   "description": "Big alert that pops up when it becomes this player's turn.",
+   "placeholders": {},
+   "max_length": 16
+  },
+  "play.status.running": {
+   "area": "play",
+   "source": "live",
+   "description": "Small status label: the game is being played right now.",
+   "placeholders": {},
+   "max_length": 10
+  },
+  "play.status.awaiting": {
+   "area": "play",
+   "source": "awaiting",
+   "description": "Small status label: the game waits for players to join.",
+   "placeholders": {},
+   "max_length": 10
+  },
+  "play.status.finished": {
+   "area": "play",
+   "source": "finished",
+   "description": "Small status label: the game is over.",
+   "placeholders": {},
+   "max_length": 10
+  },
+  "play.pill.wins": {
+   "area": "play",
+   "source": "🏆 {name} wins",
+   "description": "Top status bar after the game ended with a winner.",
+   "placeholders": {
+    "name": "A player's name, as they typed it"
+   },
+   "max_length": null
+  },
+  "play.pill.ended": {
+   "area": "play",
+   "source": "Game ended",
+   "description": "Top status bar after the host stopped the game early.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "play.pill.draw": {
+   "area": "play",
+   "source": "It's a draw",
+   "description": "Top status bar after the game ended in a tie.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "play.pill.mine": {
+   "area": "play",
+   "source": "Your turn{phase, select, AWAIT_MOVE {: moving} AWAIT_CATEGORY {: picking a category} AWAIT_ANSWER {: answering} other {}}",
+   "description": "Top status bar on the phone of the player whose turn it is, with what they're doing (nothing extra while they should roll).",
+   "placeholders": {
+    "phase": "What the game waits for: AWAIT_ROLL, AWAIT_MOVE, AWAIT_CATEGORY or AWAIT_ANSWER"
+   },
+   "max_length": null
+  },
+  "play.pill.other": {
+   "area": "play",
+   "source": "<b>{name}</b> is {phase, select, AWAIT_MOVE {moving} AWAIT_CATEGORY {picking a category} AWAIT_ANSWER {answering} other {rolling}}",
+   "description": "Top status bar on everyone else's phone: who plays and what they're doing. <b> makes the name bold.",
+   "placeholders": {
+    "name": "A player's name, as they typed it",
+    "phase": "What the game waits for: AWAIT_ROLL, AWAIT_MOVE, AWAIT_CATEGORY or AWAIT_ANSWER"
+   },
+   "max_length": null
+  },
+  "play.roundShort": {
+   "area": "play",
+   "source": "R{round}",
+   "description": "Very short round number (R = round), in the status bar and before each log line.",
+   "placeholders": {
+    "round": "Round number"
+   },
+   "max_length": 5
+  },
+  "play.finalResults": {
+   "area": "play",
+   "source": "🏆 Final results",
+   "description": "Button after the game ended: shows the standings again.",
+   "placeholders": {},
+   "max_length": 20
+  },
+  "play.backToQuestion": {
+   "area": "play",
+   "source": "❓ Back to the question",
+   "description": "Button that reopens the question card after the player hid it to look at the board.",
+   "placeholders": {},
+   "max_length": 26
+  },
+  "play.rollDice": {
+   "area": "play",
+   "source": "Roll the dice",
+   "description": "Big button that rolls the die at the start of a turn.",
+   "placeholders": {},
+   "max_length": 18
+  },
+  "play.rollAgain": {
+   "area": "play",
+   "source": "Roll again",
+   "description": "Big button that rolls the die again in the same turn (after a Roll again space or a bonus roll).",
+   "placeholders": {},
+   "max_length": 18
+  },
+  "play.moveHint": {
+   "area": "play",
+   "source": "Rolled <b>{value}</b>. {count, plural, one {Tap the glowing space or:} other {Tap a glowing space or pick one:}}",
+   "description": "Over the buttons of the spaces the player can move to after rolling. <b> makes the number bold.",
+   "placeholders": {
+    "value": "The number rolled",
+    "count": "How many spaces the player can reach"
+   },
+   "max_length": null
+  },
+  "play.spaceNumber": {
+   "area": "play",
+   "source": "#{index}",
+   "description": "Number of a board space on a move button.",
+   "placeholders": {
+    "index": "Space number"
+   },
+   "max_length": 5
+  },
+  "play.scoreHelp": {
+   "area": "play",
+   "source": "Score: points from correct answers. Tokens: one per category, from its HQ space.",
+   "description": "Note under the scoreboard explaining its columns.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "play.legend.hq": {
+   "area": "play",
+   "source": "<b>★ HQ</b> spaces award the category's token for a correct answer.",
+   "description": "Legend note. <b> makes the start bold.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "play.legend.fork": {
+   "area": "play",
+   "source": "<b>⑂</b> marks a fork: accent arrows leave it, and you pick the branch.",
+   "description": "Legend note about spaces where the path splits. <b> makes the symbol bold.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "play.legend.glow": {
+   "area": "play",
+   "source": "After a roll, the spaces you can reach glow and everything else dims.",
+   "description": "Legend note.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "play.legend.gestures": {
+   "area": "play",
+   "source": "Pinch or use + / − to zoom, drag to move the board, double-tap to zoom in.",
+   "description": "Legend note about touch gestures on the board.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "play.info.game": {
+   "area": "play",
+   "source": "Game",
+   "description": "Label in the board info panel: the game's name follows.",
+   "placeholders": {},
+   "max_length": 14
+  },
+  "play.info.track": {
+   "area": "play",
+   "source": "Track",
+   "description": "Label in the board info panel: the shape of the path follows.",
+   "placeholders": {},
+   "max_length": 14
+  },
+  "play.info.loop": {
+   "area": "play",
+   "source": "Loop",
+   "description": "Track shape: a circuit that players go around.",
+   "placeholders": {},
+   "max_length": 30
+  },
+  "play.info.linear": {
+   "area": "play",
+   "source": "Linear (start to finish)",
+   "description": "Track shape: one path from the start space to the finish space.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "play.info.toWin": {
+   "area": "play",
+   "source": "To win",
+   "description": "Label in the board info panel: the ways to win follow.",
+   "placeholders": {},
+   "max_length": 14
+  },
+  "play.info.dice": {
+   "area": "play",
+   "source": "Dice",
+   "description": "Label in the board info panel: the dice rules follow.",
+   "placeholders": {},
+   "max_length": 14
+  },
+  "play.info.diceRules": {
+   "area": "play",
+   "source": "{sides} sides, up to {max, plural, one {# roll} other {# rolls}} per turn{bonus, select, yes {, bonus roll after a correct answer} other {}}",
+   "description": "The dice rules in the board info panel.",
+   "placeholders": {
+    "sides": "Number of sides of the die",
+    "max": "Most rolls a player can make in one turn",
+    "bonus": "yes when a correct answer gives another roll, else no"
+   },
+   "max_length": null
+  },
+  "play.info.answerTime": {
+   "area": "play",
+   "source": "Answer time",
+   "description": "Label in the board info panel: the time limit for answering follows.",
+   "placeholders": {},
+   "max_length": 14
+  },
+  "play.info.seconds": {
+   "area": "play",
+   "source": "{count, plural, one {# second} other {# seconds}}",
+   "description": "A time limit in seconds.",
+   "placeholders": {
+    "count": "Number of seconds"
+   },
+   "max_length": null
+  },
+  "play.info.noLimit": {
+   "area": "play",
+   "source": "No limit",
+   "description": "There is no time limit for answering.",
+   "placeholders": {},
+   "max_length": 20
+  },
+  "play.info.rounds": {
+   "area": "play",
+   "source": "Rounds",
+   "description": "Label in the board info panel: how many rounds the game lasts.",
+   "placeholders": {},
+   "max_length": 14
+  },
+  "play.info.players": {
+   "area": "play",
+   "source": "Players",
+   "description": "Label in the board info panel: the number of players follows.",
+   "placeholders": {},
+   "max_length": 14
+  },
+  "play.info.admin": {
+   "area": "play",
+   "source": "Admin",
+   "description": "Label in the board info panel, only for organizers: a link to the admin page follows.",
+   "placeholders": {},
+   "max_length": 14
+  },
+  "play.info.openAdmin": {
+   "area": "play",
+   "source": "Open this game in the app →",
+   "description": "Link for organizers to the game's admin page.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "moments.rolledAria": {
+   "area": "moments",
+   "source": "{name} rolled {value}",
+   "description": "Screen-reader text of the dice animation.",
+   "placeholders": {
+    "name": "A player's name, as they typed it",
+    "value": "The number rolled"
+   },
+   "max_length": null
+  },
+  "moments.youRolled": {
+   "area": "moments",
+   "source": "You rolled <b>{value}</b>",
+   "description": "Caption under the die on the phone of the player who rolled. <b> makes the number bold.",
+   "placeholders": {
+    "value": "The number rolled"
+   },
+   "max_length": null
+  },
+  "moments.playerRolled": {
+   "area": "moments",
+   "source": "{name} rolled <b>{value}</b>",
+   "description": "Caption under the die on everyone else's phone.",
+   "placeholders": {
+    "name": "A player's name, as they typed it",
+    "value": "The number rolled"
+   },
+   "max_length": null
+  },
+  "moments.secondsLeft": {
+   "area": "moments",
+   "source": "{count, plural, one {# second left} other {# seconds left}}",
+   "description": "Screen-reader text of the countdown ring on a question.",
+   "placeholders": {
+    "count": "Seconds left to answer"
+   },
+   "max_length": null
+  },
+  "moments.winsToken": {
+   "area": "moments",
+   "source": "Wins the token",
+   "description": "Badge on a question asked on an HQ space: a correct answer wins the category's token.",
+   "placeholders": {},
+   "max_length": 18
+  },
+  "moments.difficulty": {
+   "area": "moments",
+   "source": "Difficulty {level} of 3",
+   "description": "Screen-reader text of the stars showing how hard a question is.",
+   "placeholders": {
+    "level": "1, 2 or 3"
+   },
+   "max_length": null
+  },
+  "moments.yourQuestion": {
+   "area": "moments",
+   "source": "{name}, your question",
+   "description": "Over the question, on the phone of the player who must answer.",
+   "placeholders": {
+    "name": "A player's name, as they typed it"
+   },
+   "max_length": null
+  },
+  "moments.isAnswering": {
+   "area": "moments",
+   "source": "{name} is answering…",
+   "description": "Over the question, on everyone else's phone.",
+   "placeholders": {
+    "name": "A player's name, as they typed it"
+   },
+   "max_length": null
+  },
+  "moments.typeAnswer": {
+   "area": "moments",
+   "source": "Type your answer",
+   "description": "Placeholder of the field for open questions (no options to pick).",
+   "placeholders": {},
+   "max_length": null
+  },
+  "moments.yourAnswer": {
+   "area": "moments",
+   "source": "Your answer",
+   "description": "Screen-reader label of the answer field.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "moments.answer": {
+   "area": "moments",
+   "source": "Answer",
+   "description": "Button that sends a typed answer.",
+   "placeholders": {},
+   "max_length": 12
+  },
+  "moments.waitingTyped": {
+   "area": "moments",
+   "source": "Waiting for a typed answer…",
+   "description": "On other phones, while the active player types the answer to an open question.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "moments.seeBoard": {
+   "area": "moments",
+   "source": "See board",
+   "description": "Button that hides the question card to look at the board.",
+   "placeholders": {},
+   "max_length": 14
+  },
+  "moments.youGotIt": {
+   "area": "moments",
+   "source": "You got it!",
+   "description": "Heading after this player answered correctly.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "moments.playerGotIt": {
+   "area": "moments",
+   "source": "{name} got it!",
+   "description": "Heading on other phones after a player answered correctly.",
+   "placeholders": {
+    "name": "A player's name, as they typed it"
+   },
+   "max_length": null
+  },
+  "moments.timesUp": {
+   "area": "moments",
+   "source": "Time's up",
+   "description": "Heading when the time to answer ran out.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "moments.notQuiteYou": {
+   "area": "moments",
+   "source": "Not quite, sorry",
+   "description": "Heading after this player answered wrong.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "moments.notQuitePlayer": {
+   "area": "moments",
+   "source": "Not quite, {name}",
+   "description": "Heading on other phones after a player answered wrong.",
+   "placeholders": {
+    "name": "A player's name, as they typed it"
+   },
+   "max_length": null
+  },
+  "moments.points": {
+   "area": "moments",
+   "source": "+{points, plural, one {# point} other {# points}}",
+   "description": "Points won with a correct answer.",
+   "placeholders": {
+    "points": "Points won (1 to 3)"
+   },
+   "max_length": null
+  },
+  "moments.youEarnedToken": {
+   "area": "moments",
+   "source": "You earned the <b>{category}</b> token!",
+   "description": "This player won a category's token (by answering right on its HQ space). <b> makes the category bold.",
+   "placeholders": {
+    "category": "Category name, chosen by the organizer"
+   },
+   "max_length": null
+  },
+  "moments.playerEarnedToken": {
+   "area": "moments",
+   "source": "{name} earned the <b>{category}</b> token!",
+   "description": "Another player won a category's token. <b> makes the category bold.",
+   "placeholders": {
+    "name": "A player's name, as they typed it",
+    "category": "Category name, chosen by the organizer"
+   },
+   "max_length": null
+  },
+  "moments.youAnswered": {
+   "area": "moments",
+   "source": "You answered “{given}”",
+   "description": "Shows this player's wrong answer.",
+   "placeholders": {
+    "given": "What the player typed"
+   },
+   "max_length": null
+  },
+  "moments.playerAnswered": {
+   "area": "moments",
+   "source": "{name} answered “{given}”",
+   "description": "Shows another player's wrong answer.",
+   "placeholders": {
+    "name": "A player's name, as they typed it",
+    "given": "What the player typed"
+   },
+   "max_length": null
+  },
+  "moments.correctAnswer": {
+   "area": "moments",
+   "source": "Answer: <b>{answer}</b>",
+   "description": "The right answer, after a wrong one. <b> makes it bold.",
+   "placeholders": {
+    "answer": "The right answer (in the deck's language)"
+   },
+   "max_length": null
+  },
+  "moments.continue": {
+   "area": "moments",
+   "source": "Continue",
+   "description": "Button that closes the answer card.",
+   "placeholders": {},
+   "max_length": 14
+  },
+  "moments.pickCategory": {
+   "area": "moments",
+   "source": "Wildcard! Pick a category",
+   "description": "Heading of the card where the player picks the category of their question (on a Wildcard space).",
+   "placeholders": {},
+   "max_length": null
+  },
+  "moments.youWin": {
+   "area": "moments",
+   "source": "You win!",
+   "description": "Heading of the final card on the winner's phone.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "moments.playerWins": {
+   "area": "moments",
+   "source": "{name} wins!",
+   "description": "Heading of the final card on the other phones.",
+   "placeholders": {
+    "name": "A player's name, as they typed it"
+   },
+   "max_length": null
+  },
+  "moments.hostEnded": {
+   "area": "moments",
+   "source": "The host ended the game",
+   "description": "Heading of the final card when the organizer stopped the game early.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "moments.itsADraw": {
+   "area": "moments",
+   "source": "It's a draw",
+   "description": "Heading of the final card when the game ended in a tie.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "moments.seeTheBoard": {
+   "area": "moments",
+   "source": "See the board",
+   "description": "Button that closes the final standings.",
+   "placeholders": {},
+   "max_length": 18
+  },
+  "table.summary": {
+   "area": "table",
+   "source": "<b>{board}</b> · {track, select, loop {loop track} other {linear track}} · wins: {wins}",
+   "description": "Line over the board on the organizer's page: board name, track shape and the ways to win.",
+   "placeholders": {
+    "board": "The board's name",
+    "track": "loop or linear",
+    "wins": "The ways to win, already joined into a list"
+   },
+   "max_length": null
+  },
+  "table.reconnecting": {
+   "area": "table",
+   "source": "reconnecting…",
+   "description": "Chip while the connection to the server is lost.",
+   "placeholders": {},
+   "max_length": 16
+  },
+  "table.hoverHelp": {
+   "area": "table",
+   "source": "Hover a space to see its JSON. Accent arrows leave a fork (⑂). ★ HQ spaces award a category token. After a roll, legal moves glow and everything else is dimmed.",
+   "description": "Help under the board on the organizer's page (desktop).",
+   "placeholders": {},
+   "max_length": null
+  },
+  "table.notYourTurn": {
+   "area": "table",
+   "source": "It's {name}'s turn.",
+   "description": "Notice when someone tries to play out of turn.",
+   "placeholders": {
+    "name": "A player's name, as they typed it"
+   },
+   "max_length": null
+  },
+  "table.nothingToMove": {
+   "area": "table",
+   "source": "Nothing to move right now.",
+   "description": "Notice when a space is clicked while the game doesn't wait for a move.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "table.players": {
+   "area": "table",
+   "source": "Players",
+   "description": "Heading of the scoreboard panel.",
+   "placeholders": {},
+   "max_length": 20
+  },
+  "table.col.space": {
+   "area": "table",
+   "source": "Space",
+   "description": "Scoreboard column: the number of the space the player is on.",
+   "placeholders": {},
+   "max_length": 8
+  },
+  "table.col.score": {
+   "area": "table",
+   "source": "Score",
+   "description": "Scoreboard column: points.",
+   "placeholders": {},
+   "max_length": 8
+  },
+  "table.col.tokens": {
+   "area": "table",
+   "source": "Tokens",
+   "description": "Scoreboard column: the category tokens the player has won.",
+   "placeholders": {},
+   "max_length": 8
+  },
+  "table.offline": {
+   "area": "table",
+   "source": "offline",
+   "description": "Chip next to a player whose device isn't connected.",
+   "placeholders": {},
+   "max_length": 10
+  },
+  "table.noDevice": {
+   "area": "table",
+   "source": "No device connected",
+   "description": "Tooltip of the offline chip.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "table.removed": {
+   "area": "table",
+   "source": "removed",
+   "description": "Chip next to a player the organizer took out of the game.",
+   "placeholders": {},
+   "max_length": 10
+  },
+  "table.skipsNext": {
+   "area": "table",
+   "source": "skips next",
+   "description": "Chip next to a player who will miss their next turn (penalty).",
+   "placeholders": {},
+   "max_length": 12
+  },
+  "table.log": {
+   "area": "table",
+   "source": "Log",
+   "description": "Heading of the panel listing everything that happened.",
+   "placeholders": {},
+   "max_length": 20
+  },
+  "table.wins": {
+   "area": "table",
+   "source": "🏆 {name} wins ({reason})",
+   "description": "The winner and why.",
+   "placeholders": {
+    "name": "A player's name, as they typed it",
+    "reason": "How they won, e.g. Reach the finish"
+   },
+   "max_length": null
+  },
+  "table.roundRoll": {
+   "area": "table",
+   "source": "· round {round} · roll {rolls}/{max}",
+   "description": "After the active player's name: the round, and how many of the turn's rolls were used.",
+   "placeholders": {
+    "round": "Round number",
+    "rolls": "Rolls used this turn",
+    "max": "Most rolls per turn"
+   },
+   "max_length": null
+  },
+  "table.waitingFor": {
+   "area": "table",
+   "source": "Waiting for {name} to {phase, select, AWAIT_ROLL {roll} AWAIT_MOVE {move} other {pick a category}}…",
+   "description": "When another player must act.",
+   "placeholders": {
+    "name": "A player's name, as they typed it",
+    "phase": "What the game waits for: AWAIT_ROLL, AWAIT_MOVE, AWAIT_CATEGORY or AWAIT_ANSWER"
+   },
+   "max_length": null
+  },
+  "table.rolled": {
+   "area": "table",
+   "source": "Rolled <die>{value}</die>",
+   "description": "The number rolled. <die> draws it as a die: keep the tag around the number.",
+   "placeholders": {
+    "value": "The number rolled"
+   },
+   "max_length": null
+  },
+  "table.roll": {
+   "area": "table",
+   "source": "🎲 Roll",
+   "description": "Button that rolls the die.",
+   "placeholders": {},
+   "max_length": 12
+  },
+  "table.clickToMove": {
+   "area": "table",
+   "source": "Click a highlighted space to move.",
+   "description": "After rolling, on the organizer's page.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "table.fork": {
+   "area": "table",
+   "source": "A fork is in reach: pick your branch.",
+   "description": "After rolling, when the path splits and the player chooses where to go.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "table.legal": {
+   "area": "table",
+   "source": "Legal: {spaces}",
+   "description": "The spaces the player may move to.",
+   "placeholders": {
+    "spaces": "List of space numbers, e.g. 4, 7"
+   },
+   "max_length": null
+  },
+  "table.pickCategory": {
+   "area": "table",
+   "source": "Wildcard: pick a category.",
+   "description": "On a Wildcard space, the player picks the category of their question.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "table.lastAnswer": {
+   "area": "table",
+   "source": "Last answer: <b>{result}</b>",
+   "description": "Result of the previous answer.",
+   "placeholders": {
+    "result": "correct, wrong or time's up (already translated)"
+   },
+   "max_length": null
+  },
+  "table.correctWas": {
+   "area": "table",
+   "source": " · correct was “{answer}”",
+   "description": "Appended to “Last answer” after a wrong answer (starts with a space).",
+   "placeholders": {
+    "answer": "The right answer"
+   },
+   "max_length": null
+  },
+  "table.hqSuffix": {
+   "area": "table",
+   "source": " · HQ",
+   "description": "Appended to the category of a question asked on an HQ space (starts with a space).",
+   "placeholders": {},
+   "max_length": 8
+  },
+  "table.seconds": {
+   "area": "table",
+   "source": "{count}s",
+   "description": "Countdown on a question, s = seconds.",
+   "placeholders": {
+    "count": "Seconds left"
+   },
+   "max_length": 5
+  },
+  "table.waitingAnswer": {
+   "area": "table",
+   "source": "Waiting for {name} to answer…",
+   "description": "While another player answers a question.",
+   "placeholders": {
+    "name": "A player's name, as they typed it"
+   },
+   "max_length": null
+  },
+  "host.invite": {
+   "area": "host",
+   "source": "Invite players",
+   "description": "Heading of the panel with the join link.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "host.shareAwaiting": {
+   "area": "host",
+   "source": "Share this link. Everyone who opens it picks a name and joins from their own device.",
+   "description": "Explains the join link before the game starts.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "host.shareRunning": {
+   "area": "host",
+   "source": "The game has started, so no one can join anymore. The link still lets people watch.",
+   "description": "Explains the join link once the game runs.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "host.joinLink": {
+   "area": "host",
+   "source": "Join link",
+   "description": "Screen-reader label of the field holding the link.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "host.copied": {
+   "area": "host",
+   "source": "✓ Copied",
+   "description": "Button text right after copying the link.",
+   "placeholders": {},
+   "max_length": 12
+  },
+  "host.copy": {
+   "area": "host",
+   "source": "Copy",
+   "description": "Button that copies the join link.",
+   "placeholders": {},
+   "max_length": 12
+  },
+  "host.newLinkTitle": {
+   "area": "host",
+   "source": "The current link stops working. Players who already joined stay in.",
+   "description": "Tooltip of the “New link” button.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "host.newLinkConfirm": {
+   "area": "host",
+   "source": "Make a new link? The current one will stop working.",
+   "description": "Confirmation dialog before replacing the join link.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "host.newLink": {
+   "area": "host",
+   "source": "New link",
+   "description": "Button that replaces the join link with a new one.",
+   "placeholders": {},
+   "max_length": 12
+  },
+  "host.openPlayScreen": {
+   "area": "host",
+   "source": "Open the play screen ↗",
+   "description": "Link that opens the phone play screen in a new tab.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "host.playScreenNote": {
+   "area": "host",
+   "source": "(full screen, as players see it; you can play the players you added by name there)",
+   "description": "Note after the play-screen link.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "host.title": {
+   "area": "host",
+   "source": "Host",
+   "description": "Heading of the organizer's controls panel.",
+   "placeholders": {},
+   "max_length": 16
+  },
+  "host.skip": {
+   "area": "host",
+   "source": "⏭ Skip {name}'s turn",
+   "description": "Button that ends the active player's turn (e.g. they're away).",
+   "placeholders": {
+    "name": "A player's name, as they typed it"
+   },
+   "max_length": null
+  },
+  "host.removeConfirm": {
+   "area": "host",
+   "source": "Remove {name} from the game? They can't come back.",
+   "description": "Confirmation dialog before taking a player out of a running game.",
+   "placeholders": {
+    "name": "A player's name, as they typed it"
+   },
+   "max_length": null
+  },
+  "host.remove": {
+   "area": "host",
+   "source": "Remove",
+   "description": "Button that takes a player out of the game.",
+   "placeholders": {},
+   "max_length": 12
+  },
+  "host.endConfirm": {
+   "area": "host",
+   "source": "End the game now, for everyone? There will be no winner.",
+   "description": "Confirmation dialog before stopping the game early.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "host.end": {
+   "area": "host",
+   "source": "End game",
+   "description": "Button that stops the game early, without a winner.",
+   "placeholders": {},
+   "max_length": 14
+  },
+  "log.gameStarted": {
+   "area": "log",
+   "source": "Game started on “{board}” with {count, plural, one {# player} other {# players}}.",
+   "description": "First line of the game log.",
+   "placeholders": {
+    "board": "The board's name",
+    "count": "Number of players"
+   },
+   "max_length": null
+  },
+  "log.rolled": {
+   "area": "log",
+   "source": "rolled a {value}{rigged, select, yes { (rigged)} other {}}. Can move to: {options}.",
+   "description": "Log line after the player's name (shown bold before it): their roll and the spaces they can reach. “rigged” only appears in test games.",
+   "placeholders": {
+    "value": "The number rolled",
+    "rigged": "yes for a test roll with a chosen number, else no",
+    "options": "Space numbers, e.g. 4, 7"
+   },
+   "max_length": null
+  },
+  "log.moved": {
+   "area": "log",
+   "source": "moved along {path}.",
+   "description": "Log line after the player's name: the spaces they moved through.",
+   "placeholders": {
+    "path": "Space numbers with arrows, e.g. 3 → 4 → 5"
+   },
+   "max_length": null
+  },
+  "log.choseCategory": {
+   "area": "log",
+   "source": "chose {category} on the wildcard.",
+   "description": "Log line after the player's name: the category they picked on a Wildcard space.",
+   "placeholders": {
+    "category": "Category name"
+   },
+   "max_length": null
+  },
+  "log.skippedByHost": {
+   "area": "log",
+   "source": "had their turn skipped by the host.",
+   "description": "Log line after the player's name.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "log.removedByHost": {
+   "area": "log",
+   "source": "was removed from the game by the host.",
+   "description": "Log line after the player's name.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "log.skipsPenalty": {
+   "area": "log",
+   "source": "skips this turn (penalty).",
+   "description": "Log line after the player's name: they miss this turn because of a penalty space.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "log.stillOnFinish": {
+   "area": "log",
+   "source": "is still on the finish space and tries another Grand Prize question.",
+   "description": "Log line after the player's name: they failed the final question last turn and try again.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "log.landedStart": {
+   "area": "log",
+   "source": "landed on Start. No card.",
+   "description": "Log line after the player's name.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "log.landedWildcard": {
+   "area": "log",
+   "source": "landed on a Wildcard and picks a category.",
+   "description": "Log line after the player's name.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "log.landedRollAgain": {
+   "area": "log",
+   "source": "landed on Roll Again.",
+   "description": "Log line after the player's name.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "log.rollAgainUsedUp": {
+   "area": "log",
+   "source": "landed on Roll Again but already used {limit, plural, one {# roll} other {# rolls}} this turn.",
+   "description": "Log line after the player's name: no extra roll because the turn's limit is reached.",
+   "placeholders": {
+    "limit": "Most rolls per turn"
+   },
+   "max_length": null
+  },
+  "log.landedPenalty": {
+   "area": "log",
+   "source": "landed on a Penalty space and will skip their next turn.",
+   "description": "Log line after the player's name.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "log.reachedFinish": {
+   "area": "log",
+   "source": "reached the finish and gets a Grand Prize question!",
+   "description": "Log line after the player's name.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "log.deckReshuffled": {
+   "area": "log",
+   "source": "{category} deck ran out and was reshuffled.",
+   "description": "Log line (no player): all of a category's questions were used, so they're shuffled and used again.",
+   "placeholders": {
+    "category": "Category name"
+   },
+   "max_length": null
+  },
+  "log.timeout": {
+   "area": "log",
+   "source": "ran out of time.",
+   "description": "Log line after the player's name: they didn't answer in time.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "log.answeredWrong": {
+   "area": "log",
+   "source": "answered wrong ({given}).",
+   "description": "Log line after the player's name.",
+   "placeholders": {
+    "given": "What the player answered"
+   },
+   "max_length": null
+  },
+  "log.answeredCorrectly": {
+   "area": "log",
+   "source": "answered correctly (+{points}).",
+   "description": "Log line after the player's name: points won.",
+   "placeholders": {
+    "points": "Points won (1 to 3)"
+   },
+   "max_length": null
+  },
+  "log.earnedToken": {
+   "area": "log",
+   "source": "earned the {category} token!",
+   "description": "Log line after the player's name.",
+   "placeholders": {
+    "category": "Category name"
+   },
+   "max_length": null
+  },
+  "log.bonusRoll": {
+   "area": "log",
+   "source": "gets a bonus roll.",
+   "description": "Log line after the player's name: a correct answer gives another roll.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "log.draw": {
+   "area": "log",
+   "source": "Round limit reached. It's a draw!",
+   "description": "Last log line (no player) when the game ends in a tie.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "log.wins": {
+   "area": "log",
+   "source": "WINS: {reason, select, finish {answered the Grand Prize} collection {collected every category} other {had the best score at the round limit}}!",
+   "description": "Last log line, after the winner's name.",
+   "placeholders": {
+    "reason": "Why they won: finish (answered the final Grand Prize question), collection (has every category's token) or turn_limit (best score when the rounds ran out)"
+   },
+   "max_length": null
+  },
+  "error.nameTaken": {
+   "area": "errors",
+   "source": "That name is already taken in this game. Pick another one.",
+   "description": "Joining with a name another player already uses.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "error.gameFull": {
+   "area": "errors",
+   "source": "This game is full ({max} players).",
+   "description": "Joining a game that has the most players allowed.",
+   "placeholders": {
+    "max": "Most players a game can have"
+   },
+   "max_length": null
+  },
+  "error.alreadyStarted": {
+   "area": "errors",
+   "source": "This game has already started, so it can't be joined anymore.",
+   "description": "Joining after the game started.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "error.badLink": {
+   "area": "errors",
+   "source": "Game not found. The link may be out of date: ask the host for a new one.",
+   "description": "The game's link is wrong or was replaced by a new one.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "error.gameNotFound": {
+   "area": "errors",
+   "source": "Game not found.",
+   "description": "The game doesn't exist (anymore).",
+   "placeholders": {},
+   "max_length": null
+  },
+  "error.gameDeleted": {
+   "area": "errors",
+   "source": "This game was deleted.",
+   "description": "The organizer deleted the game while it was open.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "error.playerNotFound": {
+   "area": "errors",
+   "source": "Player not found.",
+   "description": "This device's player isn't in the game anymore.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "error.leaveStarted": {
+   "area": "errors",
+   "source": "The game has already started: ask the host to remove you.",
+   "description": "Trying to leave after the game started.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "error.notRunning": {
+   "area": "errors",
+   "source": "This game isn't running.",
+   "description": "An action arrived for a game that hasn't started or has ended.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "error.notYourTurn": {
+   "area": "errors",
+   "source": "It's {name}'s turn.",
+   "description": "An action arrived from a player whose turn it isn't.",
+   "placeholders": {
+    "name": "A player's name, as they typed it"
+   },
+   "max_length": null
+  },
+  "error.joinToPlay": {
+   "area": "errors",
+   "source": "Join the game to play.",
+   "description": "A spectator tried to play.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "error.notConnected": {
+   "area": "errors",
+   "source": "Not connected. Reconnecting…",
+   "description": "Tried to play while the connection is lost.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "engine.gameOver": {
+   "area": "errors",
+   "source": "The game is over.",
+   "description": "An action after the game ended.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "engine.wrongPhase": {
+   "area": "errors",
+   "source": "Not now: the game is waiting for something else.",
+   "description": "An action at the wrong moment (e.g. a double tap).",
+   "placeholders": {
+    "action": "The action's internal name",
+    "phase": "What the game waits for (internal name)"
+   },
+   "max_length": null
+  },
+  "engine.rollRange": {
+   "area": "errors",
+   "source": "Roll must be between 1 and {sides}.",
+   "description": "A test roll out of range.",
+   "placeholders": {
+    "sides": "Number of sides of the die"
+   },
+   "max_length": null
+  },
+  "engine.unreachable": {
+   "area": "errors",
+   "source": "Space {space} can't be reached with a roll of {roll}.",
+   "description": "Trying to move to a space the roll doesn't reach.",
+   "placeholders": {
+    "space": "Space number",
+    "roll": "Number rolled",
+    "legal": "The reachable spaces, e.g. 4, 7"
+   },
+   "max_length": null
+  },
+  "engine.unknownCategory": {
+   "area": "errors",
+   "source": "Unknown category.",
+   "description": "Picked a category that isn't on the board.",
+   "placeholders": {
+    "category": "The category's internal id"
+   },
+   "max_length": null
+  },
+  "engine.timerRunning": {
+   "area": "errors",
+   "source": "The timer hasn't expired yet.",
+   "description": "A timeout arrived before the time was up.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "engine.unknownPlayer": {
+   "area": "errors",
+   "source": "Unknown player.",
+   "description": "The player isn't in the game.",
+   "placeholders": {
+    "player": "The player's internal id"
+   },
+   "max_length": null
+  },
+  "engine.lastPlayer": {
+   "area": "errors",
+   "source": "Can't remove the last player: finish the game instead.",
+   "description": "The organizer tried to remove the only player left.",
+   "placeholders": {},
+   "max_length": null
+  },
+  "engine.unknownAction": {
+   "area": "errors",
+   "source": "Unknown action.",
+   "description": "The server got an action it doesn't know.",
+   "placeholders": {
+    "action": "The action's internal name"
+   },
+   "max_length": null
+  }
+ }
+}

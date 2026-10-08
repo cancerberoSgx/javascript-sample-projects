@@ -5,7 +5,7 @@ import { activePlayer, applyAction, createGame, normalizeAnswer } from "./engine
 import { legalDestinations } from "./movement";
 import { boardErrors, validateBoardFile } from "./board";
 import { resolveGame } from "./resolve";
-import type { Action, BoardDefinition, BoardFile, DeckFile, GameState, SlotMapping } from "./types";
+import type { Action, BoardDefinition, BoardFile, DeckFile, GameState, Message, SlotMapping } from "./types";
 
 const PUBLIC = join(__dirname, "../../public");
 const readJson = <T,>(path: string): T => JSON.parse(readFileSync(join(PUBLIC, path), "utf8"));
@@ -314,6 +314,7 @@ interface Step {
   action: Action;
   now: number;
   error?: string;
+  error_i18n?: Message;
   state: unknown; // digest, see digest()
 }
 
@@ -371,7 +372,7 @@ function scriptedGame(boardFile: string, patch: Partial<BoardFile["config"]>, se
     }
     const result = applyAction(s, action, now);
     s = result.state;
-    out.push({ action, now, ...(result.error ? { error: result.error } : {}), state: digest(s) });
+    out.push({ action, now, ...(result.error ? { error: result.error, error_i18n: result.errorI18n } : {}), state: digest(s) });
   }
   return { board: boardFile, config: patch, players, seed, initial: digest(initial), steps: out, final: { ...s, board: undefined, cards: undefined } };
 }

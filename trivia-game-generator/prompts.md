@@ -229,3 +229,10 @@ There must be a way to create cool boards decks, cards, images that can be share
 
 # categories metadata
 currently, categories consists on a name and a description. Nevertheless, we could have similar categories or subcategories, such as "history", "history-world", "history-uruguay", each with different descriptions so the LLM has more context when creating cards. Nevertheless, categories must also have a label, which is displayed in a game, since we don't want to display long names such as history-uruguay or geography-uruguay but just "history" and "geography" in a game that which every card is related to uruguay. Do you understand or have any question befor implementing this ? 
+
+
+# translate UI
+I would like the game experience to be translated to many languages, starting with spanish. We don't have to translate decks and cards bu just the UI of the game. Also I would like to have stored in DB all translation keys with some contextual words so it's easy to translate to other languages later using AI and to modify the translations dynamically. As root user I should be able to see all translation keys and context info, and for each language to see its translations and being able to edit them. Also intl should support composed keys like "you are {years} years old" like the web / js / browser  standard  supports
+
+Can you think on this problem and suggest / question ? don't implement anything just yet.
+

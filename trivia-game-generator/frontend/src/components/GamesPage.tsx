@@ -3,6 +3,7 @@ import { api, type Board, type Category, type Deck, type GameDetail, type GameIn
 import { BoardPreview, ErrorBox, NotFound, StatusBadge, categoryMapping, snapshotMapping, toBoardFile, useAction, useList, useRouteSelection } from "./common";
 import type { Background, SlotMapping } from "../engine/types";
 import { BackgroundEditor, boardAspect } from "./BackgroundEditor";
+import { useI18n } from "../i18n";
 import { FinalResult, HostControls, JoinForm, LeaveButton, LiveTable, LobbyPlayers, SharePanel, YouBanner, useLiveGame, type LiveGame } from "./LiveGame";
 
 export function GamesPage({ orgId }: { orgId: number }) {
@@ -351,6 +352,8 @@ function GameLook({
 
 function SetupForm({ game, boards, decks, onSave }: { game: GameDetail; boards: Board[]; decks: Deck[]; onSave: (body: GameInput) => void }) {
   const [name, setName] = useState(game.name);
+  const { languages } = useI18n();
+  const nativeName = (code: string) => languages.find((l) => l.code === code)?.native_name ?? code;
   const toId = (v: string) => (v ? Number(v) : null);
   return (
     <div className="grid-form">
@@ -362,6 +365,15 @@ function SetupForm({ game, boards, decks, onSave }: { game: GameDetail; boards: 
         {boards.map((b) => (
           <option key={b.id} value={b.id}>
             {b.name} ({b.definition.slots.length} slots){b.issues.some((i) => i.severity === "error") ? " · draft, has problems" : ""}
+          </option>
+        ))}
+      </select>
+      <label>Language</label>
+      <select value={game.language ?? ""} onChange={(e) => onSave({ language: e.target.value || null })}>
+        <option value="">Organization's ({nativeName(game.organization_language)})</option>
+        {languages.map((l) => (
+          <option key={l.code} value={l.code}>
+            {l.native_name}
           </option>
         ))}
       </select>

@@ -14,8 +14,10 @@ _SELECT = """
            g.creator_id, u.name AS creator_name,
            g.board_id, b.name AS board_name,
            g.deck_id, d.name AS deck_name,
-           g.background, g.snapshot, g.join_code, g.started_at, g.finished_at, g.created_at, g.updated_at
+           g.background, g.language, o.language AS organization_language,
+           g.snapshot, g.join_code, g.started_at, g.finished_at, g.created_at, g.updated_at
     FROM trivia_games g
+    JOIN trivia_organizations o ON o.id = g.organization_id
     LEFT JOIN trivia_users u ON u.id = g.creator_id
     LEFT JOIN trivia_boards b ON b.id = g.board_id
     LEFT JOIN trivia_decks d ON d.id = g.deck_id
