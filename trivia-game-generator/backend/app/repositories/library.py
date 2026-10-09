@@ -104,10 +104,16 @@ def get_image(conn: DbConn, image_id: int) -> PublicImage | None:
 
 
 def deck_categories(conn: DbConn, deck_id: int) -> list[Category]:
-    """The categories a deck's cards use (they come along when the deck is shown or copied, SHR-5),
-    public or not: publishing a deck publishes what its cards need."""
-    query = categories._SELECT + " WHERE c.id IN (SELECT category_id FROM trivia_cards WHERE deck_id = %s) ORDER BY lower(c.name)"
-    return conn.cursor(row_factory=class_row(Category)).execute(query, (deck_id,)).fetchall()
+    """The categories a deck's cards and saved generations use (they come along when the deck is shown
+    or copied, SHR-5, GEN-8), public or not: publishing a deck publishes what it needs."""
+    query = categories._SELECT + """
+        WHERE c.id IN (SELECT category_id FROM trivia_cards WHERE deck_id = %(deck)s)
+           OR c.id IN (SELECT (share ->> 'category_id')::bigint
+                       FROM trivia_deck_generations g, jsonb_array_elements(g.spec -> 'categories') share
+                       WHERE g.deck_id = %(deck)s)
+        ORDER BY lower(c.name)
+    """
+    return conn.cursor(row_factory=class_row(Category)).execute(query, {"deck": deck_id}).fetchall()
 
 
 def cards(conn: DbConn, deck_id: int) -> list[Card]:

@@ -67,6 +67,19 @@ export interface DeckFile {
   description?: string;
   categories: CategoryDef[];
   cards: DeckCard[];
+  /** Saved generation settings (rules.md GEN-8). The engine ignores them. */
+  generations?: DeckFileGeneration[];
+}
+
+export interface DeckFileGeneration {
+  name: string;
+  description?: string;
+  provider?: "openai" | "gemini" | null;
+  count: number;
+  categories: { category: string; weight: number }[]; // category = a CategoryDef id of the same file
+  difficulty?: { easy: number; medium: number; hard: number };
+  types?: { multiple_choice: number; open: number };
+  instructions?: string;
 }
 
 /** One problem found by validateBoardFile (rules.md §2.1.1). Errors make a board unplayable;

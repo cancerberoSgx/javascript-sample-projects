@@ -13,7 +13,7 @@ from ..config import get_settings
 from ..db import DbConn
 from ..models import Deck, GenerationJob, GenerationSpec, NewCard, NewGenerationJob
 from ..permissions import conflict, not_found, visible
-from ..repositories import categories, decks, generation_jobs
+from ..repositories import categories, deck_generations, decks, generation_jobs
 from ..schemas import (
     GenerationAccept,
     GenerationAcceptOut,
@@ -64,14 +64,30 @@ def start_generation(deck_id: int, body: GenerationRequest, me: Me, conn: Conn):
     except generation.GenerationUnavailable as e:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT if e.needs_choice else status.HTTP_409_CONFLICT, str(e))
 
-    spec = GenerationSpec(**body.model_dump(exclude={"provider"}))
+    if body.deck_generation_id is not None:  # GEN-9: any saved generation of the organization
+        saved = deck_generations.get(conn, body.deck_generation_id)
+        if saved is None or saved.organization_id != deck.organization_id:
+            raise not_found("Saved generation not found")
+
+    spec = GenerationSpec(**body.model_dump(exclude={"provider", "deck_generation_id"}))
     batches = generation.plan_batches(generation.plan(spec), get_settings().generation_batch_size)
-    new = NewGenerationJob(deck_id=deck_id, creator_id=me.id, provider=provider, model=generation.org_model(conn, deck.organization_id, provider), request=spec)
+    new = NewGenerationJob(
+        deck_id=deck_id,
+        creator_id=me.id,
+        provider=provider,
+        model=generation.org_model(conn, deck.organization_id, provider),
+        request=spec,
+        deck_generation_id=body.deck_generation_id,
+    )
     try:
         with conn.transaction():
             job_id = generation_jobs.create(conn, new, len(batches))
+            if new.deck_generation_id is not None:
+                deck_generations.record_use(conn, new.deck_generation_id)
     except errors.UniqueViolation:
         raise conflict("This deck already has generated cards waiting for review. Add them or discard them first.")
+    except errors.ForeignKeyViolation:  # the saved generation was deleted meanwhile
+        raise not_found("Saved generation not found")
     generation.runner.start(job_id)
     return _out(generation_jobs.get(conn, job_id))
 
@@ -117,4 +133,6 @@ def accept_generation(deck_id: int, body: GenerationAccept, me: Me, conn: Conn):
                 continue
             decks.create_card(conn, NewCard(deck_id=deck_id, **card.model_dump()))
             added += 1
+        if job.deck_generation_id is not None and added:
+            deck_generations.add_accepted(conn, job.deck_generation_id, added)
     return GenerationAcceptOut(added=added, skipped_duplicates=skipped)

@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
-import { api, type Card, type CardInput, type Category, type Deck } from "../api";
+import { useEffect, useRef, useState } from "react";
+import { api, type Card, type CardInput, type Category, type Deck, type DeckGeneration } from "../api";
 import { CopiedFromNote, ErrorBox, NotFound, PublicChip, PublishControl, useAction, useList, useRouteSelection } from "./common";
 import { downloadJson, fileName, ImportButton, readJsonFile } from "./files";
+import { SavedGenerations } from "./DeckGenerations";
 import { GenerateForm, GenerationPanel, useGeneration } from "./GenerateCards";
 
 export function DecksPage({ orgId }: { orgId: number }) {
@@ -143,9 +144,17 @@ function DeckEditor({
   const [cards, setCards] = useState<Card[]>([]);
   const [editing, setEditing] = useState<Card | "new" | null>(null);
   const [filter, setFilter] = useState<number | "all">("all");
-  const [generateForm, setGenerateForm] = useState(false);
+  // The generate form, possibly opened on a saved generation; `n` remounts it when another is loaded
+  const [generateForm, setGenerateForm] = useState<{ initial: DeckGeneration | null; n: number } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const generation = useGeneration(deck.id);
+  const saved = useList(() => api.listOrgDeckGenerations(deck.organization_id), [deck.organization_id]); // GEN-8
+  const cardsPanel = useRef<HTMLElement>(null);
+  const openForm = (initial: DeckGeneration | null) => {
+    setGenerateForm((f) => ({ initial, n: (f?.n ?? 0) + 1 }));
+    setNotice(null);
+    cardsPanel.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
   const action = useAction();
   const catById = new Map(categories.map((c) => [c.id, c]));
 
@@ -202,7 +211,7 @@ function DeckEditor({
         />
       </section>
 
-      <section className="panel">
+      <section className="panel" ref={cardsPanel}>
         <div className="row between wrap">
           <h2>
             Cards · {cards.length}
@@ -221,9 +230,9 @@ function DeckEditor({
             </button>
             <button
               className="small"
-              disabled={!categories.length || !generation.providers?.length || !!generation.job || generateForm}
+              disabled={!categories.length || !generation.providers?.length || !!generation.job || !!generateForm}
               title={generateTitle(categories.length > 0, generation.providers, !!generation.job)}
-              onClick={() => (setGenerateForm(true), setNotice(null))}
+              onClick={() => openForm(null)}
             >
               ✨ Generate
             </button>
@@ -235,13 +244,22 @@ function DeckEditor({
         )}
         <ErrorBox error={generation.error} />
         {notice && <div className="ok">{notice}</div>}
-        {generateForm && generation.providers && !generation.job && (
+        {generateForm && generation.providers && (
           <GenerateForm
+            key={generateForm.n}
             deck={deck}
             providers={generation.providers}
             categories={categories}
-            onCancel={() => setGenerateForm(false)}
-            onStarted={(job) => (generation.setJob(job), setGenerateForm(false))}
+            generations={saved.items}
+            initial={generateForm.initial}
+            blocked={
+              generation.job
+                ? "This deck has generated cards waiting for review below: add or discard them before generating more. You can still save these settings."
+                : null
+            }
+            onCancel={() => setGenerateForm(null)}
+            onSaved={saved.reload}
+            onStarted={(job) => (generation.setJob(job), setGenerateForm(null), saved.reload())}
           />
         )}
         {generation.job && (
@@ -255,6 +273,7 @@ function DeckEditor({
               setNotice(message);
               await loadCards();
               await onChanged();
+              await saved.reload();
             }}
           />
         )}
@@ -325,6 +344,16 @@ function DeckEditor({
         </table>
         </div>
       </section>
+
+      <SavedGenerations
+        deck={deck}
+        generations={saved.items.filter((g) => g.deck_id === deck.id)}
+        categories={categories}
+        error={saved.error}
+        onLoad={openForm}
+        onNew={() => openForm(null)}
+        onChanged={saved.reload}
+      />
     </>
   );
 }

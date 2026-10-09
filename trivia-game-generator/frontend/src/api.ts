@@ -133,6 +133,8 @@ export interface GenerationJob {
   provider: Provider;
   model: string;
   request: GenerationSpec;
+  /** The saved deck generation it was started from (GEN-9). */
+  deck_generation_id: number | null;
   status: "running" | "done" | "failed" | "accepted";
   /** The cards waiting for review. Nothing is in the deck until they're accepted (GEN-6). */
   cards: GeneratedCard[];
@@ -145,6 +147,27 @@ export interface GenerationJob {
   created_at: string;
   finished_at: string | null;
 }
+
+/** A saved, reusable generation request (rules.md §2.2.2, GEN-8). Its categories are the
+ *  organization's, so any deck of the organization can load it. */
+export interface DeckGeneration {
+  id: number;
+  deck_id: number;
+  deck_name: string;
+  name: string;
+  description: string;
+  provider: Provider | null; // preferred; null = none
+  /** May list no categories after one was deleted (GEN-10). */
+  spec: GenerationSpec;
+  creator_name: string | null;
+  use_count: number; // generations started from it (GEN-9)
+  last_used_at: string | null;
+  cards_accepted: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export type DeckGenerationInput = Pick<DeckGeneration, "name" | "description" | "provider" | "spec">;
 
 /** What a board stores: its file minus name/description (see BoardFile in engine/types.ts). */
 export interface BoardDefinition {
@@ -191,9 +214,11 @@ export type Published<T> = T & { organization_name: string };
 export type PublicImage = Published<Sharing & Pick<LibraryImage, "id" | "organization_id" | "key" | "url" | "name" | "width" | "height" | "bytes">>;
 
 export interface PublicDeckDetail extends Published<Deck> {
-  /** The categories its cards use. */
+  /** The categories its cards and saved generations use. */
   categories: Pick<Category, "id" | "name" | "description" | "color">[];
   cards: Card[];
+  /** Its saved generations (GEN-8), copied with the deck. */
+  generations: Pick<DeckGeneration, "name" | "description" | "spec">[];
 }
 
 export type GameStatus = "awaiting" | "running" | "finished";
@@ -447,11 +472,18 @@ export const api = {
   // Card generation (rules.md §2.2.1). A deck has at most one generation running or under review.
   generationProviders: (deckId: number) => request<ProviderInfo[]>("GET", `/decks/${deckId}/generation/providers`),
   getGeneration: (deckId: number) => request<GenerationJob | null>("GET", `/decks/${deckId}/generation`),
-  startGeneration: (deckId: number, body: GenerationSpec & { provider: Provider | null }) =>
+  startGeneration: (deckId: number, body: GenerationSpec & { provider: Provider | null; deck_generation_id: number | null }) =>
     request<GenerationJob>("POST", `/decks/${deckId}/generation`, body),
   discardGeneration: (deckId: number) => request<void>("DELETE", `/decks/${deckId}/generation`),
   acceptGeneration: (deckId: number, body: { job_id: number; cards: CardInput[] }) =>
     request<{ added: number; skipped_duplicates: string[] }>("POST", `/decks/${deckId}/generation/accept`, body),
+  // Saved deck generations (rules.md §2.2.2). The organization's list feeds the form's Load picker.
+  listOrgDeckGenerations: (orgId?: number) => request<DeckGeneration[]>("GET", withOrg("/deck-generations", orgId)),
+  listDeckGenerations: (deckId: number) => request<DeckGeneration[]>("GET", `/decks/${deckId}/generations`),
+  createDeckGeneration: (deckId: number, body: DeckGenerationInput) => request<DeckGeneration>("POST", `/decks/${deckId}/generations`, body),
+  updateDeckGeneration: (deckId: number, id: number, body: Partial<DeckGenerationInput>) =>
+    request<DeckGeneration>("PATCH", `/decks/${deckId}/generations/${id}`, body),
+  deleteDeckGeneration: (deckId: number, id: number) => request<void>("DELETE", `/decks/${deckId}/generations/${id}`),
 
   listBoards: (orgId?: number) => request<Board[]>("GET", withOrg("/boards", orgId)),
   getBoard: (id: number) => request<Board>("GET", `/boards/${id}`),
@@ -490,7 +522,7 @@ export const api = {
   libraryImages: (q = "") => request<PublicImage[]>("GET", `/library/images${query(q)}`),
   copyBoard: (id: number, body: CopyInput) => request<Board>("POST", `/library/boards/${id}/copy`, body),
   copyDeck: (id: number, body: CopyInput) =>
-    request<{ deck: Deck; categories_created: string[]; categories_matched: string[] }>("POST", `/library/decks/${id}/copy`, body),
+    request<{ deck: Deck; categories_created: string[]; categories_matched: string[]; generations_copied: number }>("POST", `/library/decks/${id}/copy`, body),
   copyCards: (deckId: number, body: { deck_id: number; card_ids: number[] }) =>
     request<{ added: number; skipped_duplicates: string[]; categories_created: string[] }>("POST", `/library/decks/${deckId}/cards/copy`, body),
   copyCategory: (id: number, body: CopyInput) => request<Category>("POST", `/library/categories/${id}/copy`, body),

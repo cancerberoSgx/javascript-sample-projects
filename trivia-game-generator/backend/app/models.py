@@ -9,7 +9,15 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
-from .formats import Background, BoardDefinition, EngineState, GameSnapshot
+from .formats import (
+    Background,
+    BoardDefinition,
+    DifficultyMix,
+    EngineState,
+    GameSnapshot,
+    TypeMix,
+    Weight,
+)
 
 Role = Literal["root", "member"]
 GameStatus = Literal["awaiting", "running", "finished"]
@@ -323,7 +331,6 @@ class GameLiveState(Row):
 
 # ---------- trivia_generation_jobs (rules.md §2.2.1, GEN-*) ----------
 
-Weight = Annotated[float, Field(ge=0, le=1000)]
 MAX_GENERATED_CARDS = 200  # GEN-2
 
 
@@ -332,27 +339,21 @@ class CategoryShare(BaseModel):
     weight: Weight = 1  # relative: 20 and 80 mean 20% and 80%
 
 
-class DifficultyMix(BaseModel):
-    """Relative weights of difficulty 1 / 2 / 3."""
-
-    easy: Weight = 1
-    medium: Weight = 1
-    hard: Weight = 1
-
-
-class TypeMix(BaseModel):
-    multiple_choice: Weight = 1
-    open: Weight = 1
-
-
-class GenerationSpec(BaseModel):
-    """What a user asks the generator for (GEN-2). Weights are relative and needn't add up to 100."""
+class GenerationSettings(BaseModel):
+    """The generate form's settings as a saved deck generation keeps them (GEN-8). Looser than a
+    request: deleting a category drops it from saved generations, which may leave none (GEN-10)."""
 
     count: int = Field(ge=1, le=MAX_GENERATED_CARDS)
-    categories: list[CategoryShare] = Field(min_length=1, max_length=50)
+    categories: list[CategoryShare] = Field(max_length=50)
     difficulty: DifficultyMix = DifficultyMix()
     types: TypeMix = TypeMix()
     instructions: Annotated[str, StringConstraints(strip_whitespace=True, max_length=1000)] = ""
+
+
+class GenerationSpec(GenerationSettings):
+    """What a user asks the generator for (GEN-2). Weights are relative and needn't add up to 100."""
+
+    categories: list[CategoryShare] = Field(min_length=1, max_length=50)
 
     @model_validator(mode="after")
     def _usable_weights(self) -> "GenerationSpec":
@@ -386,6 +387,7 @@ class GenerationJob(Row):
     provider: Provider
     model: str
     request: GenerationSpec
+    deck_generation_id: int | None  # the saved deck generation it was started from (GEN-9)
     status: GenerationStatus
     cards: list[GeneratedCard]
     batches_total: int
@@ -405,6 +407,44 @@ class NewGenerationJob(BaseModel):
     provider: Provider
     model: str
     request: GenerationSpec
+    deck_generation_id: int | None = None
+
+
+# ---------- trivia_deck_generations (rules.md §2.2.2, GEN-8 … GEN-10) ----------
+
+
+class DeckGeneration(Row):
+    id: int
+    organization_id: int  # joined from the deck
+    deck_id: int
+    deck_name: str  # joined
+    name: str
+    description: str
+    provider: Provider | None  # preferred; None = none
+    spec: GenerationSettings
+    creator_id: int | None
+    creator_name: str | None  # joined
+    use_count: int
+    last_used_at: datetime | None
+    cards_accepted: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class NewDeckGeneration(BaseModel):
+    deck_id: int
+    name: str
+    description: str = ""
+    provider: Provider | None = None
+    spec: GenerationSettings
+    creator_id: int | None
+
+
+class DeckGenerationChanges(Changes):
+    name: str | None = None
+    description: str | None = None
+    provider: Provider | None = None
+    spec: GenerationSettings | None = None
 
 
 # ---------- trivia_languages, trivia_i18n_keys, trivia_translations (rules.md §2.9, I18N-*) ----------

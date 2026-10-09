@@ -236,3 +236,9 @@ I would like the game experience to be translated to many languages, starting wi
 
 Can you think on this problem and suggest / question ? don't implement anything just yet.
 
+
+# deck generation record
+when a user generates some cards using ai prompt and settings like category, difficulty, question type ratios, etc, we want to store that information in a record, so user can re-use the same prompt and settings later to create more similar cards, or have a working polished  prompt as a reference for future generations.
+so in a db table store this deck_generation records 
+in deck details page allow the user to save current deck-generation with a name, or load/select an existing deck-generation. At the very bottom of desc details page, user can see the list of all deck-generations used and CRUD.
+do you have any questions before starting ? 

@@ -4,7 +4,7 @@ from psycopg import errors
 from ..auth import Conn, Me
 from ..models import Category, CategoryChanges, NewCategory
 from ..permissions import conflict, list_org, not_found, target_org, visible
-from ..repositories import categories
+from ..repositories import categories, deck_generations
 from ..schemas import CategoryCreate, CategoryOut, CategoryUpdate
 
 router = APIRouter(prefix="/api/categories", tags=["categories"])
@@ -60,6 +60,7 @@ def delete_category(category_id: int, me: Me, conn: Conn):
         raise conflict(f"'{category.name}' is used by {n} game(s) that haven't started yet.")
     try:
         with conn.transaction():
+            deck_generations.drop_category(conn, category_id)  # GEN-10
             categories.delete(conn, category_id)
     except errors.ForeignKeyViolation:  # a card was added concurrently
         raise conflict(f"'{category.name}' is used by cards")

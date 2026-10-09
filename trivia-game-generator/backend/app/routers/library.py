@@ -22,10 +22,11 @@ from ..models import (
     NewCard,
     NewCategory,
     NewDeck,
+    NewDeckGeneration,
     NewImage,
 )
 from ..permissions import conflict, not_found, target_org, visible
-from ..repositories import boards, categories, decks, images, library
+from ..repositories import boards, categories, deck_generations, decks, images, library
 from ..schemas import (
     BoardOut,
     CardOut,
@@ -40,6 +41,7 @@ from ..schemas import (
     LibraryCardCategory,
     LibraryCategoryOut,
     LibraryDeckDetailOut,
+    LibraryDeckGeneration,
     LibraryDeckOut,
     LibraryImageOut,
     VisibilityIn,
@@ -140,6 +142,7 @@ def get_public_deck(deck_id: int, _: Me, conn: Conn):
         **deck.model_dump(),
         categories=[LibraryCardCategory(**c.model_dump(include={"id", "name", "description", "color"})) for c in library.deck_categories(conn, deck_id)],
         cards=[CardOut(**c.model_dump()) for c in library.cards(conn, deck_id)],
+        generations=[LibraryDeckGeneration(**g.model_dump()) for g in deck_generations.list_for_deck(conn, deck_id)],
     )
 
 
@@ -266,11 +269,25 @@ def copy_deck(deck_id: int, body: CopyIn, me: Me, conn: Conn):
             matcher = _CategoryMatcher(conn, org_id, original.organization_name)
             for card in library.cards(conn, deck_id):
                 decks.create_card(conn, _copy_card(card, new_id, matcher.source(source_categories[card.category_id])))
+            saved = deck_generations.list_for_deck(conn, deck_id)
+            for g in saved:  # GEN-8: its saved generations, with the copy's categories
+                spec = g.spec.model_copy(
+                    update={"categories": [share.model_copy(update={"category_id": matcher.source(source_categories[share.category_id])}) for share in g.spec.categories]}
+                )
+                deck_generations.create(
+                    conn,
+                    NewDeckGeneration(deck_id=new_id, name=g.name, description=g.description, provider=g.provider, spec=spec, creator_id=me.id),
+                )
     except errors.UniqueViolation:
         raise conflict("That name was just taken. Try again.")
     except errors.ForeignKeyViolation:
         raise not_found("Organization not found")
-    return DeckCopyOut(deck=decks_router._out(decks.get(conn, new_id)), categories_created=matcher.created, categories_matched=matcher.matched)
+    return DeckCopyOut(
+        deck=decks_router._out(decks.get(conn, new_id)),
+        categories_created=matcher.created,
+        categories_matched=matcher.matched,
+        generations_copied=len(saved),
+    )
 
 
 @router.post("/api/library/decks/{deck_id}/cards/copy", response_model=CardsCopyOut)

@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, NavLink, useNavigate, useParams } from "react-router";
 import { api, type Board, type Card, type Category, type PublicDeckDetail, type PublicImage, type Published } from "../api";
 import { BoardPreview, ErrorBox, hasErrors, NotFound, toBoardFile, useAction, useList, useRouteSelection, type RouteState } from "./common";
+import { GenerationSummary } from "./DeckGenerations";
 
 type Kind = "boards" | "decks" | "categories" | "images";
 const KINDS: [Kind, string][] = [
@@ -242,7 +243,8 @@ function DeckDetail({ deckId, orgId }: { deckId: number; orgId: number }) {
           ))}
         </div>
         <p className="muted small">
-          Copying brings the cards' categories along: a category with the same name in your organization is reused, the others are created.
+          Copying brings the cards' categories along: a category with the same name in your organization is reused, the others are created. Its saved
+          generations come along too.
         </p>
         {notice && <Copied message={notice.message} to={notice.to} orgId={orgId} />}
         <CopyForm
@@ -250,7 +252,8 @@ function DeckDetail({ deckId, orgId }: { deckId: number; orgId: number }) {
           original={deck.name}
           onCopy={async (name) => {
             const r = await api.copyDeck(deck.id, { organization_id: orgId, name });
-            setNotice({ message: `Copied as “${r.deck.name}”.${categoriesNote(r.categories_created, r.categories_matched)}`, to: `/decks/${r.deck.id}` });
+            const saved = r.generations_copied ? ` With ${r.generations_copied} saved generation${r.generations_copied === 1 ? "" : "s"}.` : "";
+            setNotice({ message: `Copied as “${r.deck.name}”.${saved}${categoriesNote(r.categories_created, r.categories_matched)}`, to: `/decks/${r.deck.id}` });
             myDecks.reload();
           }}
         />
@@ -324,6 +327,22 @@ function DeckDetail({ deckId, orgId }: { deckId: number; orgId: number }) {
           </table>
         </div>
       </section>
+
+      {deck.generations.length > 0 && (
+        <section className="panel saved-generations">
+          <h2>Saved generations · {deck.generations.length}</h2>
+          <p className="muted small">The settings and instructions its publisher saved for ✨ Generate (copied with the deck).</p>
+          <ul className="plain-list">
+            {deck.generations.map((g, i) => (
+              <li key={i}>
+                <strong>{g.name}</strong>
+                {g.description && <span className="muted small"> · {g.description}</span>}
+                <GenerationSummary generation={g} categories={deck.categories} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </>
   );
 }

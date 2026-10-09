@@ -295,6 +295,24 @@ tr.unpicked td:first-child { opacity: 1; }
   .grid-form.generate-form > span:empty { display: none; }
 }
 .table-scroll, .generated-cards { overflow-x: auto; }
+/* saved deck generations (rules.md §2.2.2) */
+.save-generation { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.save-generation input { flex: 1 1 180px; }
+.save-generation input.grow { flex: 2 1 240px; }
+.generate-form .chip { align-self: center; }
+.generate-form select { max-width: 100%; }
+.generation-summary { display: flex; flex-direction: column; gap: 2px; }
+.generation-summary .instructions { font-style: italic; white-space: pre-wrap; overflow-wrap: anywhere; }
+.saved-generations td { vertical-align: top; }
+td.nowrap { white-space: nowrap; }
+@media (max-width: 600px) { /* one block per saved generation */
+  .saved-generations thead { display: none; }
+  .saved-generations tr, .saved-generations td { display: block; }
+  .saved-generations tr { padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .saved-generations table td { border: none; padding: 2px 0; }
+  .saved-generations table td.actions { text-align: left; }
+}
+.plain-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
 .models-form { margin-top: 6px; padding-top: 10px; border-top: 1px solid var(--border); }
 
 /* ---------- backgrounds (rules.md §2.1.2) ---------- */

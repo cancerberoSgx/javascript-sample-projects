@@ -17,6 +17,7 @@ from .models import (
     CopiedFrom,
     GameStatus,
     GeneratedCard,
+    GenerationSettings,
     GenerationSpec,
     GenerationStatus,
     Provider,
@@ -461,9 +462,11 @@ class ProviderOut(BaseModel):
 
 
 class GenerationRequest(GenerationSpec):
-    """GEN-1: `provider` may be left out when the organization has only one key."""
+    """GEN-1: `provider` may be left out when the organization has only one key.
+    `deck_generation_id`: the saved deck generation the form was loaded from, to count the use (GEN-9)."""
 
     provider: Provider | None = None
+    deck_generation_id: int | None = None
 
 
 class GenerationJobOut(BaseModel):
@@ -473,6 +476,7 @@ class GenerationJobOut(BaseModel):
     provider: Provider
     model: str
     request: GenerationSpec
+    deck_generation_id: int | None
     status: GenerationStatus
     cards: list[GeneratedCard]
     batches_total: int
@@ -495,6 +499,49 @@ class GenerationAccept(BaseModel):
 class GenerationAcceptOut(BaseModel):
     added: int
     skipped_duplicates: list[str]  # questions already in the deck (or twice in the list), not added
+
+
+# ---------- saved deck generations (rules.md §2.2.2, GEN-8 … GEN-10) ----------
+
+
+class DeckGenerationOut(BaseModel):
+    id: int
+    deck_id: int
+    deck_name: str
+    name: str
+    description: str
+    provider: Provider | None  # preferred; null = none
+    spec: GenerationSettings  # its categories are the organization's
+    creator_name: str | None
+    use_count: int  # generations started from it
+    last_used_at: datetime | None
+    cards_accepted: int  # cards from those generations added to a deck
+    created_at: datetime
+    updated_at: datetime
+
+
+class DeckGenerationIn(BaseModel):
+    """GEN-8: saved only when it could be generated as is (the same checks as a request)."""
+
+    name: Name
+    description: Description = ""
+    provider: Provider | None = None
+    spec: GenerationSpec
+
+
+class DeckGenerationUpdate(BaseModel):
+    name: Name | None = None
+    description: Description | None = None
+    provider: Provider | None = None  # sent as null: no preferred provider
+    spec: GenerationSpec | None = None
+
+
+class LibraryDeckGeneration(BaseModel):
+    """What the Library shows of a public deck's saved generations (they come along with a copy)."""
+
+    name: str
+    description: str
+    spec: GenerationSettings
 
 
 # ---------- the public Library (rules.md §2.8, SHR-*) ----------
@@ -520,8 +567,9 @@ class LibraryCardCategory(BaseModel):
 
 
 class LibraryDeckDetailOut(LibraryDeckOut):
-    categories: list[LibraryCardCategory]  # the ones its cards use
+    categories: list[LibraryCardCategory]  # the ones its cards and saved generations use
     cards: list[CardOut]
+    generations: list[LibraryDeckGeneration]  # GEN-8
 
 
 class LibraryBoardOut(BoardOut):
@@ -549,6 +597,7 @@ class CopyIn(BaseModel):
 
 class DeckCopyOut(BaseModel):
     deck: DeckOut
+    generations_copied: int = 0  # its saved generations (GEN-8)
     categories_created: list[str]  # SHR-5: made for this copy
     categories_matched: list[str]  # SHR-5: already in the organization (same name), reused
 

@@ -18,6 +18,7 @@ from .routers import (
     auth,
     boards,
     categories,
+    deck_generations,
     decks,
     games,
     images,
@@ -80,7 +81,7 @@ def create_app() -> FastAPI:
     app.include_router(auth.router)
     app.include_router(organizations.router)
     app.include_router(users.router)
-    for content in (categories, decks, generation_router, boards, games, play, images, library):
+    for content in (categories, decks, generation_router, deck_generations, boards, games, play, images, library):
         app.include_router(content.router)
     app.include_router(i18n_router.public)
     app.include_router(i18n_router.router)

@@ -3,7 +3,7 @@ and through the Library (SHR-4, SHR-5). Both name their new items the same way a
 categories by name the same way."""
 
 import re
-from collections.abc import Hashable
+from collections.abc import Hashable, Mapping
 from datetime import UTC, datetime
 
 from fastapi import HTTPException, status
@@ -17,20 +17,25 @@ from .formats import (
     DeckFile,
     DeckFileCard,
     DeckFileCategory,
+    DeckFileGeneration,
+    DeckFileShare,
     OrganizationFile,
 )
 from .models import (
     Board,
+    CategoryShare,
     CopiedFrom,
     Deck,
+    GenerationSettings,
     NewBoard,
     NewCard,
     NewCategory,
     NewDeck,
+    NewDeckGeneration,
     Organization,
 )
 from .permissions import conflict
-from .repositories import boards, categories, decks, images, library
+from .repositories import boards, categories, deck_generations, decks, images, library
 from .schemas import CardIn, OrganizationImportOut
 
 
@@ -97,7 +102,9 @@ def deck_file(conn: DbConn, deck: Deck) -> DeckFile:
     """The deck as a file: its cards in deck order, and the categories they use. Ids become readable
     labels (a category's slug, "<category>-<n>" for cards), so the file is easy to edit by hand."""
     cards = decks.list_cards(conn, deck.id)
-    order = list(dict.fromkeys(c.category_id for c in cards))  # in order of first use, so re-exports match
+    saved = deck_generations.list_for_deck(conn, deck.id)
+    # in order of first use (cards first, then saved generations), so re-exports match
+    order = list(dict.fromkeys([c.category_id for c in cards] + [s.category_id for g in saved for s in g.spec.categories]))
     by_id = {c.id: c for c in categories.get_many(conn, order)}
     used = [by_id[i] for i in order]
     label: dict[int, str] = {}
@@ -129,6 +136,19 @@ def deck_file(conn: DbConn, deck: Deck) -> DeckFile:
         description=deck.description,
         categories=[DeckFileCategory(id=label[c.id], name=c.name, description=c.description, color=c.color) for c in used],
         cards=file_cards,
+        generations=[
+            DeckFileGeneration(
+                name=g.name,
+                description=g.description,
+                provider=g.provider,
+                count=g.spec.count,
+                categories=[DeckFileShare(category=label[s.category_id], weight=s.weight) for s in g.spec.categories],
+                difficulty=g.spec.difficulty,
+                types=g.spec.types,
+                instructions=g.spec.instructions,
+            )
+            for g in saved
+        ],
     )
 
 
@@ -193,7 +213,32 @@ def deck_problems(file: DeckFile) -> tuple[CheckedCards, list[str]]:
             continue
         if category is not None:
             result.append((category, checked))
+    generation_names: set[str] = set()
+    for i, g in enumerate(file.generations):
+        where = f"generations[{i}] '{g.name}'"
+        if g.name.lower() in generation_names:
+            problems.append(f"{where}: the name appears more than once")
+        generation_names.add(g.name.lower())
+        if missing := [s.category for s in g.categories if s.category not in by_id]:
+            problems.append(f"{where}: category '{missing[0]}' isn't one of the file's categories")
+        if len({s.category for s in g.categories}) != len(g.categories):
+            problems.append(f"{where}: each category can only be listed once")
+        try:
+            generation_settings(g, {c: 0 for c in by_id})
+        except ValidationError as e:
+            problems += [f"{where}: {_message(err)}" for err in e.errors()]
     return result, problems
+
+
+def generation_settings(g: DeckFileGeneration, category_ids: Mapping[str, int]) -> GenerationSettings:
+    """A deck file's saved generation (GEN-8) as stored, with the file's category ids mapped."""
+    return GenerationSettings(
+        count=g.count,
+        categories=[CategoryShare(category_id=category_ids[s.category], weight=s.weight) for s in g.categories if s.category in category_ids],
+        difficulty=g.difficulty,
+        types=g.types,
+        instructions=g.instructions,
+    )
 
 
 def create_deck_from_file(
@@ -206,6 +251,19 @@ def create_deck_from_file(
         matcher.target((scope, c.id), c.name, c.description, c.color)
     for category, card in cards:
         decks.create_card(conn, NewCard(deck_id=new_id, **{**card.model_dump(), "category_id": matcher.ids[(scope, category.id)]}))
+    category_ids = {c.id: matcher.ids[(scope, c.id)] for c in file.categories}
+    for g in file.generations:  # GEN-8
+        deck_generations.create(
+            conn,
+            NewDeckGeneration(
+                deck_id=new_id,
+                name=g.name,
+                description=g.description,
+                provider=g.provider,
+                spec=generation_settings(g, category_ids),
+                creator_id=None,
+            ),
+        )
     return new_id
 
 

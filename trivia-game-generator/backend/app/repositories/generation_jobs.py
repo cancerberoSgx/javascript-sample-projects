@@ -15,7 +15,7 @@ from ..models import GeneratedCard, GenerationJob, NewGenerationJob
 
 _SELECT = """
     SELECT j.id, d.organization_id, j.deck_id, j.creator_id, u.name AS creator_name,
-           j.provider, j.model, j.request, j.status, j.cards,
+           j.provider, j.model, j.request, j.deck_generation_id, j.status, j.cards,
            j.batches_total, j.batches_done, j.dropped_duplicates, j.dropped_invalid,
            j.messages, j.error, j.created_at, j.updated_at, j.finished_at
     FROM trivia_generation_jobs j
@@ -41,10 +41,10 @@ def create(conn: DbConn, job: NewGenerationJob, batches_total: int) -> int:
     return fetch_scalar(
         conn,
         """
-        INSERT INTO trivia_generation_jobs (deck_id, creator_id, provider, model, request, batches_total)
-        VALUES (%s, %s, %s, %s, %s, %s) RETURNING id
+        INSERT INTO trivia_generation_jobs (deck_id, creator_id, provider, model, request, deck_generation_id, batches_total)
+        VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id
         """,
-        (job.deck_id, job.creator_id, job.provider, job.model, Jsonb(job.request.model_dump()), batches_total),
+        (job.deck_id, job.creator_id, job.provider, job.model, Jsonb(job.request.model_dump()), job.deck_generation_id, batches_total),
     )
 
 

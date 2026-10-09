@@ -204,6 +204,43 @@ class DeckFileCard(Strict):
     grand_prize: bool = False
 
 
+# ---------- saved deck generations in deck files (GEN-8, SER-3) ----------
+
+Weight = Annotated[float, Field(ge=0, le=1000)]
+
+
+class DifficultyMix(BaseModel):
+    """Relative weights of difficulty 1 / 2 / 3."""
+
+    easy: Weight = 1
+    medium: Weight = 1
+    hard: Weight = 1
+
+
+class TypeMix(BaseModel):
+    multiple_choice: Weight = 1
+    open: Weight = 1
+
+
+class DeckFileShare(Strict):
+    category: str  # a DeckFileCategory.id of the same file
+    weight: Weight = 1
+
+
+class DeckFileGeneration(Strict):
+    """A saved deck generation (GEN-8): the generate form's settings, with the file's category ids.
+    Usage counts aren't part of the file."""
+
+    name: FileName
+    description: FileText = ""
+    provider: Literal["openai", "gemini"] | None = None
+    count: int
+    categories: list[DeckFileShare] = Field(default=[], max_length=50)
+    difficulty: DifficultyMix = DifficultyMix()
+    types: TypeMix = TypeMix()
+    instructions: str = ""
+
+
 class DeckFile(Strict):
     """SER-3: a deck file, with the categories its cards use."""
 
@@ -213,6 +250,7 @@ class DeckFile(Strict):
     description: FileText = ""
     categories: list[DeckFileCategory] = Field(max_length=100)
     cards: list[DeckFileCard] = Field(max_length=5000)
+    generations: list[DeckFileGeneration] = Field(default=[], max_length=100)  # GEN-8; left out when empty
 
     _version = field_validator("schema_version", mode="before")(_check_version)
 
@@ -221,6 +259,8 @@ class DeckFile(Strict):
         data = handler(self)
         if data.get("id") is None:
             data.pop("id", None)
+        if not data.get("generations"):
+            data.pop("generations", None)
         return data
 
 
