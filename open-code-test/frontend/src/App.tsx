@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
 import { AuthProvider } from './auth/AuthContext'
 import { ProtectedLayout } from './components/Layout'
+import { DrivesPage } from './pages/DrivesPage'
 import { LoginPage } from './pages/LoginPage'
 import { OrganizationDetailPage } from './pages/OrganizationDetailPage'
 import { OrganizationsPage } from './pages/OrganizationsPage'
@@ -19,6 +20,10 @@ export default function App() {
             <Route
               path="/organizations/:organizationId"
               element={<OrganizationDetailPage />}
+            />
+            <Route
+              path="/organizations/:organizationId/drives"
+              element={<DrivesPage />}
             />
           </Route>
 

@@ -1,7 +1,14 @@
 import type {
+  CopyDriveItemsInput,
+  CreateDriveItemInput,
+  CreateFileInput,
   CreateUserInput,
+  Drive,
+  DriveItem,
+  DriveItemDetail,
   LoginResponse,
   Organization,
+  UpdateDriveItemInput,
   UpdateUserInput,
   User,
 } from '../types'
@@ -96,7 +103,11 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken()
   const headers = new Headers(options.headers)
 
-  if (options.body !== undefined && !headers.has('Content-Type')) {
+  if (
+    options.body !== undefined &&
+    !(options.body instanceof FormData) &&
+    !headers.has('Content-Type')
+  ) {
     headers.set('Content-Type', 'application/json')
   }
   if (token) {
@@ -126,6 +137,18 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   }
 
   return data as T
+}
+
+function filenameFromDisposition(header: string | null): string | null {
+  const utf8Match = header?.match(/filename\*=UTF-8''([^;]+)/i)
+  if (utf8Match) {
+    try {
+      return decodeURIComponent(utf8Match[1])
+    } catch {
+      // Fall through to the plain filename.
+    }
+  }
+  return header?.match(/filename="([^"]+)"/i)?.[1] ?? null
 }
 
 export const api = {
@@ -181,6 +204,171 @@ export const api = {
     request<LoginResponse>(
       `/organizations/${organizationId}/users/${userId}/impersonate`,
       { method: 'POST' },
+    ),
+
+  listDrives: (organizationId: number) =>
+    request<Drive[]>(`/organizations/${organizationId}/drives`),
+
+  createDrive: (organizationId: number, name: string) =>
+    request<Drive>(`/organizations/${organizationId}/drives`, {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    }),
+
+  getDrive: (organizationId: number, driveId: number) =>
+    request<Drive>(`/organizations/${organizationId}/drives/${driveId}`),
+
+  updateDrive: (organizationId: number, driveId: number, name: string) =>
+    request<Drive>(`/organizations/${organizationId}/drives/${driveId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ name }),
+    }),
+
+  deleteDrive: (organizationId: number, driveId: number) =>
+    request<void>(`/organizations/${organizationId}/drives/${driveId}`, {
+      method: 'DELETE',
+    }),
+
+  listDriveItems: (organizationId: number, driveId: number) =>
+    request<DriveItem[]>(
+      `/organizations/${organizationId}/drives/${driveId}/items`,
+    ),
+
+  getDriveItem: (organizationId: number, driveId: number, itemId: number) =>
+    request<DriveItemDetail>(
+      `/organizations/${organizationId}/drives/${driveId}/items/${itemId}`,
+    ),
+
+  createFolder: (
+    organizationId: number,
+    driveId: number,
+    data: CreateDriveItemInput,
+  ) =>
+    request<DriveItem>(
+      `/organizations/${organizationId}/drives/${driveId}/folders`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      },
+    ),
+
+  createFile: (organizationId: number, driveId: number, data: CreateFileInput) =>
+    request<DriveItem>(
+      `/organizations/${organizationId}/drives/${driveId}/files`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      },
+    ),
+
+  uploadFile: (
+    organizationId: number,
+    driveId: number,
+    file: File,
+    parentId: number | null,
+  ) => {
+    const form = new FormData()
+    form.append('file', file)
+    if (parentId !== null) {
+      form.append('parent_id', String(parentId))
+    }
+    return request<DriveItem>(
+      `/organizations/${organizationId}/drives/${driveId}/files/upload`,
+      {
+        method: 'POST',
+        body: form,
+      },
+    )
+  },
+
+  downloadFile: async (
+    organizationId: number,
+    driveId: number,
+    itemId: number,
+  ): Promise<{ blob: Blob; filename: string }> => {
+    const token = getToken()
+    const headers = new Headers()
+    if (token) {
+      headers.set('Authorization', `Bearer ${token}`)
+    }
+
+    const response = await fetch(
+      `${API_BASE}/organizations/${organizationId}/drives/${driveId}/items/${itemId}/download`,
+      { headers },
+    )
+
+    if (response.status === 401 && token) {
+      window.dispatchEvent(new Event('auth:unauthorized'))
+    }
+
+    if (!response.ok) {
+      const text = await response.text()
+      let data: unknown = null
+      try {
+        data = text ? JSON.parse(text) : null
+      } catch {
+        data = null
+      }
+      throw new ApiError(response.status, extractDetail(data, response.status))
+    }
+
+    return {
+      blob: await response.blob(),
+      filename:
+        filenameFromDisposition(response.headers.get('Content-Disposition')) ??
+        'download',
+    }
+  },
+
+  updateDriveItem: (
+    organizationId: number,
+    driveId: number,
+    itemId: number,
+    data: UpdateDriveItemInput,
+  ) =>
+    request<DriveItem>(
+      `/organizations/${organizationId}/drives/${driveId}/items/${itemId}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      },
+    ),
+
+  updateFileContent: (
+    organizationId: number,
+    driveId: number,
+    itemId: number,
+    content: string,
+  ) =>
+    request<DriveItemDetail>(
+      `/organizations/${organizationId}/drives/${driveId}/items/${itemId}/content`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({ content }),
+      },
+    ),
+
+  deleteDriveItem: (
+    organizationId: number,
+    driveId: number,
+    itemId: number,
+  ) =>
+    request<void>(
+      `/organizations/${organizationId}/drives/${driveId}/items/${itemId}`,
+      { method: 'DELETE' },
+    ),
+
+  copyDriveItems: (
+    organizationId: number,
+    driveId: number,
+    data: CopyDriveItemsInput,
+  ) =>
+    request<DriveItem[]>(
+      `/organizations/${organizationId}/drives/${driveId}/items/copy`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      },
     ),
 }
 

@@ -26,8 +26,33 @@ do you have any questions before start ?
 # root impersonate
 now a root user can impersonate a member user from the user's list
 
+# documents & folders
+The objectivfe is to have a file system with folders and files in the db per organizatoin
+an organization can have multiple "drives" and drives can have mutiple folders and files
+user can CRUD drives
+user can crud files and folders in a drive
+for now we'll only support files of type "plain text" with text area  editor
+user edit the contents of a file
+users can rename folders and files
+users can create folders in their organization
+users can create file in a folder
+user can move a file to a different folder using drag and drop in the tree
+right click on file or folder with dropdown options for rename
+double click or "enter" on selected folder
+users can multiple select folders & files and copy their reference and paste it in another  folder.
+
+files and folders will be stored in db, both their metadata like name or type but also their content. 
+the idea is to have db filessystem with an easy to use UI
+do you have any questions before proceeding ? 
+
+drive files must also support binary files, since we plan to store any kind of file
+
+# upload zip
+user can upload a .zip file to a folder which will be decompressed and stored as sub files
 
 
+# tests
+in folder /tests add pytests for all the API level operations. Using the same DB tests should be able to create new orgs, new folders and files, tests endpoints and permissions, features and when finished clean up created resources. add instructions so in future features we also add tests like this. backend api integration tests
 
 
 used deepseek v4.1 flash free

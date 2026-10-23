@@ -247,18 +247,29 @@ export function OrganizationDetailPage() {
             </p>
           </div>
 
-          {isRoot && (
-            <div className="flex gap-2">
-              <Button variant="secondary" onClick={openOrgEdit}>
-                Edit organization
-              </Button>
-              {organization.id !== user?.organization_id && (
-                <Button variant="danger" onClick={() => void handleOrgDelete()}>
-                  Delete organization
+          <div className="flex flex-wrap gap-2">
+            <Link
+              to={`/organizations/${organization.id}/drives`}
+              className="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
+            >
+              Open drives
+            </Link>
+            {isRoot && (
+              <>
+                <Button variant="secondary" onClick={openOrgEdit}>
+                  Edit organization
                 </Button>
-              )}
-            </div>
-          )}
+                {organization.id !== user?.organization_id && (
+                  <Button
+                    variant="danger"
+                    onClick={() => void handleOrgDelete()}
+                  >
+                    Delete organization
+                  </Button>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
 

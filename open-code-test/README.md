@@ -99,9 +99,34 @@ reachable directly on port `8000`.
 | Impersonate a member | No | Yes |
 | Delete own account | No | No |
 | Change own role | No | No |
+| Create/rename/delete drives and drive items in own organization | Yes | Yes |
+| Create/rename/delete drives and drive items in any organization | No | Yes |
 
 Root target users are read-only for members. These guards prevent accidentally
 locking yourself out; they are enforced by the backend and reflected in the UI.
+
+## Drives
+
+Each organization can have multiple drives. A drive is a tree of folders and
+files; both metadata and file contents (text or binary) are stored in Postgres.
+Drive names are unique per organization (case-insensitive), and file/folder
+names are unique within their parent. Uploads are limited to 10 MB per file.
+
+The UI at `/organizations/{id}/drives` supports:
+
+- creating, renaming and deleting drives;
+- creating folders and text files, editing file text with an explicit Save (Ctrl+S);
+- uploading files (including binaries) and downloading any file;
+- renaming and deleting items from a right-click menu;
+- multiple selection with Ctrl/Cmd+click, plus copy/paste of independent copies;
+- moving files and folders by dragging them onto another folder or the drive root.
+
+Text files open in the editor; binary files show a download card instead. Copying
+a file copies its bytes, and deleting a folder or drive permanently deletes
+everything inside it.
+
+Deleting a folder or drive permanently deletes everything inside it. Copy
+recurses through folders and appends ` (copy)` to name clashes.
 
 ## API overview
 
@@ -123,6 +148,19 @@ All endpoints except `POST /api/auth/login` and `GET /api/health` require an
 | PATCH | `/api/organizations/{id}/users/{userId}` | Update email/password/role |
 | DELETE | `/api/organizations/{id}/users/{userId}` | Delete user |
 | POST | `/api/organizations/{id}/users/{userId}/impersonate` | Get a member token (root only) |
+| GET | `/api/organizations/{id}/drives` | List drives in an organization |
+| POST | `/api/organizations/{id}/drives` | Create a drive |
+| GET/PATCH/DELETE | `/api/organizations/{id}/drives/{driveId}` | Read, rename or delete a drive |
+| GET | `/api/organizations/{id}/drives/{driveId}/items` | List folder/file metadata |
+| POST | `/api/organizations/{id}/drives/{driveId}/folders` | Create a folder |
+| POST | `/api/organizations/{id}/drives/{driveId}/files` | Create a text file |
+| POST | `/api/organizations/{id}/drives/{driveId}/files/upload` | Upload a file (multipart form field `file`, optional `parent_id`) |
+| GET | `/api/organizations/{id}/drives/{driveId}/items/{itemId}` | Get an item (text files include content) |
+| GET | `/api/organizations/{id}/drives/{driveId}/items/{itemId}/download` | Download file bytes |
+| PATCH | `/api/organizations/{id}/drives/{driveId}/items/{itemId}` | Rename or move an item |
+| PUT | `/api/organizations/{id}/drives/{driveId}/items/{itemId}/content` | Save text file content |
+| DELETE | `/api/organizations/{id}/drives/{driveId}/items/{itemId}` | Delete an item and its descendants |
+| POST | `/api/organizations/{id}/drives/{driveId}/items/copy` | Copy items into a target folder |
 
 Example login:
 

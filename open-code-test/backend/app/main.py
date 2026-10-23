@@ -5,7 +5,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api.routes import auth, organizations, users
+from app.api.routes import auth, drives, organizations, users
 from app.config import get_settings
 from app.database import engine
 from app.errors import AppError
@@ -50,3 +50,4 @@ def health() -> dict[str, str]:
 app.include_router(auth.router, prefix="/api")
 app.include_router(organizations.router, prefix="/api")
 app.include_router(users.router, prefix="/api")
+app.include_router(drives.router, prefix="/api")
