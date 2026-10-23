@@ -1,6 +1,6 @@
 // Loads board/deck JSON files from public/ for the boards demo.
 
-import { placeholderMapping, resolveBoard, resolveGame } from "./resolve";
+import { placeholderMapping, resolveBoard, resolveGame, shownCategory } from "./resolve";
 import type { BoardDefinition, BoardFile, DeckDefinition, DeckFile, SlotMapping } from "./types";
 
 export interface ManifestEntry {
@@ -55,7 +55,7 @@ export function prepareBoard(rawJson: string, deckFile: DeckFile): LoadedBoard {
     throw new Error(`Board file is not valid JSON: ${(e as Error).message}`);
   }
   const mapping: SlotMapping = Object.fromEntries(
-    (file.slots ?? []).flatMap((slot, i) => (deckFile.categories[i] ? [[slot, deckFile.categories[i]]] : [])),
+    (file.slots ?? []).flatMap((slot, i) => (deckFile.categories[i] ? [[slot, shownCategory(deckFile.categories[i])]] : [])),
   );
   const game = resolveGame(file, mapping, deckFile);
   const preview = Array.isArray(file.slots) && Array.isArray(file.spaces) ? resolveBoard(file, { ...placeholderMapping(file), ...mapping }) : null;

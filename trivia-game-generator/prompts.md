@@ -225,7 +225,7 @@ do you have any questions before starting ?
 
 
 # public boards, decks, cards, bg images
-There must be a way to create cool boards decks, cards, images that can be shared across organizations. Simple thing is being able to make them public and I think that could work instead of explicit orcanization permissions what do you think before implementing anything ? or would you suggest both things, public and shared decks, cards, etc between organizations? Make a plan or ask questions before proceeding.
+There must be a way to create cool boards decks, cards, images that can be shared across organizations. Simple thing is being able to make them public and I think that could work instead of explicit orcanization permissions what do you think before implementing anything ? or would you suggest both things, public and s1hared decks, cards, etc between organizations? Make a plan or ask questions before proceeding.
 
 # categories metadata
 currently, categories consists on a name and a description. Nevertheless, we could have similar categories or subcategories, such as "history", "history-world", "history-uruguay", each with different descriptions so the LLM has more context when creating cards. Nevertheless, categories must also have a label, which is displayed in a game, since we don't want to display long names such as history-uruguay or geography-uruguay but just "history" and "geography" in a game that which every card is related to uruguay. Do you understand or have any question befor implementing this ? 
@@ -242,3 +242,12 @@ when a user generates some cards using ai prompt and settings like category, dif
 so in a db table store this deck_generation records 
 in deck details page allow the user to save current deck-generation with a name, or load/select an existing deck-generation. At the very bottom of desc details page, user can see the list of all deck-generations used and CRUD.
 do you have any questions before starting ? 
+
+
+
+
+feedback:
+
+poder configurar:  "limite de rondas" in the game record
+
+cuando tiro eldado y hay un solo bucket disponible que mueva automaticamente

@@ -140,7 +140,7 @@ def get_public_deck(deck_id: int, _: Me, conn: Conn):
     deck = _public_deck(conn, deck_id)
     return LibraryDeckDetailOut(
         **deck.model_dump(),
-        categories=[LibraryCardCategory(**c.model_dump(include={"id", "name", "description", "color"})) for c in library.deck_categories(conn, deck_id)],
+        categories=[LibraryCardCategory(**c.model_dump(include={"id", "name", "label", "description", "color"})) for c in library.deck_categories(conn, deck_id)],
         cards=[CardOut(**c.model_dump()) for c in library.cards(conn, deck_id)],
         generations=[LibraryDeckGeneration(**g.model_dump()) for g in deck_generations.list_for_deck(conn, deck_id)],
     )
@@ -175,7 +175,7 @@ class _CategoryMatcher(CategoryMatcher):
         self.organization_name = organization_name
 
     def source(self, c: Category) -> int:
-        return self.target(c.id, c.name, c.description, c.color, _origin(c.id, c.name, self.organization_name))
+        return self.target(c.id, c.name, c.description, c.color, _origin(c.id, c.name, self.organization_name), label=c.label)
 
 
 def _copy_card(card: Card, deck_id: int, category_id: int) -> NewCard:
@@ -333,6 +333,7 @@ def copy_category(category_id: int, body: CopyIn, me: Me, conn: Conn):
                 NewCategory(
                     organization_id=org_id,
                     name=name,
+                    label=original.label,
                     description=original.description,
                     color=original.color,
                     copied_from=_origin(original.id, original.name, original.organization_name),

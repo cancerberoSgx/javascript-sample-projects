@@ -106,7 +106,7 @@ Other rules: the last root user can't be demoted or deleted, an organization tha
 
 | Resource | Notes |
 |---|---|
-| `/api/categories` | `name`, `description`, `color`. Can't be deleted while cards or an awaiting game use it |
+| `/api/categories` | `name` (unique per organization), `label` (≤ 40 chars, what players see; `""` = the name, rules.md CAT-*), `description`, `color`. Can't be deleted while cards or an awaiting game use it |
 | `/api/decks`, `/api/decks/{id}/cards` | A card has `category_id`, `question`, `options` (null = open-ended), `answer` (for multiple choice, one of the options), `difficulty` 1–3, `grand_prize` |
 | `/api/boards` | `definition` = `{config, slots, spaces, background?}` (rules.md §2.1, §2.1.2). Spaces use **slots**, not categories. Only the shape is checked on save: boards with problems are saved as **drafts** (SER-5). Every board in a response has `issues`: `[{code, severity, message, spaces, slot}]` (rules.md §2.1.1); any `error` keeps games from starting with it |
 | `/api/games` | `board_id`, `deck_id`, `categories` (`{slot: category_id}`), `background` (null = the board's; `{}` = none); `players` (`[{name}]`) only on create. Every game has a `join_code`; players have `joined` (from their own device) and `removed`. `GET /api/games/{id}` includes `setup_errors`, the list of what still blocks starting |

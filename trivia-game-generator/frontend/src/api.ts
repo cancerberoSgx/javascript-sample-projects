@@ -78,6 +78,7 @@ export interface Category extends Sharing {
   id: number;
   organization_id: number;
   name: string;
+  label: string; // what players see in a game; "" = the name (CAT-1)
   description: string;
   color: string;
   card_count: number;
@@ -215,7 +216,7 @@ export type PublicImage = Published<Sharing & Pick<LibraryImage, "id" | "organiz
 
 export interface PublicDeckDetail extends Published<Deck> {
   /** The categories its cards and saved generations use. */
-  categories: Pick<Category, "id" | "name" | "description" | "color">[];
+  categories: Pick<Category, "id" | "name" | "label" | "description" | "color">[];
   cards: Card[];
   /** Its saved generations (GEN-8), copied with the deck. */
   generations: Pick<DeckGeneration, "name" | "description" | "spec">[];

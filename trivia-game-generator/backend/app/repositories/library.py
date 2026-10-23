@@ -61,6 +61,7 @@ def _public(select: LiteralString, q: str | None, item_id: int | None, searchabl
 
 
 _TEXT: LiteralString = "x.name ILIKE %(q)s OR x.description ILIKE %(q)s"
+_CATEGORY_TEXT: LiteralString = _TEXT + " OR x.label ILIKE %(q)s"
 
 
 def list_boards(conn: DbConn, q: str | None = None) -> list[PublicBoard]:
@@ -84,12 +85,12 @@ def get_deck(conn: DbConn, deck_id: int) -> PublicDeck | None:
 
 
 def list_categories(conn: DbConn, q: str | None = None) -> list[PublicCategory]:
-    query, params = _public(categories._SELECT, q, None, _TEXT)
+    query, params = _public(categories._SELECT, q, None, _CATEGORY_TEXT)
     return conn.cursor(row_factory=class_row(PublicCategory)).execute(query, params).fetchall()
 
 
 def get_category(conn: DbConn, category_id: int) -> PublicCategory | None:
-    query, params = _public(categories._SELECT, None, category_id, _TEXT)
+    query, params = _public(categories._SELECT, None, category_id, _CATEGORY_TEXT)
     return conn.cursor(row_factory=class_row(PublicCategory)).execute(query, params).fetchone()
 
 

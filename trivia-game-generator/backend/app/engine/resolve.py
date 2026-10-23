@@ -10,7 +10,7 @@ def resolve_snapshot(snapshot: GameSnapshot) -> tuple[BoardDefinition, DeckDefin
     mapping: dict[str, Category] = {}
     for slot, cat_id in snapshot.mapping.items():
         c = by_id[cat_id]
-        mapping[slot] = {"id": c.id, "name": c.name, "color": c.color}
+        mapping[slot] = {"id": c.id, "name": c.label or c.name, "color": c.color}  # players see the label (CAT-1)
 
     file = snapshot.board.model_dump(mode="json", exclude_unset=True)
     spaces: list[Space] = []

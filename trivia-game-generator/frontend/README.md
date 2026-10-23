@@ -5,7 +5,7 @@ A React + Vite app. After login it shows:
 - **Player page** (`/games/:id?code=…`): what players open on their own devices. No login: pick a name, wait in the lobby, play your turns.
 - **Boards**: a visual board editor (see [Board editor](#board-editor)), with live validation that points at the spaces involved. New boards can start blank or from an example. **⬇ Export JSON** downloads a board as a file, **⬆ Import** makes a new board from one (rules.md SER-7, SER-8).
 - **Decks**: questions and answers (open or multiple choice, difficulty, grand prize), written by hand or generated with OpenAI / Gemini (see [Generating cards](#generating-cards)). Decks export to and import from `.json` files too, with their categories (matched by name on import).
-- **Categories**: name, description, color.
+- **Categories**: name (unique, can be precise: `History-Uruguay`), label (what players see: `History`; empty = the name, rules.md CAT-*), description (what the AI reads), color. The table searches name, label and description.
 - **🌐 Library**: what every organization made public (boards, decks with their cards, categories, images). Copy anything into your organization, or add chosen cards to one of your decks. Boards, decks, categories and images get a **Publish to Library** / **Make private** control. See [Library](#library).
 - **Organizations** (root) / **My organization** (member): CRUD for organizations and their users, the organization's OpenAI / Gemini keys (root only, shown masked) and models (any user of the organization; empty = default, checked when saved). Root users also get an organization picker on the content tabs.
 - **Boards demo** (root only): loads board definitions from JSON and lets you play turns on them (hot-seat, 1–4 players). The game logic follows [`../rules.md`](../rules.md). Code comments cite its rule IDs.
@@ -57,7 +57,7 @@ Impersonation: root users get an **Impersonate** button on member users (Organiz
 | `src/engine/engine.ts` | `createGame` / `applyAction(state, action, now)`: a pure state machine (§3–§7) |
 | `src/engine/movement.ts` | Legal destinations for a roll (MOV-*, FRK-*) |
 | `src/engine/board.ts` | Default config and board validation: `validateBoardFile` returns issues (rules.md §2.1.1). `board.test.ts` writes the fixture that keeps the Python port identical |
-| `src/engine/resolve.ts` | Board file (slots) + slot→category mapping + deck file → the engine's board and cards, plus the mapping and deck checks (BRD-5, CRD-*). Also used for game snapshots from the backend |
+| `src/engine/resolve.ts` | Board file (slots) + slot→category mapping + deck file → the engine's board and cards, plus the mapping and deck checks (BRD-5, CAT-3, CRD-*). Also used for game snapshots from the backend. A mapping's categories are named by their **labels** (`shownCategory`), so the engine, the board and every play screen show labels without knowing about them |
 | `src/engine/loader.ts` | Fetches the example JSON for the boards demo. The demo plays slot A, B, … with the deck's categories in order |
 | `src/components/` | Canvas board renderer, game panels, login and Organizations pages |
 | `src/BoardsDemo.tsx` | The boards demo tab |

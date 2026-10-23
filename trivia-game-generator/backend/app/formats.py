@@ -168,6 +168,7 @@ def _check_version(v: object) -> object:
 
 FileText = Annotated[str, StringConstraints(strip_whitespace=True, max_length=2000)]
 FileName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
+FileLabel = Annotated[str, StringConstraints(strip_whitespace=True, max_length=40)]
 
 
 class BoardFile(BoardDefinition):
@@ -190,8 +191,16 @@ class BoardFile(BoardDefinition):
 class DeckFileCategory(Strict):
     id: str = Field(min_length=1, max_length=200)  # what the cards' `category` refers to
     name: FileName
+    label: FileLabel = ""  # CAT-1; left out of exports when empty
     description: FileText = ""
     color: str = Field(pattern=r"^#[0-9a-fA-F]{6}$")
+
+    @model_serializer(mode="wrap")
+    def _omit_no_label(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
+        data = handler(self)
+        if not data.get("label"):
+            data.pop("label", None)
+        return data
 
 
 class DeckFileCard(Strict):
@@ -291,6 +300,7 @@ class SnapshotBoard(BoardDefinition):
 class SnapshotCategory(BaseModel):
     id: str
     name: str
+    label: str = ""  # CAT-1; games started before labels have none
     description: str
     color: str
 

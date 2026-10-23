@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { api, ApiError, type Board, type BoardDefinition, type GameSnapshot, type ShareableKind, type Sharing } from "../api";
-import { placeholderMapping, resolveBoard } from "../engine/resolve";
-import type { Background, BoardFile, Category, SlotMapping } from "../engine/types";
+import { placeholderMapping, resolveBoard, shownCategory } from "../engine/resolve";
+import type { Background, BoardFile, SlotMapping } from "../engine/types";
 import { errorText, useT } from "../i18n";
 import { BoardCanvas } from "./BoardCanvas";
 
@@ -141,12 +141,13 @@ export function BoardPreview({ board, mapping = {}, background }: { board: Board
   return <BoardCanvas board={resolved} background={background === undefined ? board.background : background} game={null} onSpaceClick={() => {}} onHover={() => {}} />;
 }
 
-export function categoryMapping(board: BoardFile | BoardDefinition, slots: Record<string, number>, categories: { id: number; name: string; color: string; description?: string }[]): SlotMapping {
+/** A game's slot mapping as players will see it (each category named by its label, CAT-1). */
+export function categoryMapping(board: BoardFile | BoardDefinition, slots: Record<string, number>, categories: { id: number; name: string; label: string; color: string }[]): SlotMapping {
   const byId = new Map(categories.map((c) => [c.id, c]));
   const out: SlotMapping = {};
   for (const slot of board.slots) {
     const c = byId.get(slots[slot]);
-    if (c) out[slot] = { id: String(c.id), name: c.name, color: c.color } satisfies Category;
+    if (c) out[slot] = shownCategory({ ...c, id: String(c.id) });
   }
   return out;
 }
@@ -154,7 +155,7 @@ export function categoryMapping(board: BoardFile | BoardDefinition, slots: Recor
 /** A started game's slot mapping, from its snapshot (slot -> the deck's category). */
 export function snapshotMapping(snap: GameSnapshot): SlotMapping {
   const byId = new Map(snap.deck.categories.map((c) => [c.id, c]));
-  return Object.fromEntries(Object.entries(snap.mapping).map(([slot, id]) => [slot, byId.get(id)!]));
+  return Object.fromEntries(Object.entries(snap.mapping).map(([slot, id]) => [slot, shownCategory(byId.get(id)!)]));
 }
 
 export function StatusBadge({ status }: { status: string }) {

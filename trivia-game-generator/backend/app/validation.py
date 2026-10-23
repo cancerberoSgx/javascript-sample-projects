@@ -190,8 +190,9 @@ def validate_game_setup(
     category_names: dict[int, str],
     cards: Iterable[tuple[int, bool]],  # (category_id, grand_prize) for each card in the deck
     player_count: int,
+    category_labels: dict[int, str] | None = None,  # what players see: the label, else the name (CAT-1)
 ) -> list[str]:
-    """Everything that must hold before a game can start (BRD-5, WIN-F*, mapping, players)."""
+    """Everything that must hold before a game can start (BRD-5, CAT-3, WIN-F*, mapping, players)."""
     errors = [f"Board: {i.message}" for i in board_errors(validate_board(board))]
     missing = [s for s in board.slots if s not in mapping]
     if missing:
@@ -201,6 +202,8 @@ def validate_game_setup(
         errors.append(f"The board has no slot(s): {', '.join(extra)}")
     if len(set(mapping.values())) != len(mapping):
         errors.append("Each slot needs a different category")
+    elif category_labels:
+        errors.extend(_label_clashes(board.slots, mapping, category_labels))
 
     cards = list(cards)
     for slot in board.slots:
@@ -212,6 +215,20 @@ def validate_game_setup(
     if player_count < 1:
         errors.append("Wait for at least one player to join")
     return errors
+
+
+def _label_clashes(slots: Sequence[str], mapping: dict[str, int], labels: dict[int, str]) -> list[str]:
+    """CAT-3: players tell a game's categories apart by their labels (ignoring case).
+    Port: labelClashes in frontend/src/engine/resolve.ts."""
+    by_label: dict[str, list[str]] = {}
+    for slot in slots:
+        if (cat := mapping.get(slot)) is not None and cat in labels:
+            by_label.setdefault(labels[cat].strip().lower(), []).append(slot)
+    return [
+        f"CAT-3: slots {', '.join(group[:-1])} and {group[-1]} show the same label \"{labels[mapping[group[0]]]}\" to players. Give their categories different labels."
+        for group in by_label.values()
+        if len(group) > 1
+    ]
 
 
 def _join(items: Sequence[int | str], limit: int = 15) -> str:

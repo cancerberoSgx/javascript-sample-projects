@@ -130,6 +130,7 @@ class OrganizationUpdate(BaseModel):
 
 Description = Annotated[str, StringConstraints(strip_whitespace=True, max_length=2000)]
 Color = Annotated[str, StringConstraints(pattern=r"^#[0-9a-fA-F]{6}$")]
+Label = Annotated[str, StringConstraints(strip_whitespace=True, max_length=40)]  # CAT-1: "" = the name
 Text = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)]
 
 
@@ -148,6 +149,7 @@ class CategoryOut(SharingOut):
     id: int
     organization_id: int
     name: str
+    label: str  # "" = the name (CAT-1)
     description: str
     color: str
     card_count: int
@@ -158,12 +160,14 @@ class CategoryOut(SharingOut):
 class CategoryCreate(BaseModel):
     organization_id: int | None = None  # defaults to the caller's organization
     name: Name
+    label: Label = ""
     description: Description = ""
     color: Color
 
 
 class CategoryUpdate(BaseModel):
     name: Name | None = None
+    label: Label | None = None  # "" clears it
     description: Description | None = None
     color: Color | None = None
 
@@ -562,6 +566,7 @@ class LibraryDeckOut(DeckOut):
 class LibraryCardCategory(BaseModel):
     id: int
     name: str
+    label: str
     description: str
     color: str
 

@@ -227,7 +227,8 @@ Every card has exactly one correct answer that is factual, unambiguous, and won'
 
 
 def _describe(category: Category) -> str:
-    return f'"{category.name}"' + (f": {category.description}" if category.description.strip() else " (no description)")
+    shown = f' (players see it as "{category.label}")' if category.label and category.label != category.name else ""
+    return f'"{category.name}"{shown}' + (f": {category.description}" if category.description.strip() else " (no description)")
 
 
 def user_prompt(

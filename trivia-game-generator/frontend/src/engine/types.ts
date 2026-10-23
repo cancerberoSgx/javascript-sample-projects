@@ -45,7 +45,8 @@ export interface Background {
 
 export interface CategoryDef {
   id: string;
-  name: string;
+  name: string; // unique in its organization; can be precise ("History-Uruguay")
+  label?: string; // what players see ("History"); empty or missing = the name (CAT-1)
   description?: string;
   color: string;
 }
@@ -126,7 +127,7 @@ export interface Space {
 
 export interface Category {
   id: string;
-  name: string;
+  name: string; // what players see: the category's label, else its name (CAT-1, shownCategory)
   color: string;
 }
 

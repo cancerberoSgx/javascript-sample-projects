@@ -51,9 +51,11 @@ def _setup_errors(conn: DbConn, game: Game, mapping: dict[str, int], player_coun
     if missing:
         return [f"Choose a {' and a '.join(missing)}"] + (["Wait for at least one player to join"] if player_count < 1 else [])
     assert board and deck
-    names = {c.id: c.name for c in categories.get_many(conn, list(mapping.values()))}
+    used = categories.get_many(conn, list(mapping.values()))
+    names = {c.id: c.name for c in used}
+    labels = {c.id: c.label or c.name for c in used}
     cards = [(c.category_id, c.grand_prize) for c in decks.list_cards(conn, deck.id)]
-    return validate_game_setup(board.definition, mapping, names, cards, player_count)
+    return validate_game_setup(board.definition, mapping, names, cards, player_count, labels)
 
 
 def _visible_game(me: CurrentUser, conn: DbConn, game_id: int) -> Game:
@@ -194,7 +196,7 @@ def _snapshot(conn: DbConn, game: Game, mapping: dict[str, int]) -> GameSnapshot
         deck=SnapshotDeck(
             name=deck.name,
             description=deck.description,
-            categories=[SnapshotCategory(id=str(c.id), name=c.name, description=c.description, color=c.color) for c in used],
+            categories=[SnapshotCategory(id=str(c.id), name=c.name, label=c.label, description=c.description, color=c.color) for c in used],
             cards=[
                 SnapshotCard(
                     id=str(c.id),

@@ -125,6 +125,7 @@ class Category(Shareable):
     id: int
     organization_id: int
     name: str
+    label: str  # what players see in a game; "" = the name (CAT-1)
     description: str
     color: str
     card_count: int  # computed by the query
@@ -135,6 +136,7 @@ class Category(Shareable):
 class NewCategory(BaseModel):
     organization_id: int
     name: str
+    label: str = ""
     description: str
     color: str
     copied_from: CopiedFrom | None = None  # set on copies from the Library (SHR-3)
@@ -142,6 +144,7 @@ class NewCategory(BaseModel):
 
 class CategoryChanges(Changes):
     name: str | None = None
+    label: str | None = None
     description: str | None = None
     color: str | None = None
 

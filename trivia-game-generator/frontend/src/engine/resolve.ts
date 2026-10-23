@@ -8,6 +8,7 @@ import {
   type BoardFile,
   type Card,
   type Category,
+  type CategoryDef,
   type DeckDefinition,
   type DeckFile,
   type SlotMapping,
@@ -15,6 +16,12 @@ import {
 
 /** Colors for slots that have no category yet (board editor previews). */
 export const SLOT_COLORS = ["#3b82f6", "#d97706", "#db2777", "#16a34a", "#7c3aed", "#0891b2", "#ca8a04", "#64748b"];
+
+/** What players see for a category: its label, else its name (CAT-1). */
+export const shownName = (c: { name: string; label?: string | null }) => c.label?.trim() || c.name;
+
+/** A deck's (or the API's) category as the engine and the play screens use it: named by its label. */
+export const shownCategory = (c: Pick<CategoryDef, "id" | "name" | "label" | "color">): Category => ({ id: c.id, name: shownName(c), color: c.color });
 
 export function placeholderMapping(board: BoardFile): SlotMapping {
   return Object.fromEntries(
@@ -30,7 +37,27 @@ export function validateMapping(board: BoardFile, mapping: SlotMapping): string[
   if (missing.length) errors.push(`No category chosen for slot(s): ${missing.join(", ")}`);
   const ids = slots.map((s) => mapping[s]?.id).filter(Boolean);
   if (new Set(ids).size !== ids.length) errors.push("Each slot needs a different category");
+  else errors.push(...labelClashes(board, mapping));
   return errors;
+}
+
+/** CAT-3: players tell a game's categories apart by what they see (labels, ignoring case). A
+ *  mapping's categories are already named by their labels (shownCategory). Port: _label_clashes
+ *  in backend/app/validation.py. */
+export function labelClashes(board: BoardFile, mapping: SlotMapping): string[] {
+  const bySlot = new Map<string, string[]>();
+  for (const slot of board.slots ?? []) {
+    const c = mapping[slot];
+    if (!c) continue;
+    const key = c.name.trim().toLowerCase();
+    bySlot.set(key, [...(bySlot.get(key) ?? []), slot]);
+  }
+  return [...bySlot.values()]
+    .filter((slots) => slots.length > 1)
+    .map(
+      (slots) =>
+        `CAT-3: slots ${slots.slice(0, -1).join(", ")} and ${slots.at(-1)} show the same label "${mapping[slots[0]].name}" to players. Give their categories different labels.`,
+    );
 }
 
 export function resolveBoard(board: BoardFile, mapping: SlotMapping): BoardDefinition {

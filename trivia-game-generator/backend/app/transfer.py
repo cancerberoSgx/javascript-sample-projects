@@ -71,14 +71,14 @@ class CategoryMatcher:
         self.created: list[str] = []
         self.matched: list[str] = []
 
-    def target(self, key: Hashable, name: str, description: str, color: str, copied_from: CopiedFrom | None = None) -> int:
+    def target(self, key: Hashable, name: str, description: str, color: str, copied_from: CopiedFrom | None = None, label: str = "") -> int:
         if key not in self.ids:
             if (found := self.by_name.get(name.lower())) is not None:
                 self.matched.append(name)
             else:
                 found = categories.create(
                     self.conn,
-                    NewCategory(organization_id=self.org_id, name=name, description=description, color=color, copied_from=copied_from),
+                    NewCategory(organization_id=self.org_id, name=name, label=label, description=description, color=color, copied_from=copied_from),
                 )
                 self.by_name[name.lower()] = found
                 self.created.append(name)
@@ -134,7 +134,7 @@ def deck_file(conn: DbConn, deck: Deck) -> DeckFile:
         id=slug(deck.name),
         name=deck.name,
         description=deck.description,
-        categories=[DeckFileCategory(id=label[c.id], name=c.name, description=c.description, color=c.color) for c in used],
+        categories=[DeckFileCategory(id=label[c.id], name=c.name, label=c.label, description=c.description, color=c.color) for c in used],
         cards=file_cards,
         generations=[
             DeckFileGeneration(
@@ -248,7 +248,7 @@ def create_deck_from_file(
     transaction. `scope` tells apart the decks of one organization file, whose category ids may repeat."""
     new_id = decks.create(conn, NewDeck(organization_id=org_id, name=name, description=file.description))
     for c in file.categories:  # all of them, even ones no card uses yet
-        matcher.target((scope, c.id), c.name, c.description, c.color)
+        matcher.target((scope, c.id), c.name, c.description, c.color, label=c.label)
     for category, card in cards:
         decks.create_card(conn, NewCard(deck_id=new_id, **{**card.model_dump(), "category_id": matcher.ids[(scope, category.id)]}))
     category_ids = {c.id: matcher.ids[(scope, c.id)] for c in file.categories}
@@ -306,7 +306,7 @@ def organization_file(conn: DbConn, org: Organization) -> OrganizationFile:
         while candidate in ids:
             candidate, n = f"{base}-{n}", n + 1
         ids.add(candidate)
-        file_categories.append(DeckFileCategory(id=candidate, name=c.name, description=c.description, color=c.color))
+        file_categories.append(DeckFileCategory(id=candidate, name=c.name, label=c.label, description=c.description, color=c.color))
     return OrganizationFile(
         schema_version=2,
         kind="organization",
@@ -344,7 +344,7 @@ def import_organization(conn: DbConn, org_id: int, file: OrganizationFile) -> Or
     with conn.transaction():
         matcher = CategoryMatcher(conn, org_id)
         for c in file.categories:
-            matcher.target(("org", c.id), c.name, c.description, c.color)
+            matcher.target(("org", c.id), c.name, c.description, c.color, label=c.label)
         deck_names = library.names_in_org(conn, "trivia_decks", org_id)
         for i, (deck, cards) in enumerate(zip(file.decks, checked)):
             if deck.name.lower() in deck_names:

@@ -7,7 +7,7 @@ from ..models import Category, CategoryChanges, NewCategory
 from ._sql import json_or_null, update_row
 
 _SELECT = """
-    SELECT c.id, c.organization_id, c.name, c.description, c.color, c.created_at, c.updated_at,
+    SELECT c.id, c.organization_id, c.name, c.label, c.description, c.color, c.created_at, c.updated_at,
            c.visibility, c.published_at, c.copied_from,
            (SELECT count(*) FROM trivia_cards k WHERE k.category_id = c.id) AS card_count
     FROM trivia_categories c
@@ -33,8 +33,8 @@ def get_many(conn: DbConn, ids: list[int]) -> list[Category]:
 def create(conn: DbConn, category: NewCategory) -> int:
     return fetch_scalar(
         conn,
-        "INSERT INTO trivia_categories (organization_id, name, description, color, copied_from) VALUES (%s, %s, %s, %s, %s) RETURNING id",
-        (category.organization_id, category.name, category.description, category.color, json_or_null(category.copied_from)),
+        "INSERT INTO trivia_categories (organization_id, name, label, description, color, copied_from) VALUES (%s, %s, %s, %s, %s, %s) RETURNING id",
+        (category.organization_id, category.name, category.label, category.description, category.color, json_or_null(category.copied_from)),
     )
 
 

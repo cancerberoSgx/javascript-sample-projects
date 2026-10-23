@@ -237,7 +237,7 @@ function DeckDetail({ deckId, orgId }: { deckId: number; orgId: number }) {
         {deck.description && <p>{deck.description}</p>}
         <div className="row wrap">
           {deck.categories.map((c) => (
-            <span key={c.id} className="chip cat-chip" title={c.description}>
+            <span key={c.id} className="chip cat-chip" title={[c.label && `Shown as “${c.label}”`, c.description].filter(Boolean).join(" · ")}>
               <span className="dot" style={{ background: c.color }} /> {c.name} · {deck.cards.filter((x) => x.category_id === c.id).length}
             </span>
           ))}
@@ -416,6 +416,7 @@ function CategoryRow({ category, orgId, have, onCopied }: { category: Published<
     <tr>
       <td>
         <span className="dot" style={{ background: category.color }} /> {category.name}
+        {category.label && category.label !== category.name && <span className="muted small"> · shown as “{category.label}”</span>}
       </td>
       <td className="muted">{category.description}</td>
       <td className="small">{category.organization_name}</td>

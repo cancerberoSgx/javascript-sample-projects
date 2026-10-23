@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { api, type Category } from "../api";
-import { SLOT_COLORS } from "../engine/resolve";
+import { SLOT_COLORS, shownName } from "../engine/resolve";
 import { CopiedFromNote, ErrorBox, NotFound, PublicChip, PublishControl, useAction, useList, useRouteSelection } from "./common";
 
 export function CategoriesPage({ orgId }: { orgId: number }) {
@@ -12,6 +12,11 @@ export function CategoriesPage({ orgId }: { orgId: number }) {
   const editing: Category | "new" | null = creating ? "new" : selected;
   const close = () => (setCreating(false), select(null));
   const del = useAction();
+  const [query, setQuery] = useState("");
+  const shown = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return q ? items.filter((c) => [c.name, c.label, c.description].some((text) => text.toLowerCase().includes(q))) : items;
+  }, [items, query]);
 
   if (missing) return <NotFound what="Category" back="/categories" />;
 
@@ -19,11 +24,18 @@ export function CategoriesPage({ orgId }: { orgId: number }) {
     <section className="panel content-page">
       <div className="row between">
         <h2>Categories</h2>
-        <button className="small" onClick={() => (setCreating(true), select(null))}>
-          + New category
-        </button>
+        <div className="row">
+          <input className="library-search" type="search" placeholder="Search name, label or description" value={query} onChange={(e) => setQuery(e.target.value)} />
+          <button className="small" style={{ whiteSpace: "nowrap" }} onClick={() => (setCreating(true), select(null))}>
+            + New category
+          </button>
+        </div>
       </div>
-      <p className="muted small">Cards belong to a category, and a game picks one category for each board slot.</p>
+      <p className="muted small">
+        Cards belong to a category, and a game picks one category for each board slot. The name is how your organization tells categories apart (and what the AI
+        reads, with the description): it can be precise, like <em>History-Uruguay</em>. Players see the <strong>label</strong>, a short text like{" "}
+        <em>History</em>, or the name when there's no label.
+      </p>
       <ErrorBox error={error ?? del.error} />
       {editing && (
         <CategoryForm
@@ -42,17 +54,19 @@ export function CategoriesPage({ orgId }: { orgId: number }) {
         <thead>
           <tr>
             <th>Name</th>
+            <th>Label (in games)</th>
             <th>Description</th>
             <th>Cards</th>
             <th></th>
           </tr>
         </thead>
         <tbody>
-          {items.map((c) => (
+          {shown.map((c) => (
             <tr key={c.id} className={c.id === selected?.id ? "on" : ""}>
               <td>
                 <span className="dot" style={{ background: c.color }} /> {c.name} <PublicChip item={c} />
               </td>
+              <td className={c.label ? "" : "muted"}>{shownName(c)}</td>
               <td className="muted">{c.description}</td>
               <td>{c.card_count}</td>
               <td className="actions">
@@ -69,10 +83,10 @@ export function CategoriesPage({ orgId }: { orgId: number }) {
               </td>
             </tr>
           ))}
-          {!items.length && (
+          {!shown.length && (
             <tr>
-              <td colSpan={4} className="muted">
-                No categories yet.
+              <td colSpan={5} className="muted">
+                {items.length ? "No category matches." : "No categories yet."}
               </td>
             </tr>
           )}
@@ -96,6 +110,7 @@ function CategoryForm({
   onCancel: () => void;
 }) {
   const [name, setName] = useState(category?.name ?? "");
+  const [label, setLabel] = useState(category?.label ?? "");
   const [description, setDescription] = useState(category?.description ?? "");
   const [color, setColor] = useState(category?.color ?? suggestedColor);
   const save = useAction();
@@ -105,7 +120,7 @@ function CategoryForm({
       className="grid-form user-form"
       onSubmit={async (e) => {
         e.preventDefault();
-        const body = { name, description, color };
+        const body = { name, label, description, color };
         const ok = await save.run(() => (category ? api.updateCategory(category.id, body) : api.createCategory({ ...body, organization_id: orgId })));
         if (ok) onDone();
       }}
@@ -117,9 +132,11 @@ function CategoryForm({
         </div>
       )}
       <label>Name</label>
-      <input required value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+      <input required value={name} onChange={(e) => setName(e.target.value)} autoFocus placeholder="Unique, can be precise: History-Uruguay" />
+      <label>Label</label>
+      <input value={label} maxLength={40} onChange={(e) => setLabel(e.target.value)} placeholder={`Shown to players. Empty = "${name.trim() || "the name"}"`} />
       <label>Description</label>
-      <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional" />
+      <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional. Defines the category for the AI" />
       <label>Color</label>
       <div className="row">
         <input type="color" className="color" value={color} onChange={(e) => setColor(e.target.value)} />

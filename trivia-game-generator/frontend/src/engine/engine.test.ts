@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { activePlayer, applyAction, createGame, normalizeAnswer } from "./engine";
 import { legalDestinations } from "./movement";
 import { boardErrors, validateBoardFile } from "./board";
-import { resolveGame } from "./resolve";
+import { resolveGame, shownCategory, shownName } from "./resolve";
 import type { Action, BoardDefinition, BoardFile, DeckFile, GameState, Message, SlotMapping } from "./types";
 
 const PUBLIC = join(__dirname, "../../public");
@@ -80,6 +80,27 @@ describe("example boards", () => {
     expect(resolveGame(ok, sameTwice, deckFile).errors.join()).toMatch(/different category/);
     const { D: _omit, ...missing } = mappingFor(ok);
     expect(resolveGame(ok, missing, deckFile).errors.join()).toMatch(/slot\(s\): D/);
+  });
+
+  it("names categories by their labels and refuses two slots that look the same (CAT-1, CAT-3)", () => {
+    expect(shownName({ name: "History-Uruguay", label: " History " })).toBe("History");
+    expect(shownName({ name: "History-Uruguay", label: "" })).toBe("History-Uruguay");
+    expect(shownName({ name: "Science" })).toBe("Science");
+    const [a, b, c, d] = deckFile.categories;
+    const labelled = { ...a, name: "History-Uruguay", label: "History" };
+    expect(shownCategory(labelled)).toEqual({ id: a.id, name: "History", color: a.color });
+
+    const ok = loadBoardFile("linear-basic");
+    // b is the example deck's "History": a label equal to another category's name clashes too
+    const mapping = { A: shownCategory(labelled), B: shownCategory(b), C: shownCategory(c), D: shownCategory({ ...d, label: "ART" }) };
+    expect(resolveGame(ok, mapping, deckFile).errors).toEqual([
+      'CAT-3: slots A and B show the same label "History" to players. Give their categories different labels.',
+      'CAT-3: slots C and D show the same label "Art" to players. Give their categories different labels.',
+    ]);
+    // The engine's board carries the label: the play screens and the log show it
+    const fine = resolveGame(ok, { ...mapping, A: shownCategory({ ...a, name: "Science-Uruguay", label: "Science" }), D: shownCategory(d) }, deckFile);
+    expect(fine.errors).toEqual([]);
+    expect(fine.board!.categories.map((x) => x.name)).toEqual(["Science", "History", "Art", "Pop Culture"]);
   });
 
   it("resolves deck cards for the engine", () => {

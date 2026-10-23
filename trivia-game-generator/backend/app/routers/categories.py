@@ -26,7 +26,7 @@ def create_category(body: CategoryCreate, me: Me, conn: Conn):
     org_id = target_org(me, body.organization_id)
     try:
         with conn.transaction():
-            new_id = categories.create(conn, NewCategory(organization_id=org_id, name=body.name, description=body.description, color=body.color))
+            new_id = categories.create(conn, NewCategory(organization_id=org_id, name=body.name, label=body.label, description=body.description, color=body.color))
     except errors.UniqueViolation:
         raise conflict(f"A category named '{body.name}' already exists")
     except errors.ForeignKeyViolation:

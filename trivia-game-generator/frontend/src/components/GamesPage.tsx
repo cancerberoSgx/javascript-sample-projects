@@ -434,7 +434,8 @@ function SlotRow({ slot, categories, value, taken, onChange }: { slot: string; c
         <option value="">Choose a category…</option>
         {categories.map((c) => (
           <option key={c.id} value={c.id} disabled={taken.has(c.id) && c.id !== value}>
-            {c.name} ({c.card_count} cards)
+            {c.name}
+            {c.label && c.label !== c.name ? ` · shown as “${c.label}”` : ""} ({c.card_count} cards)
           </option>
         ))}
       </select>
