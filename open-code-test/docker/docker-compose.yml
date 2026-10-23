@@ -38,6 +38,22 @@ services:
         condition: service_healthy
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
+  backend-tests:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile.test
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-app}@db:5432/${POSTGRES_DB:-app}
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
+      TEST_ROOT_EMAIL: ${TEST_ROOT_EMAIL:-root@example.com}
+      TEST_ROOT_PASSWORD: ${TEST_ROOT_PASSWORD:-admin123}
+    volumes:
+      - ../backend:/app
+    depends_on:
+      db:
+        condition: service_healthy
+    profiles: ["test"]
+
   frontend:
     build:
       context: ../frontend

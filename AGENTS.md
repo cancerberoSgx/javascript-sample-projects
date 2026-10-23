@@ -11,7 +11,8 @@
 - `tauri-react-ts-node-backend/CLAUDE.md` covers its Tauri/Rust/Node/SQLite architecture and commands.
 - `open-code-test/` is the full-stack app in this workspace: FastAPI + SQLAlchemy + Postgres + JWT, React 19/Vite/TS/Tailwind, Docker Compose. See `open-code-test/README.md`.
   - Whole app: `cd open-code-test/docker && docker compose up --build` (frontend `:5173`, API docs `:8000/docs`, Postgres host `:5433`).
-  - Frontend check: `cd open-code-test/frontend && npm run typecheck` (or `npm run build`, which typechecks then builds). There is no test suite.
+  - Frontend check: `cd open-code-test/frontend && npm run typecheck` (or `npm run build`, which typechecks then builds). There is no frontend test suite.
+  - Backend API integration tests: `cd open-code-test/docker && docker compose --profile test run --rm backend-tests` (uses the configured Postgres DB, creates unique test orgs, and cleans them up). Read `open-code-test/backend/tests/README.md` before adding endpoints or permissions; add tests for every new API operation.
   - Backend applies pending SQL migrations on startup (`backend/app/migrations/runner.py`). Add a new numbered `.sql` file; never edit an applied migration.
   - Frontend calls `/api`; Vite proxies it to `VITE_API_PROXY_TARGET` (default `http://localhost:8000`).
 

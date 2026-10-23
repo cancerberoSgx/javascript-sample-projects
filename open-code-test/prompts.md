@@ -45,10 +45,11 @@ files and folders will be stored in db, both their metadata like name or type bu
 the idea is to have db filessystem with an easy to use UI
 do you have any questions before proceeding ? 
 
-drive files must also support binary files, since we plan to store any kind of file
+tasks:
 
-# upload zip
-user can upload a .zip file to a folder which will be decompressed and stored as sub files
+ * drive files must also support binary files, since we plan to store any kind of file
+ * user can upload a .zip file to a folder which will be decompressed and stored as sub files
+ * image and image viewer: identify common image formats and when user opens it shows an image viewer with zoom and span capabilities
 
 
 # tests

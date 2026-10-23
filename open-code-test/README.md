@@ -24,8 +24,12 @@ A local-development full stack application for managing organizations and their 
 │   │   ├── main.py
 │   │   ├── models.py
 │   │   └── security.py
+│   ├── tests/                # Backend API integration tests
 │   ├── Dockerfile
-│   └── requirements.txt
+│   ├── Dockerfile.test
+│   ├── pytest.ini
+│   ├── requirements.txt
+│   └── requirements-dev.txt
 ├── docker/
 │   ├── docker-compose.yml
 │   └── .env.example
@@ -64,6 +68,35 @@ password: admin123
 Change it from the UI by editing your own user, or by creating another root user.
 
 Stop the stack with `docker compose down`. Add `-v` to also delete the database volume.
+
+## Tests
+
+Backend API integration tests live in `backend/tests/`. They run against the
+same Postgres database configured by `DATABASE_URL`, apply pending migrations
+through the app lifespan, create uniquely named organizations/users/drives/files,
+and delete everything they created in fixture teardown.
+
+Run them with Docker (starts the existing `db` service):
+
+```bash
+cd docker
+docker compose --profile test run --rm backend-tests
+```
+
+Or run them locally:
+
+```bash
+cd backend
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements-dev.txt
+export DATABASE_URL=postgresql+psycopg://app:app@localhost:5433/app
+export JWT_SECRET=dev-secret-change-me
+pytest -q
+```
+
+The tests use the seed root account by default. Override `TEST_ROOT_EMAIL` and
+`TEST_ROOT_PASSWORD` if needed. See `backend/tests/README.md` for the fixtures,
+cleanup behavior, and the checklist to follow when adding tests for new features.
 
 ## Configuration
 
@@ -122,11 +155,9 @@ The UI at `/organizations/{id}/drives` supports:
 - moving files and folders by dragging them onto another folder or the drive root.
 
 Text files open in the editor; binary files show a download card instead. Copying
-a file copies its bytes, and deleting a folder or drive permanently deletes
-everything inside it.
-
-Deleting a folder or drive permanently deletes everything inside it. Copy
-recurses through folders and appends ` (copy)` to name clashes.
+a file copies its bytes. Deleting a folder or drive permanently deletes
+everything inside it, and copy recurses through folders and appends ` (copy)` to
+name clashes.
 
 ## API overview
 
@@ -210,6 +241,7 @@ Useful checks:
 
 ```bash
 cd frontend && npm run build        # typecheck + production build
+cd docker && docker compose --profile test run --rm backend-tests
 docker compose -f docker/docker-compose.yml logs -f backend
 docker compose -f docker/docker-compose.yml exec db psql -U app -d app
 ```
