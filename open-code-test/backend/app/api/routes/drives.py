@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.errors import AppError
-from app.file_types import MAX_FILE_BYTES
+from app.file_types import MAX_FILE_BYTES, detect_file_type
 from app.models import Drive, DriveItem, User
 from app.schemas.drive import (
     CopyItemsRequest,
@@ -151,7 +151,36 @@ async def upload_file(
         drive_id,
         name=name,
         parent_id=parent_id,
-        file_type=file.content_type,
+        file_type=detect_file_type(name, file.content_type, data),
+        data=data,
+        current_user=current_user,
+    )
+
+
+@router.post(
+    "/{drive_id}/files/upload-zip",
+    response_model=list[DriveItemRead],
+    status_code=status.HTTP_201_CREATED,
+)
+async def upload_zip(
+    organization_id: int,
+    drive_id: int,
+    file: UploadFile = File(...),
+    parent_id: int | None = Form(default=None),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[DriveItem]:
+    data = await file.read(MAX_FILE_BYTES + 1)
+    await file.close()
+    if len(data) > MAX_FILE_BYTES:
+        raise AppError(
+            f"File must be at most {MAX_FILE_BYTES // (1024 * 1024)} MB"
+        )
+
+    return DriveService(db).create_uploaded_zip(
+        organization_id,
+        drive_id,
+        parent_id=parent_id,
         data=data,
         current_user=current_user,
     )

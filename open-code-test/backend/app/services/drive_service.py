@@ -1,9 +1,16 @@
+import io
+import zipfile
+
 from sqlalchemy.orm import Session
 
 from app.errors import AppError, ConflictError, ForbiddenError, NotFoundError
 from app.file_types import (
     MAX_FILE_BYTES,
     MAX_FILE_NAME_LENGTH,
+    MAX_ZIP_DEPTH,
+    MAX_ZIP_ENTRIES,
+    MAX_ZIP_UNCOMPRESSED_BYTES,
+    detect_file_type,
     is_text_file_type,
     normalize_file_type,
 )
@@ -254,6 +261,151 @@ class DriveService(BaseService):
         self.commit("An item with this name already exists")
         self.db.refresh(item)
         return item
+
+    @staticmethod
+    def _zip_entry_parts(filename: str) -> list[str]:
+        raw = filename.replace("\\", "/")
+        if raw.startswith("/") or (len(raw) > 1 and raw[1] == ":"):
+            raise AppError(f"ZIP entry has an unsafe path: {filename}")
+
+        parts: list[str] = []
+        for part in raw.split("/"):
+            part = part.strip()
+            if part in ("", "."):
+                continue
+            if part == ".." or "\x00" in part:
+                raise AppError(f"ZIP entry has an unsafe path: {filename}")
+            if len(part) > MAX_FILE_NAME_LENGTH:
+                raise AppError(
+                    f"ZIP entry name must be at most {MAX_FILE_NAME_LENGTH} characters"
+                )
+            parts.append(part)
+
+        if len(parts) > MAX_ZIP_DEPTH:
+            raise AppError("ZIP archive is nested too deeply")
+        return parts
+
+    def _ensure_zip_folder(
+        self,
+        drive: Drive,
+        parent_id: int | None,
+        name: str,
+        created: list[DriveItem],
+    ) -> DriveItem:
+        existing = self.items.get_by_name(drive.id, parent_id, name)
+        if existing is not None:
+            if existing.kind != "folder":
+                raise ConflictError(
+                    f"Cannot extract folder \"{name}\": a file with that name exists"
+                )
+            return existing
+
+        folder = self.items.create_folder(drive.id, parent_id, name)
+        created.append(folder)
+        return folder
+
+    def create_uploaded_zip(
+        self,
+        organization_id: int,
+        drive_id: int,
+        *,
+        parent_id: int | None,
+        data: bytes,
+        current_user: User,
+    ) -> list[DriveItem]:
+        drive = self._get_drive(organization_id, drive_id, current_user)
+        self._validate_parent(drive, parent_id)
+
+        try:
+            archive = zipfile.ZipFile(io.BytesIO(data))
+        except (zipfile.BadZipFile, zipfile.LargeZipFile) as exc:
+            raise AppError("File is not a valid ZIP archive") from exc
+
+        with archive:
+            infos = archive.infolist()
+            if len(infos) > MAX_ZIP_ENTRIES:
+                raise AppError(
+                    f"ZIP archive must contain at most {MAX_ZIP_ENTRIES} entries"
+                )
+            if sum(info.file_size for info in infos) > MAX_ZIP_UNCOMPRESSED_BYTES:
+                raise AppError(
+                    "ZIP archive expands to more than "
+                    f"{MAX_ZIP_UNCOMPRESSED_BYTES // (1024 * 1024)} MB"
+                )
+
+            created: list[DriveItem] = []
+            total_bytes = 0
+
+            try:
+                for info in infos:
+                    parts = self._zip_entry_parts(info.filename)
+                    if not parts:
+                        continue
+
+                    parent = parent_id
+                    for name in parts[:-1]:
+                        parent = self._ensure_zip_folder(
+                            drive, parent, name, created
+                        ).id
+
+                    name = parts[-1]
+                    is_directory = info.is_dir() or info.filename.endswith(
+                        ("/", "\\")
+                    )
+                    if is_directory:
+                        self._ensure_zip_folder(drive, parent, name, created)
+                        continue
+
+                    existing = self.items.get_by_name(drive.id, parent, name)
+                    if existing is not None:
+                        raise ConflictError(
+                            f"Cannot extract \"{name}\": an item with that name exists"
+                        )
+
+                    try:
+                        with archive.open(info) as handle:
+                            content = handle.read(MAX_FILE_BYTES + 1)
+                    except (
+                        RuntimeError,
+                        NotImplementedError,
+                        OSError,
+                        EOFError,
+                    ) as exc:
+                        raise AppError(
+                            f"Could not read ZIP entry: {info.filename}"
+                        ) from exc
+
+                    if len(content) > MAX_FILE_BYTES:
+                        raise AppError(
+                            f"ZIP entry \"{name}\" is larger than "
+                            f"{MAX_FILE_BYTES // (1024 * 1024)} MB"
+                        )
+
+                    total_bytes += len(content)
+                    if total_bytes > MAX_ZIP_UNCOMPRESSED_BYTES:
+                        raise AppError(
+                            "ZIP archive expands to more than "
+                            f"{MAX_ZIP_UNCOMPRESSED_BYTES // (1024 * 1024)} MB"
+                        )
+
+                    file_type = detect_file_type(name, None, content)
+                    file_item = self.items.create_file(
+                        drive.id,
+                        parent,
+                        name,
+                        file_type,
+                        content,
+                    )
+                    created.append(file_item)
+
+                self.commit("An item with this name already exists")
+            except Exception:
+                self.db.rollback()
+                raise
+
+        for item in created:
+            self.db.refresh(item)
+        return [item for item in created if item.parent_id == parent_id]
 
     def update_item(
         self,

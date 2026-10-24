@@ -357,25 +357,42 @@ export function DrivesPage() {
     setEditorError('')
 
     try {
-      let last: DriveItem | null = null
+      const uploaded: DriveItem[] = []
       for (const file of files) {
-        last = await api.uploadFile(
-          organizationId,
-          driveId,
-          file,
-          targetParentId,
-        )
+        if (file.name.toLowerCase().endsWith('.zip')) {
+          uploaded.push(
+            ...(await api.uploadZip(
+              organizationId,
+              driveId,
+              file,
+              targetParentId,
+            )),
+          )
+        } else {
+          uploaded.push(
+            await api.uploadFile(
+              organizationId,
+              driveId,
+              file,
+              targetParentId,
+            ),
+          )
+        }
       }
 
       await refreshItems(driveId)
-      if (last) {
-        setSelectedIds(new Set([last.id]))
-        setCurrentFolderId(last.parent_id)
+      if (uploaded.length > 0) {
+        setSelectedIds(new Set(uploaded.map((item) => item.id)))
+        setCurrentFolderId(targetParentId)
         if (targetParentId !== null) {
           setExpandedIds((current) => new Set(current).add(targetParentId))
         }
-        if (files.length === 1) {
-          await openFile(last)
+        if (
+          files.length === 1 &&
+          uploaded.length === 1 &&
+          uploaded[0].kind === 'file'
+        ) {
+          await openFile(uploaded[0])
         }
       }
       setError('')
@@ -842,7 +859,7 @@ export function DrivesPage() {
             openNameModal({ kind: 'create-file', parentId: currentFolderId }),
         },
         {
-          label: 'Upload file',
+          label: 'Upload file or ZIP',
           onSelect: () => beginUpload(currentFolderId),
         },
         {
@@ -871,7 +888,7 @@ export function DrivesPage() {
             openNameModal({ kind: 'create-file', parentId: item.id }),
         },
         {
-          label: 'Upload file',
+          label: 'Upload file or ZIP',
           onSelect: () => beginUpload(item.id),
         },
         {
@@ -975,8 +992,8 @@ export function DrivesPage() {
               Drives
             </h1>
             <p className="mt-1 text-sm text-slate-500">
-              Store folders, text files, and binary files for this
-              organization. Ctrl/Cmd+click to multi-select; drag to move;
+              Store folders, text files, binary files, images, and extracted
+              ZIP archives for this organization. Ctrl/Cmd+click to multi-select; drag to move;
               right-click for more actions.
             </p>
           </div>
@@ -1011,7 +1028,7 @@ export function DrivesPage() {
               disabled={!selectedDriveId || uploading}
               onClick={() => beginUpload(currentFolderId)}
             >
-              {uploading ? 'Uploading...' : 'Upload file'}
+              {uploading ? 'Uploading...' : 'Upload file or ZIP'}
             </Button>
             <Button onClick={() => openNameModal({ kind: 'create-drive' })}>
               New drive
@@ -1162,6 +1179,7 @@ export function DrivesPage() {
 
           <div className="card min-w-0 overflow-hidden">
             <DriveEditor
+              organizationId={organizationId}
               file={activeFile}
               content={content}
               dirty={dirty}

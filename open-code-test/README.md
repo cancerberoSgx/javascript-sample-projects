@@ -150,14 +150,23 @@ The UI at `/organizations/{id}/drives` supports:
 - creating, renaming and deleting drives;
 - creating folders and text files, editing file text with an explicit Save (Ctrl+S);
 - uploading files (including binaries) and downloading any file;
+- uploading a `.zip` archive, which is decompressed into folders and files below the target folder;
+- opening common image formats (PNG, JPEG, GIF, WebP, BMP, TIFF, AVIF, SVG, ICO) in a viewer with zoom and pan;
 - renaming and deleting items from a right-click menu;
 - multiple selection with Ctrl/Cmd+click, plus copy/paste of independent copies;
 - moving files and folders by dragging them onto another folder or the drive root.
 
-Text files open in the editor; binary files show a download card instead. Copying
-a file copies its bytes. Deleting a folder or drive permanently deletes
-everything inside it, and copy recurses through folders and appends ` (copy)` to
-name clashes.
+Text files open in the editor; images open in a zoomable, pannable viewer; other
+binary files show a download card instead. Copying a file copies its bytes.
+Deleting a folder or drive permanently deletes everything inside it, and copy
+recurses through folders and appends ` (copy)` to name clashes.
+
+ZIP uploads are validated and extracted atomically: paths are checked for
+traversal, encrypted or invalid archives are rejected, and limits apply to the
+entry count (500), nesting depth (50), individual file size (10 MB), and total
+extracted size (50 MB). An existing folder with the same path is reused, while
+name clashes with files return `409` and leave the target folder unchanged.
+The uploaded `.zip` itself is subject to the same 10 MB upload limit.
 
 ## API overview
 
@@ -186,6 +195,7 @@ All endpoints except `POST /api/auth/login` and `GET /api/health` require an
 | POST | `/api/organizations/{id}/drives/{driveId}/folders` | Create a folder |
 | POST | `/api/organizations/{id}/drives/{driveId}/files` | Create a text file |
 | POST | `/api/organizations/{id}/drives/{driveId}/files/upload` | Upload a file (multipart form field `file`, optional `parent_id`) |
+| POST | `/api/organizations/{id}/drives/{driveId}/files/upload-zip` | Extract a ZIP archive into the target folder (multipart `file`, optional `parent_id`) |
 | GET | `/api/organizations/{id}/drives/{driveId}/items/{itemId}` | Get an item (text files include content) |
 | GET | `/api/organizations/{id}/drives/{driveId}/items/{itemId}/download` | Download file bytes |
 | PATCH | `/api/organizations/{id}/drives/{driveId}/items/{itemId}` | Rename or move an item |

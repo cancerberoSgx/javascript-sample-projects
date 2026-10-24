@@ -1,11 +1,16 @@
+import { useEffect, useState } from 'react'
+
+import { api, getErrorMessage } from '../../api/client'
 import type { DriveItemDetail } from '../../types'
-import { formatBytes, isTextFileType } from '../../utils'
+import { formatBytes, isImageFile, isTextFileType } from '../../utils'
 import { Button } from '../Button'
 import { ErrorAlert } from '../ErrorAlert'
 import { Loading } from '../Loading'
 import { FileIcon } from './DriveIcons'
+import { ImageViewer } from './ImageViewer'
 
 interface DriveEditorProps {
+  organizationId: number
   file: DriveItemDetail | null
   content: string
   dirty: boolean
@@ -18,6 +23,7 @@ interface DriveEditorProps {
 }
 
 export function DriveEditor({
+  organizationId,
   file,
   content,
   dirty,
@@ -28,6 +34,57 @@ export function DriveEditor({
   onSave,
   onDownload,
 }: DriveEditorProps) {
+  const fileId = file?.id ?? null
+  const fileDriveId = file?.drive_id ?? null
+  const fileType = file?.file_type ?? null
+  const fileName = file?.name ?? ''
+  const imageFile = file !== null && isImageFile(fileType, fileName)
+
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [previewError, setPreviewError] = useState('')
+
+  useEffect(() => {
+    setPreviewUrl(null)
+    setPreviewError('')
+    setPreviewLoading(false)
+
+    if (fileId === null || fileDriveId === null || !imageFile) {
+      return
+    }
+
+    let active = true
+    let objectUrl: string | null = null
+    setPreviewLoading(true)
+
+    api
+      .downloadFile(organizationId, fileDriveId, fileId)
+      .then(({ blob }) => {
+        if (!active) {
+          return
+        }
+        objectUrl = URL.createObjectURL(blob)
+        setPreviewUrl(objectUrl)
+      })
+      .catch((err) => {
+        if (active) {
+          setPreviewError(getErrorMessage(err))
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setPreviewLoading(false)
+        }
+      })
+
+    return () => {
+      active = false
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl)
+      }
+    }
+  }, [organizationId, fileId, fileDriveId, imageFile])
+
   if (loading) {
     return (
       <div className="grid min-h-[24rem] place-items-center p-8">
@@ -45,14 +102,15 @@ export function DriveEditor({
             Select a file to edit or download
           </p>
           <p className="mt-1 text-sm text-slate-400">
-            Text files open in the editor; other files can be downloaded.
+            Text files open in the editor, images in a zoomable viewer, and
+            other files can be downloaded.
           </p>
         </div>
       </div>
     )
   }
 
-  const editable = isTextFileType(file.file_type)
+  const editable = !imageFile && isTextFileType(file.file_type)
 
   return (
     <div className="flex min-h-[24rem] flex-col">
@@ -64,11 +122,13 @@ export function DriveEditor({
               {file.name}
             </p>
             <p className="truncate text-xs text-slate-400">
-              {editable
-                ? dirty
-                  ? 'Unsaved changes'
-                  : 'All changes saved'
-                : 'Binary file'}{' '}
+              {imageFile
+                ? 'Image preview'
+                : editable
+                  ? dirty
+                    ? 'Unsaved changes'
+                    : 'All changes saved'
+                  : 'Binary file'}{' '}
               · {file.file_type ?? 'application/octet-stream'} ·{' '}
               {formatBytes(file.size_bytes)}
             </p>
@@ -88,7 +148,32 @@ export function DriveEditor({
 
       <div className="space-y-3 p-4">
         <ErrorAlert message={error} />
-        {editable ? (
+        {imageFile ? (
+          <>
+            <ErrorAlert message={previewError} />
+            {previewLoading ? (
+              <div className="grid min-h-[26rem] place-items-center rounded-lg border border-dashed border-slate-200 bg-slate-50 p-8">
+                <Loading label="Loading image..." />
+              </div>
+            ) : previewUrl ? (
+              <ImageViewer src={previewUrl} alt={file.name} />
+            ) : (
+              <div className="grid min-h-[26rem] place-items-center rounded-lg border border-dashed border-slate-200 bg-slate-50 p-8 text-center">
+                <div>
+                  <FileIcon className="mx-auto h-10 w-10 text-slate-300" />
+                  <p className="mt-3 text-sm font-medium text-slate-600">
+                    Could not preview this image
+                  </p>
+                  <div className="mt-4 flex justify-center">
+                    <Button variant="secondary" onClick={onDownload}>
+                      Download {file.name}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        ) : editable ? (
           <>
             <textarea
               className="input min-h-[26rem] resize-y font-mono text-sm leading-6"

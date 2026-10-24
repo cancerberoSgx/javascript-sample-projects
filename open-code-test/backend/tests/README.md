@@ -110,7 +110,9 @@ Use this checklist for every new endpoint or behavior:
    then verify the member cannot read or mutate the first organization.
 7. For uploads, use multipart form data and compare downloaded bytes exactly.
    For text files, also verify the detail endpoint returns `content`; for binary
-   files, verify `content` is `null` and that text editing is rejected.
+   files, verify `content` is `null` and that text editing is rejected. For ZIP
+   uploads, build archives in memory and cover nested folders, binary entries,
+   path traversal, invalid archives, conflicts, and permission failures.
 8. Exercise delete behavior and confirm descendants or related rows are gone.
 9. Run the full suite, not only the new test, because the fixture shares the
    configured database and cleanup behavior.

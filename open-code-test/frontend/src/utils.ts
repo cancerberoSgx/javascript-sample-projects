@@ -39,3 +39,39 @@ export function isTextFileType(fileType: string | null | undefined): boolean {
     value.endsWith('+xml')
   )
 }
+
+const IMAGE_FILE_TYPES = new Set([
+  'image/avif',
+  'image/bmp',
+  'image/gif',
+  'image/heic',
+  'image/heif',
+  'image/jpeg',
+  'image/jpg',
+  'image/jxl',
+  'image/png',
+  'image/svg+xml',
+  'image/tiff',
+  'image/webp',
+  'image/x-icon',
+  'image/vnd.microsoft.icon',
+])
+
+const IMAGE_EXTENSION_PATTERN =
+  /\.(avif|bmp|gif|heic|heif|ico|jpe?g|jxl|png|svg|tiff?|webp)$/i
+
+export function isImageFileType(
+  fileType: string | null | undefined,
+): boolean {
+  if (!fileType) {
+    return false
+  }
+  return IMAGE_FILE_TYPES.has(fileType.split(';', 1)[0].trim().toLowerCase())
+}
+
+export function isImageFile(
+  fileType: string | null | undefined,
+  name: string,
+): boolean {
+  return isImageFileType(fileType) || IMAGE_EXTENSION_PATTERN.test(name)
+}

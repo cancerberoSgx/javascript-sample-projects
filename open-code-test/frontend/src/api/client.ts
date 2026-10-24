@@ -281,6 +281,26 @@ export const api = {
     )
   },
 
+  uploadZip: (
+    organizationId: number,
+    driveId: number,
+    file: File,
+    parentId: number | null,
+  ) => {
+    const form = new FormData()
+    form.append('file', file)
+    if (parentId !== null) {
+      form.append('parent_id', String(parentId))
+    }
+    return request<DriveItem[]>(
+      `/organizations/${organizationId}/drives/${driveId}/files/upload-zip`,
+      {
+        method: 'POST',
+        body: form,
+      },
+    )
+  },
+
   downloadFile: async (
     organizationId: number,
     driveId: number,

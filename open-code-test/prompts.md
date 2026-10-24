@@ -55,10 +55,3 @@ tasks:
 # tests
 in folder /tests add pytests for all the API level operations. Using the same DB tests should be able to create new orgs, new folders and files, tests endpoints and permissions, features and when finished clean up created resources. add instructions so in future features we also add tests like this. backend api integration tests
 
-
-used deepseek v4.1 flash free
-
-
-
-p2
-now a root user can impersonate a member user from the user's list
